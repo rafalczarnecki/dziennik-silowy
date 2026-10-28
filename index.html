@@ -282,7 +282,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-28.5';
+const VER='2026-10-28.6';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1051,7 +1051,7 @@ function plansCard(){
   return `<div class="card"><h3>Plany treningowe</h3>
     <p class="note">Nowy plan dostaniesz ode mnie jako plik .json. Wczytaj go tutaj: aplikacja i historia zostają bez zmian.</p>
     ${Object.entries(PLANS).map(([id,P])=>`<p><b>${esc(P.name)}</b> ${esc(P.sub)} <span class="meta">(${S.userPlans&&S.userPlans[id]?(BUILTIN_IDS.includes(id)?'wczytany, zastępuje wbudowany':'wczytany'):'wbudowany'})</span>${S.userPlans&&S.userPlans[id]?` <button class="link" data-plandel="${esc(id)}">Usuń</button>`:''}</p>`).join('')}
-    <label class="ghost filepick">Wczytaj plan z pliku<input type="file" id="planfile" accept=".json,application/json,text/plain" hidden></label>
+    <label class="ghost filepick">Wczytaj plan z pliku<input type="file" id="planfile" hidden></label>
     <textarea id="planimp" placeholder='Albo wklej tekst planu: {"type":"dziennik-plan", ...}'></textarea>
     <p><button class="ghost" id="planbtn">Wczytaj plan z tekstu</button> <button class="ghost" id="planexp">Pobierz plan ${esc(cur.name)} (.json)</button></p></div>`;
 }
@@ -1083,7 +1083,7 @@ function viewKopia(){
     <textarea id="exptxt" readonly hidden></textarea></div>
     <div class="card"><h3>Wczytaj kopię</h3>
     <p class="note">Z pliku .json pobranego z aplikacji:</p>
-    <label class="ghost filepick">Wczytaj kopię z pliku<input type="file" id="impfile" accept=".json,application/json,text/plain,.txt" hidden></label>
+    <label class="ghost filepick">Wczytaj kopię z pliku<input type="file" id="impfile" hidden></label>
     <p class="note">Albo wklej tekst kopii:</p>
     <textarea id="imp" placeholder='{"sessions":[...]}'></textarea>
     <p><button class="ghost" id="impbtn">Wczytaj kopię</button></p></div>
@@ -1366,6 +1366,14 @@ function migrate(){
 }
 function reloadState(){S=load();installAll();render()}
 
+// wczytanie z linku: #pakiet=… (dane w części po #, nie trafiają na serwer)
+function hashImport(){
+  const m=location.hash.match(/^#(?:pakiet|plan|kopia)=(.+)$/); if(!m)return;
+  history.replaceState(null,'',location.pathname+location.search);
+  let txt;try{const b=atob(m[1].replace(/-/g,'+').replace(/_/g,'/'));txt=new TextDecoder().decode(Uint8Array.from(b,c=>c.charCodeAt(0)))}catch(e){return toast('Link jest uszkodzony. Poproś o nowy.')}
+  importAny(txt);
+}
+setTimeout(hashImport,0);
 installAll();
 migrate();
 render();
