@@ -280,7 +280,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-28';
+const VER='2026-10-28.2';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -384,11 +384,11 @@ function dayEx(plan=S.plan,day=S.day){
   return a;
 }
 // Partie mięśniowe: 1 = seria bezpośrednia, 0,5 = pośrednia
-const MG={klatka:'Klatka',pion:'Plecy – szerokość',poziom:'Plecy – grubość',bp:'Barki przednie',bb:'Barki boczne',bt:'Barki tylne',triceps:'Triceps',biceps:'Biceps',czw:'Czworogłowe uda',dwu:'Tył uda',pos:'Pośladki',prost:'Prostowniki grzbietu',przyw:'Przywodziciele',brzuch:'Brzuch'};
+const MG={klatka:'Klatka',pion:'Plecy – szerokość',poziom:'Plecy – grubość',bp:'Barki przednie',bb:'Barki boczne',bt:'Barki tylne',triceps:'Triceps',biceps:'Biceps',czw:'Czworogłowe uda',dwu:'Tył uda',pos:'Pośladki',prost:'Prostowniki grzbietu',przyw:'Przywodziciele',brzuch:'Brzuch',skosne:'Mięśnie skośne brzucha'};
 const MP={
   squat:{czw:1,pos:.5,prost:.5}, squatM:{czw:1,pos:.5}, uni:{czw:1,pos:1}, dead:{pos:1,dwu:.5,prost:1,czw:.5}, hinge:{dwu:1,pos:1,prost:.5},
   bench:{klatka:1,triceps:.5,bp:.5}, close:{triceps:1,klatka:.5}, ohp:{bp:1,triceps:.5}, lat:{bb:1}, rear:{bt:1},
-  vpull:{pion:1,biceps:.5}, hpull:{poziom:1,biceps:.5,bt:.5}, curl:{biceps:1}, ext:{triceps:1}, ham:{dwu:1}, glute:{pos:1}, addu:{przyw:1}, core:{brzuch:1}, cond:{}
+  vpull:{pion:1,biceps:.5}, hpull:{poziom:1,biceps:.5,bt:.5}, curl:{biceps:1}, ext:{triceps:1}, ham:{dwu:1}, glute:{pos:1}, addu:{przyw:1}, core:{brzuch:1}, rot:{skosne:1,brzuch:.5}, cond:{}
 };
 const MX={
   squat:['Przysiad','Front squat','Przysiad z pauzą'], squatM:['Hack squat','Wypychanie nóg na suwnicy','Przysiad goblet'],
@@ -398,16 +398,28 @@ const MX={
   bench:['Wyciskanie touch and go','Wyciskanie leżąc (WLZ)','Wyciskanie z pauzą 2 s','Larsen press','Spoto press','Wyciskanie hantli','Wyciskanie hantli na skosie dodatnim','Wyciskanie na skosie dodatnim','Pompki z obciążeniem','Wyciskanie hantli chwytem młotkowym','Wyciskanie hantli chwytem neutralnym'],
   close:['Wyciskanie leżąc wąsko','Floor press','JM press','Pompki na poręczach'],
   ohp:['OHP','Wyciskanie hantli nad głowę siedząc','Landmine press'],
-  lat:['Wznosy bokiem','Powell raises'], rear:['Trap Y raise','Face pull','Odwrotne rozpiętki na maszynie'],
+  lat:['Wznosy bokiem'], rear:['Powell raises','Trap Y raise','Face pull','Odwrotne rozpiętki na maszynie'],
   vpull:['Podciąganie nachwytem','Podciąganie podchwytem','Podciąganie chwytem neutralnym','Ściąganie drążka nachwytem','Ściąganie drążka szerokim chwytem','Ściąganie drążka podchwytem','Ściąganie drążka chwytem neutralnym','Hammer na plecy szeroko'],
   hpull:['Pendlay row','Wiosłowanie podchwytem','Wiosłowanie hantlem jednorącz','Wiosłowanie na wyciągu siedząc','Kas row w oparciu o ławkę','Ściąganie drążka poziomo','Wiosłowanie na maszynie','Wiosłowanie sztangą w opadzie'],
   curl:['Biceps z supinacją','Uginanie ramion z hantlami','Uginanie ramion młotkowe','Bayesian curl'],
   ext:['Francuz z przenoszeniem','Prostowanie ramion na wyciągu'],
   ham:['Nordic curl','Uginanie podudzi','Uginanie podudzi leżąc'],
   cond:['Lina na rolce'],
-  core:['Dead bug (zdechły robak)','Hollow body','Brzuszki skośne','Ab wheel','Unoszenie nóg w zwisie','Wood chopper','Narciarz']
+  core:['Dead bug (zdechły robak)','Hollow body','Ab wheel','Unoszenie nóg w zwisie'],
+  rot:['Brzuszki skośne','Wood chopper','Narciarz']
 };
 const patOf=n=>Object.keys(MX).find(k=>MX[k].includes(n));
+// Główny cel ćwiczenia (praca bezpośrednia). Praca pośrednia, np. triceps przy wyciskaniu, nie łamie zasady.
+const PRIM={squat:['czw'],squatM:['czw'],uni:['czw'],dead:['prost','pos'],hinge:['dwu','pos'],glute:['pos'],addu:['przyw'],
+  bench:['klatka'],close:['triceps'],ohp:['bp'],lat:['bb'],rear:['bt'],vpull:['pion'],hpull:['poziom'],curl:['biceps'],ext:['triceps'],
+  ham:['dwu'],core:['brzuch'],rot:['skosne'],cond:[]};
+const primOf=n=>PRIM[patOf(n)]||[];
+// lista konfliktów: [{m, names}] dla nazw ćwiczeń jednego dnia
+function clashes(names){const by={};names.forEach(n=>primOf(n).forEach(m=>{(by[m]=by[m]||[]).includes(n)||by[m].push(n)}));
+  return Object.entries(by).filter(([,a])=>a.length>1).map(([m,a])=>({m,names:a}))}
+const clashText=c=>c.map(x=>`${x.names.join(' + ')} (${MG[x.m].toLowerCase()})`).join('; ');
+function dayClashes(plan=S.plan,day=S.day){return clashes(dayEx(plan,day).map(i=>i.ex[0]))}
+function clashesWith(name,plan=S.plan,day=S.day,skip){const others=dayEx(plan,day).filter((x,j)=>j!==skip&&x.ex[0]!==name).flatMap(x=>primOf(x.ex[0]));return primOf(name).some(m=>others.includes(m))}
 const musOf=n=>{const p=patOf(n);return p?MP[p]:{}};
 function weekItems(plan=S.plan){return PLANS[plan].days.flatMap((_,d)=>dayEx(plan,d))}
 function volume(plan=S.plan){const v={};weekItems(plan).forEach(it=>{const n=setsFor(it.ex).length;Object.entries(musOf(it.ex[0])).forEach(([m,w])=>v[m]=(v[m]||0)+n*w)});return v}
@@ -422,6 +434,11 @@ function fitsWeek(name,sets=3,plan=S.plan){
   if(names.includes(name))return false;
   const v=volume(plan);
   return !Object.entries(musOf(name)).some(([m,w])=>w===1&&(v[m]||0)+sets>GOAL().vol[1]);
+}
+function rulesCard(plan=S.plan){
+  const P=PLANS[plan], rows=P.days.map((d,i)=>({d,c:dayClashes(plan,i)}));
+  const bad=rows.filter(r=>r.c.length);
+  return `<div class="card"><h3>Jedna partia, jedno ćwiczenie</h3>${bad.length?bad.map(r=>`<p><b>${esc((P.dayPrefix||'')+r.d.name)}:</b> ${esc(clashText(r.c))}</p>`).join('')+'<p class="meta">Te dni mają po dwa ćwiczenia bezpośrednie na tę samą partię.</p>':`<p>${esc(P.name)}: każdy dzień ma najwyżej jedno ćwiczenie bezpośrednie na daną partię.</p>`}<p class="meta">Praca pośrednia (np. triceps przy wyciskaniu) się nie liczy.</p></div>`;
 }
 function volumeCard(plan=S.plan){
   const v=volume(plan), dn=volumeDone(), r2=x=>Math.round((x||0)*2)/2;
@@ -489,8 +506,8 @@ function stallBox(name){
   if(w.pt==='nie')
     return `<div class="stall">${head}<p>Nagraj dziś jedną serię z boku i sprawdź, w którym miejscu sztanga zwalnia. Potem wskaż to miejsce.</p><button class="ghost" data-stick="${N}|reset">Wskaż miejsce</button> ${later}</div>`;
   const P=L.pts[w.pt];
-  const cand=P.ex.filter(e=>e!==name&&fitsWeek(e)).slice(0,2);
-  if(!cand.length)return `<div class="stall">${head}<p>Najtrudniej: ${P.l.toLowerCase()}. Do wzmocnienia: <b>${P.m}</b>. Wszystkie propozycje dublują ćwiczenia z tego tygodnia albo przeciążyłyby partię. Lepszym ruchem będzie zamiana głównego boju na wariant (link „Zamień ćwiczenie”).</p><button class="link" data-stick="${N}|reset">Zmień odpowiedź</button> ${later}</div>`;
+  const cand=P.ex.filter(e=>e!==name&&fitsWeek(e)&&!clashesWith(e)).slice(0,2);
+  if(!cand.length)return `<div class="stall">${head}<p>Najtrudniej: ${P.l.toLowerCase()}. Do wzmocnienia: <b>${P.m}</b>. Wszystkie propozycje dublują ćwiczenia z tego tygodnia, pracują na partię ćwiczoną już tego dnia albo przeciążyłyby tydzień. Lepszym ruchem będzie zamiana głównego boju na wariant (link „Zamień ćwiczenie”).</p><button class="link" data-stick="${N}|reset">Zmień odpowiedź</button> ${later}</div>`;
   return `<div class="stall">${head}<p>Najtrudniej: ${P.l.toLowerCase()}. Do wzmocnienia: <b>${P.m}</b>. Dodaj jedno ćwiczenie 3×8–10 na koniec treningu:</p>
     <div class="row">${cand.map(e=>`<button class="ghost" data-addx="${esc(e)}" data-for="${N}">+ ${esc(e)}</button>`).join('')}</div>
     <button class="link" data-stick="${N}|reset">Zmień odpowiedź</button> ${later}</div>`;
@@ -724,6 +741,7 @@ function viewTrening(){
   const st=S.starts[dkey()];
   h+=`<p class="est">Szacowany czas: <b>${fdur(estimate())}</b> z rozgrzewką i rozciąganiem.</p>${st?'':'<button class="ghost" data-startnow="1">Rozpocznij trening (włącz zegar)</button>'}`;
   h+=longAlert();
+  {const c=dayClashes();if(c.length)h+=`<div class="stall"><p><b>Ten dzień ma dwa ćwiczenia na tę samą partię:</b> ${esc(clashText(c))}.</p><p class="meta">Zasada: najwyżej jedno ćwiczenie bezpośrednie na partię w ciągu dnia. Zamień jedno z nich („Zamień ćwiczenie”) albo usuń dodatek.</p></div>`}
   h+=routineCard('w',S.plan,S.day);
   let kind='m';
   const DX=dayEx();
@@ -749,13 +767,13 @@ function viewTrening(){
         if(lastSw&&swapOpen!==pi)h+=`<p class="target">Ostatnio zamiast tego: <b>${esc(lastSw.name)}</b>. <button class="link" data-swap="${pi}|${esc(lastSw.name)}|once">Zamień dziś</button> <button class="link" data-swap="${pi}|${esc(lastSw.name)}">Zamień na stałe</button></p>`;
         if(swapOpen===pi){
           const busy=new Set([...weekItems().map(i=>i.ex[0]),...doneThisWeek()]);
-          const opts=ALT[base].filter(n=>!busy.has(n)), hidden=ALT[base].length-opts.length;
+          const free=ALT[base].filter(n=>!busy.has(n)), hidden=ALT[base].length-free.length, sameDay=free.filter(n=>clashesWith(n,S.plan,S.day,idx)), opts=free.filter(n=>!sameDay.includes(n));
           h+=`<div class="stall"><p>Na co zamienić <b>${esc(base)}</b>? Serie, powtórzenia i RIR zostają te same.</p>
             ${opts.length?`<p class="meta"><b>Na stałe</b>, do odwołania (zostaje na kolejne treningi):</p>
             <div class="row">${opts.map(n=>`<button class="ghost" data-swap="${pi}|${esc(n)}">${esc(n)}</button>`).join('')}</div>
             <p class="meta"><b>Tylko dziś</b> (np. zajęty sprzęt), znika po zapisaniu treningu:</p>
             <div class="row">${opts.map(n=>`<button class="ghost" data-swap="${pi}|${esc(n)}|once">${esc(n)}</button>`).join('')}</div>`:'<p>Wszystkie zamienniki są już w planie na ten tydzień albo zostały zrobione w tym tygodniu.</p>'}
-            ${hidden?`<p class="meta">Pominięte, bo są w planie tygodnia lub już zrobione w tym tygodniu: ${hidden}.</p>`:''}
+            ${hidden?`<p class="meta">Pominięte, bo są w planie tygodnia lub już zrobione w tym tygodniu: ${hidden}.</p>`:''}${sameDay.length?`<p class="meta">Pominięte, bo ta partia jest już ćwiczona tego dnia: ${esc(sameDay.join(', '))}.</p>`:''}
             <button class="link" data-swapx="1">Anuluj</button></div>`;
         } else h+=`<p class="target"><button class="link" data-swapopen="${pi}">Zamień ćwiczenie</button></p>`;
       }
@@ -904,8 +922,8 @@ function summary(){
   return h;
 }
 function viewPostepy(){
-  if(!S.sessions.length) return volumeCard()+cardioWeeksCard()+bodyCard()+'<p class="empty">Reszta analizy pojawi się po zapisaniu pierwszych treningów.</p>';
-  return volumeCard()+cardioWeeksCard()+bodyCard()+summary()+viewExercise();
+  if(!S.sessions.length) return volumeCard()+rulesCard()+cardioWeeksCard()+bodyCard()+'<p class="empty">Reszta analizy pojawi się po zapisaniu pierwszych treningów.</p>';
+  return volumeCard()+rulesCard()+cardioWeeksCard()+bodyCard()+summary()+viewExercise();
 }
 function viewExercise(){
   const names=[...new Set(S.sessions.flatMap(s=>s.ex.filter(e=>e.sets.some(x=>x.w)).map(e=>e.name)))];
@@ -958,7 +976,7 @@ function mdExport(){
   const d10=iso=>iso.slice(0,10);
   L.push('# Dziennik siłowy – eksport dla Claude','',`Data eksportu: ${today}. Treningów: ${ses.length}${ses.length?`, od ${d10(ses[0].date)} do ${d10(ses[ses.length-1].date)}`:''}.`,'');
   const g=GOAL(), bwN=bwNow();
-  L.push('## Profil',...String(S.profile||'(nie wypełniono, uzupełnij w Ustawieniach → Profil)').split('\n').filter(x=>x.trim()).map(x=>'- '+x.trim().replace(/^- /,'')),`- Cel: ${g.name}. ${g.desc}`,`- Białko: ${g.protein.map(x=>String(x).replace('.',',')).join('–')} g/kg${bwN?` (ok. ${Math.round(g.protein[0]*bwN)}–${Math.round(g.protein[1]*bwN)} g dziennie)`:''}. Kalorie: ${g.kcal}. Kardio: ${cardioTarget()}.`,'');
+  L.push('## Profil',...String(S.profile||'(nie wypełniono, uzupełnij w Ustawieniach → Profil)').split('\n').filter(x=>x.trim()).map(x=>'- '+x.trim().replace(/^- /,'')),`- Cel: ${g.name}. ${g.desc}`,'- Zasady planu: najwyżej jedno ćwiczenie bezpośrednie na partię w ciągu dnia; kontrola obciążenia tygodniowego (bilans serii na partię).',`- Białko: ${g.protein.map(x=>String(x).replace('.',',')).join('–')} g/kg${bwN?` (ok. ${Math.round(g.protein[0]*bwN)}–${Math.round(g.protein[1]*bwN)} g dziennie)`:''}. Kalorie: ${g.kcal}. Kardio: ${cardioTarget()}.`,'');
   if(S.bw.length){L.push('## Masa ciała');S.bw.forEach(b=>L.push(`- ${d10(b.d)}: ${fmt(b.kg)} kg`));L.push('')}
   if((S.waist||[]).length){L.push('## Obwód w pasie');S.waist.forEach(b=>L.push(`- ${d10(b.d)}: ${fmt(b.cm)} cm`));L.push('')}
   if((S.cardio||[]).length){L.push('## Kardio');
@@ -987,6 +1005,9 @@ function mdExport(){
   }
   const byDay={};ses.filter(s=>s.dur).forEach(s=>{const k=s.plan+'-'+s.day;(byDay[k]=byDay[k]||[]).push(s.dur)});
   if(Object.keys(byDay).length){L.push('## Czas treningów');Object.entries(byDay).forEach(([k,v])=>L.push(`- ${dayLabel(k)}: średnio ${fdur(v.reduce((a,c)=>a+c,0)/v.length)}, max ${fdur(Math.max(...v))}, ponad 2 h: ${v.filter(x=>x>7200).length} z ${v.length}`));L.push('')}
+  L.push('## Kontrola: jedna partia, jedno ćwiczenie dziennie');
+  Object.keys(PLANS).forEach(p=>{const P=PLANS[p],b=P.days.map((d,i)=>({d,c:dayClashes(p,i)})).filter(r=>r.c.length);L.push(`- ${P.name}: ${b.length?b.map(r=>(P.dayPrefix||'')+r.d.name+': '+clashText(r.c)).join('; '):'OK'}`)});
+  L.push('');
   L.push('## Bilans tygodnia (serie na partię, pośrednie liczone jako pół)');
   Object.keys(PLANS).forEach(p=>{const v=volume(p);L.push(`- ${PLANS[p].name}: `+Object.keys(MG).filter(m=>v[m]).map(m=>`${MG[m]} ${fmt(Math.round(v[m]*2)/2)}`).join(', '))});
   L.push('');
@@ -1299,7 +1320,9 @@ function validatePlan(o){
   }
   Object.values(o.extra||{}).forEach(g=>(g||[]).forEach(day=>(day||[]).forEach(x=>names.add(x[0]))));
   const guide=Object.assign({},G,o.guide||{});
-  return {warn:[...names].filter(n=>!guide[n])};
+  const ex=(o.extra||{})[S.goal]||(o.extra||{}).sport||[];
+  const conf=o.days.map((d,i)=>({d:d.name,c:clashes([...d.ex,...(d.add||[]),...(ex[i]||[])].map(x=>x[0]))})).filter(x=>x.c.length);
+  return {warn:[...names].filter(n=>!guide[n]),conf};
 }
 function loadPlan(txt){
   let o;try{o=JSON.parse(String(txt).trim())}catch(e){return toast('To nie jest poprawny plik planu')}
@@ -1307,7 +1330,8 @@ function loadPlan(txt){
   const list=o&&o.type==='dziennik-pakiet'?(o.plans||[]):[o];
   if(!list.length)return toast('Plik nie zawiera planów');
   const warn=[];
-  for(const p of list){const v=validatePlan(p);if(v.err)return toast((p&&p.name?p.name+': ':'')+v.err);warn.push(...v.warn)}
+  let conf=0;
+  for(const p of list){const v=validatePlan(p);if(v.err)return toast((p&&p.name?p.name+': ':'')+v.err);warn.push(...v.warn);conf+=v.conf.length}
   S.userPlans=S.userPlans||{};
   list.forEach(p=>S.userPlans[p.id]=p);
   if(o.type==='dziennik-pakiet'&&o.profile&&!S.profile)S.profile=o.profile;
@@ -1317,7 +1341,7 @@ function loadPlan(txt){
   if(S.wantPos&&PLANS[S.wantPos.plan]){Object.assign(S,{plan:S.wantPos.plan,week:S.wantPos.week||1,day:S.wantPos.day||0});delete S.wantPos}
   else if(!S.sessions.some(x=>x.plan===S.plan)||BUILTIN_IDS.includes(S.plan)){S.plan=first.id;S.day=0;S.week=1}
   S.tab='trening'; save(); render(); window.scrollTo(0,0);
-  toast('Wczytano: '+list.map(p=>p.name).join(', ')+(warn.length?'. Brak opisu dla: '+[...new Set(warn)].join(', '):''));
+  toast('Wczytano: '+list.map(p=>p.name).join(', ')+(conf?`. Dni z dwoma ćwiczeniami na tę samą partię: ${conf} (szczegóły w Analizie)`:'')+(warn.length?'. Brak opisu dla: '+[...new Set(warn)].join(', '):''));
 }
 function migrate(){
   S.migs=S.migs||[];
