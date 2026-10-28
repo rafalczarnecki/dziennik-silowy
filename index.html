@@ -282,7 +282,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-28.4';
+const VER='2026-10-28.5';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1259,11 +1259,19 @@ $('#view').addEventListener('click',async e=>{
   }
   if(t.id==='impbtn'){
     let o; try{o=JSON.parse($('#imp').value.trim())}catch(err){return toast('To nie jest poprawny tekst kopii')}
+    if(o&&(o.type==='dziennik-plan'||o.type==='dziennik-pakiet'))return loadPlan($('#imp').value);
     if(!o||!Array.isArray(o.sessions))return toast('W tekście brakuje listy treningów');
     if(!twoTap('imp',t,'Połączyć z historią? Dotknij ponownie'))return; armed=null;
     return importData(o);
   }
 });
+// rozpoznaje rodzaj pliku: plan/pakiet → loadPlan, kopia → importData
+function importAny(txt,confirmed){
+  let o;try{o=JSON.parse(String(txt).trim())}catch(e){return toast('To nie jest plik z aplikacji (zły format)')}
+  if(o&&(o.type==='dziennik-plan'||o.type==='dziennik-pakiet'))return loadPlan(txt);
+  if(o&&Array.isArray(o.sessions))return importData(o);
+  toast('Nie rozpoznano pliku. Wczytaj kopię zapasową albo plik planu z aplikacji.');
+}
 function importData(o){
     const wasEmpty=!S.sessions.length;
     const have=new Set(S.sessions.map(x=>x.date)); let added=0;
@@ -1280,11 +1288,10 @@ function importData(o){
     save(); render(); toast(added?'Dodano treningów: '+added:'Wszystkie treningi z kopii już są w historii');
 }
 $('#view').addEventListener('change',e=>{
-  if(e.target.id==='planfile'&&e.target.files[0]){const rd=new FileReader();rd.onload=()=>loadPlan(rd.result);rd.onerror=()=>toast('Nie udało się odczytać pliku');rd.readAsText(e.target.files[0]);return}
+  if(e.target.id==='planfile'&&e.target.files[0]){const rd=new FileReader();rd.onload=()=>importAny(rd.result);rd.onerror=()=>toast('Nie udało się odczytać pliku');rd.readAsText(e.target.files[0]);return}
   if(e.target.id!=='impfile'||!e.target.files[0])return;
   const f=e.target.files[0], rd=new FileReader();
-  rd.onload=()=>{let o;try{o=JSON.parse(String(rd.result).trim())}catch(err){return toast('Ten plik nie jest kopią aplikacji')}
-    if(!o||!Array.isArray(o.sessions))return toast('W pliku brakuje listy treningów');importData(o)};
+  rd.onload=()=>importAny(rd.result);
   rd.onerror=()=>toast('Nie udało się odczytać pliku');
   rd.readAsText(f);
 });
@@ -1340,6 +1347,7 @@ function loadPlan(txt){
   S.userPlans=S.userPlans||{};
   list.forEach(p=>S.userPlans[p.id]=p);
   if(o.type==='dziennik-pakiet'&&o.profile&&!S.profile)S.profile=o.profile;
+  if(o.type==='dziennik-pakiet'&&o.pos&&(BUILTIN_IDS.includes(S.plan)||!PLANS[S.plan]))S.wantPos=o.pos;
   const first=list[list.length-1];
   if(S.plan!==first.id&&!BUILTIN_IDS.includes(S.plan))S.prevPlan=S.plan;
   installAll();
