@@ -102,6 +102,8 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .vrow{display:grid;grid-template-columns:1fr 80px 34px 34px;gap:8px;align-items:center;font-size:14px;margin:6px 0}
 .vhead{font-size:12px;color:var(--muted);margin-bottom:0}
 .vbar{position:relative}
+.vbar s{position:absolute;top:0;bottom:0;background:color-mix(in srgb,var(--done) 22%,transparent);border-left:2px solid var(--done);text-decoration:none}
+.vbar i{position:relative}
 .vbar u{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);text-decoration:none}
 .dn{color:var(--accent)}
 .vbar{height:8px;background:var(--field);border-radius:4px;overflow:hidden}
@@ -280,7 +282,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-28.2';
+const VER='2026-10-28.3';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -445,8 +447,10 @@ function volumeCard(plan=S.plan){
   const g=GOAL(), [lo,hi]=g.vol;
   const rows=Object.keys(MG).filter(m=>v[m]||dn[m]).map(m=>{const x=r2(v[m]),y=r2(dn[m]),pr=g.prio.includes(m);
     const st=x>hi?'dużo':pr&&x<lo?'mało':x<4?'mało':'';
-    return `<div class="vrow"><span>${pr?'★ ':''}${MG[m]}${st?` <em class="${st==='dużo'?'hi':''}">${st}</em>`:''}</span><span class="vbar"><i style="width:${Math.min(100,x/25*100)}%" class="${st==='dużo'?'hi':''}"></i><u style="width:${Math.min(100,y/25*100)}%"></u></span><b>${fmt(x)}</b><b class="dn">${fmt(y)}</b></div>`}).join('');
-  return `<div class="card"><h3>Bilans tygodnia: ${PLANS[plan].name}</h3><p class="meta">Liczba serii na partię mięśniową: <b>plan</b> na cały tydzień (z zamiennikami i dodatkami) oraz <b class="dn">zrobione</b> od poniedziałku. Seria pośrednia (np. triceps przy wyciskaniu) liczy się jako pół. Cel: <b>${g.name}</b>. Partie priorytetowe (★) celują w ${lo}–${hi} serii tygodniowo, pozostałym do utrzymania wystarcza ok. 4–6. Bilans liczy serie, a nie ciężar.</p>
+    // pasek pełny przy górnej granicy celu; jasne pole = zakres celu dla tej partii
+    const tLo=pr?lo:4, tHi=pr?hi:10, sc=v=>Math.min(100,v/hi*100);
+    return `<div class="vrow"><span>${pr?'★ ':''}${MG[m]}${st?` <em class="${st==='dużo'?'hi':''}">${st}</em>`:''}</span><span class="vbar"><s style="left:${sc(tLo)}%;width:${sc(tHi)-sc(tLo)}%"></s><i style="width:${sc(x)}%" class="${st==='dużo'?'hi':''}"></i><u style="width:${sc(y)}%"></u></span><b>${fmt(x)}</b><b class="dn">${fmt(y)}</b></div>`}).join('');
+  return `<div class="card"><h3>Bilans tygodnia: ${PLANS[plan].name}</h3><p class="meta">Liczba serii na partię mięśniową: <b>plan</b> na cały tydzień (z zamiennikami i dodatkami) oraz <b class="dn">zrobione</b> od poniedziałku. Seria pośrednia (np. triceps przy wyciskaniu) liczy się jako pół. Cel: <b>${g.name}</b>. Partie priorytetowe (★) celują w ${lo}–${hi} serii tygodniowo, pozostałym wystarcza ok. 4–10. Bilans liczy serie, a nie ciężar. Jasne pole na pasku to zakres celu dla danej partii.</p>
     <div class="vrow vhead"><span></span><span></span><b>plan</b><b class="dn">zrob.</b></div>${rows}</div>`;
 }
 function sylAll(){return (SYL[S.plan][S.day]||[]).filter(x=>!(S.sylOff[pkey()]||[]).includes(x[0]))}
