@@ -138,6 +138,8 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .chk{display:flex;gap:10px;align-items:center;margin-top:10px;border:0;background:none;padding:4px 0;font-size:15px;color:var(--ink)}
 .chk .box{width:24px;height:24px;border-radius:6px;border:2px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:var(--surface)}
 .chk[aria-pressed="true"] .box{background:var(--done);border-color:var(--done)}
+.flbl{display:block;font-size:13px;color:var(--muted);margin:10px 0 0}
+.errtxt{color:var(--accent)}
 .link{border:0;background:none;color:var(--muted);text-decoration:underline;padding:6px 4px;font-size:14px}
 .sec{font:700 22px/1.1 var(--display);margin:26px 2px 0}
 .sec small{display:block;font:400 14px/1.3 var(--body);color:var(--muted);margin-top:4px}
@@ -292,7 +294,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-28.7';
+const VER='2026-10-29';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1220,6 +1222,7 @@ function viewKopia(){
     <div class="row" style="margin-top:10px"><label class="field" style="flex:1"><input id="waistin" inputmode="decimal" placeholder="${ws[0]?fmt(ws[0].cm):'85'}" aria-label="Obwód w pasie"><span>cm</span></label><button class="ghost" id="waistsave">Zapisz pas</button></div>
     ${ws.map(x=>`<p class="meta">${fdate(x.d)}: ${fmt(x.cm)} cm w pasie</p>`).join('')}</div>
     ${plansCard()}
+    ${ghCard()}
     <div class="card"><h3>Profil</h3>
     <p class="note">Informacje o tobie dla Claude: wzrost, staż, preferencje, zdrowie. Trafiają tylko do eksportu, zapisują się w telefonie.</p>
     <textarea id="profile" placeholder="Np. wzrost, staż treningowy, preferencje, kontuzje" aria-label="Profil">${esc(S.profile||'')}</textarea></div>
@@ -1246,6 +1249,65 @@ function viewKopia(){
     <div class="card"><h3>Przerwy między seriami</h3>
     <p class="note">Ustawiają się same: 3 min na trzech pierwszych ćwiczeniach dnia, 2 min na pozostałych z planu, 90 s na sylwetce i ćwiczeniach dodatkowych. W superserii przerwa jest dopiero po drugim ćwiczeniu. Przyciski −30 i +30 na pasku zmieniają tylko bieżącą przerwę.</p></div>
     ${restoreCard()}`;
+}
+
+// ---------- kopia na GitHubie (prywatne repozytorium użytkownika) ----------
+// Token i nazwa repozytorium są zapisane osobno (klucz dziennik-gh), więc nie trafiają do kopii ani eksportu.
+const GHK='dziennik-gh';
+function ghCfg(){try{return JSON.parse(localStorage.getItem(GHK))||{}}catch(e){return {}}}
+function ghSet(o){try{localStorage.setItem(GHK,JSON.stringify(Object.assign(ghCfg(),o)))}catch(e){}}
+const b64e=str=>{const b=new TextEncoder().encode(str);let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
+function ghApi(url,opt={}){const c=ghCfg();
+  return fetch('https://api.github.com/repos/'+c.repo+url,Object.assign({cache:'no-store'},opt,{headers:Object.assign({'Authorization':'Bearer '+c.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},opt.headers||{})}))}
+const ghErr=st=>st===401?'Token jest nieprawidłowy albo wygasł.':st===403?'Token nie ma uprawnienia do zapisu (Contents: Read and write).':st===404?'Nie znaleziono repozytorium albo token nie ma do niego dostępu.':st===409?'Repozytorium jest w trakcie zmian, spróbuj za chwilę.':'Błąd GitHuba ('+st+').';
+async function ghPut(path,text,msg){
+  let sha;const g=await ghApi('/contents/'+path);
+  if(g.ok)sha=(await g.json()).sha;else if(g.status!==404)throw new Error(ghErr(g.status));
+  const r=await ghApi('/contents/'+path,{method:'PUT',body:JSON.stringify({message:msg,content:b64e(text),sha})});
+  if(!r.ok)throw new Error(ghErr(r.status));
+}
+let ghT=null,ghBusy=false;
+// zaznacza zmianę i wysyła kopię po chwili (kilka szybkich zmian = jedna kopia)
+function ghMark(delay=4000){const c=ghCfg();if(!c.token||!c.repo)return;ghSet({dirty:1});clearTimeout(ghT);ghT=setTimeout(()=>ghSync(),delay)}
+async function ghSync(manual){
+  const c=ghCfg(); if(!c.token||!c.repo){if(manual)toast('Najpierw połącz repozytorium');return}
+  if(!navigator.onLine){ghSet({dirty:1});if(manual)toast('Brak internetu. Kopia wyśle się, gdy wróci połączenie.');return}
+  if(ghBusy)return; ghBusy=true;
+  try{
+    const o={app:'dziennik-silowy',v:2};KEEP.forEach(k=>o[k]=S[k]);
+    const stamp=new Date().toLocaleString('pl-PL');
+    await ghPut('dziennik.json',JSON.stringify(o,null,1),'Kopia z telefonu '+stamp);
+    await ghPut('eksport-dla-claude.md',mdExport(),'Eksport dla Claude '+stamp);
+    ghSet({dirty:0,last:Date.now(),err:''}); if(manual)toast('Kopia wysłana na GitHuba');
+  }catch(e){const m=e&&e.message&&!/fetch|network/i.test(e.message)?e.message:'Brak połączenia z GitHubem. Spróbuję ponownie później.';ghSet({dirty:1,err:m});if(manual)toast(m)}
+  finally{ghBusy=false;if(S.tab==='kopia')render()}
+}
+async function ghRestore(){
+  const c=ghCfg(); if(!c.token||!c.repo)return toast('Najpierw połącz repozytorium');
+  try{const r=await ghApi('/contents/dziennik.json',{headers:{Accept:'application/vnd.github.raw+json'}});
+    if(!r.ok)throw new Error(r.status===404?'Na GitHubie nie ma jeszcze kopii.':ghErr(r.status));
+    importAny(await r.text())}catch(e){toast(e&&e.message&&!/fetch|network/i.test(e.message)?e.message:'Nie udało się pobrać kopii. Sprawdź internet.')}
+}
+async function ghConnect(repo,token){
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo))return toast('Wpisz repozytorium w formie konto/nazwa, np. jan/dziennik-dane');
+  if(token.length<20)return toast('Wklej cały token (zaczyna się od github_pat_)');
+  ghSet({repo,token,err:''});
+  try{const r=await ghApi('');if(!r.ok){ghSet({err:ghErr(r.status)});render();return toast(ghErr(r.status))}
+    const j=await r.json(); if(!j.private)toast('Uwaga: to repozytorium jest publiczne. Twoje dane będą widoczne dla wszystkich.');
+  }catch(e){ghSet({err:'Brak połączenia z GitHubem.'});render();return toast('Brak połączenia z GitHubem. Sprawdź internet.')}
+  render(); ghSync(true);
+}
+window.addEventListener('online',()=>{if(ghCfg().dirty)ghSync()});
+function ghCard(){
+  const c=ghCfg(), on=!!(c.token&&c.repo);
+  return `<div class="card"><h3>Kopia na GitHubie</h3>
+    <p class="note">Automatyczna kopia w twoim prywatnym repozytorium po każdym treningu, kardio, pomiarze i zmianie planu. Token jest zapisany tylko w tym telefonie i nie trafia do kopii ani eksportu.</p>
+    ${on?`<p>Repozytorium: <b>${esc(c.repo)}</b><br><span class="meta">${c.last?'Ostatnia kopia: '+new Date(c.last).toLocaleString('pl-PL'):'Jeszcze nie wysłano kopii.'}${c.dirty?' Zmiany czekają na wysłanie.':''}</span>${c.err?`<br><b class="errtxt">${esc(c.err)}</b>`:''}</p>
+      <div class="row"><button class="ghost" id="ghsync">Wyślij kopię teraz</button><button class="ghost" id="ghrest">Przywróć z GitHuba</button></div>
+      <p><button class="link" id="ghoff">Odłącz (usuń token z telefonu)</button></p>`
+    :`<span class="flbl">Repozytorium</span><input class="txtin" id="ghrepo" placeholder="konto/dziennik-dane" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <span class="flbl">Token</span><input class="txtin" id="ghtok" type="password" placeholder="github_pat_…" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <p><button class="ghost" id="ghsave" style="margin-top:8px">Połącz i wyślij pierwszą kopię</button></p>`}</div>`;
 }
 
 // ---------- render ----------
@@ -1281,7 +1343,7 @@ function twoTap(id,btn,label){ if(armed===id)return true; armed=id; const old=bt
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.tab=b.dataset.tab;save();render();window.scrollTo(0,0)});
 
 $('#view').addEventListener('input',e=>{
-  if(e.target.id==='profile'){S.profile=e.target.value;save();return}
+  if(e.target.id==='profile'){S.profile=e.target.value;save();ghMark(20000);return}
   const cta=e.target.closest('textarea[data-cue]');
   if(cta){S.cues=S.cues||{};const n=cta.dataset.cue,v=cta.value;if(v.trim())S.cues[n]=v;else if(PLANCUES[n])S.cues[n]='';else delete S.cues[n];save();return}
   if(e.target.id==='cmin'||e.target.id==='cnote'){S.cdraft=S.cdraft||{};S.cdraft[e.target.id==='cmin'?'min':'note']=e.target.value;save();return}
@@ -1333,7 +1395,7 @@ $('#view').addEventListener('click',async e=>{
     const prs=findPRs(ex,S.sessions.length-1); if(prs.length)S.sessions[S.sessions.length-1].prs=prs;
     const stalls=ex.map(x=>x.name).filter(n=>stallInfo(n));
     if(S.day<P.days.length-1)S.day++; else {S.day=0; if(S.week<(P.weeks||4))S.week++; else {S.week=1; S.cycles[S.plan]=(S.cycles[S.plan]||1)+1;}}
-    stopTimer(); save(); render(); window.scrollTo(0,0);
+    stopTimer(); save(); render(); window.scrollTo(0,0); ghMark(1500);
     toast((prs.length?'Rekord! '+prs.map(prText).join('; ')+'. ':'')+(stalls.length?'Brak progresu: '+stalls.join(', ')+'. Propozycja pojawi się przy tym ćwiczeniu.':prs.length?'':'Trening zapisany'));
     return;
   }
@@ -1355,14 +1417,14 @@ $('#view').addEventListener('click',async e=>{
   if(t.dataset.cnose){S.cdraft.nose=!S.cdraft.nose;save();return render()}
   if(t.id==='csave'){const c=S.cdraft||{},m=num(c.min);if(!m||m<1||m>600){$('#cmin').focus();return toast('Wpisz czas kardio w minutach')}
     (S.cardio=S.cardio||[]).push({d:new Date().toISOString(),type:c.type||CTYPES[0],min:Math.round(m),feel:c.feel||'',nose:!!c.nose,note:(c.note||'').trim()});
-    S.cdraft={type:c.type,feel:'',nose:true,min:'',note:''};save();render();return toast('Zapisano kardio')}
-  if(t.dataset.cdel!=null){if(!twoTap('cdel'+t.dataset.cdel,t,'Na pewno? Dotknij ponownie'))return;armed=null;S.cardio.splice(+t.dataset.cdel,1);save();render();return toast('Usunięto')}
-  if(t.dataset.goal){S.goal=t.dataset.goal;rebuildSyl();save();render();return toast('Cel: '+GOAL().name)}
-  if(t.id==='waistsave'){const v=num($('#waistin').value);if(!v||v<50||v>200)return toast('Wpisz obwód w pasie w cm');(S.waist=S.waist||[]).push({d:new Date().toISOString(),cm:v});save();render();return toast('Zapisano obwód w pasie')}
+    S.cdraft={type:c.type,feel:'',nose:true,min:'',note:''};save();render();ghMark();return toast('Zapisano kardio')}
+  if(t.dataset.cdel!=null){if(!twoTap('cdel'+t.dataset.cdel,t,'Na pewno? Dotknij ponownie'))return;armed=null;S.cardio.splice(+t.dataset.cdel,1);save();render();ghMark();return toast('Usunięto')}
+  if(t.dataset.goal){S.goal=t.dataset.goal;rebuildSyl();save();render();ghMark();return toast('Cel: '+GOAL().name)}
+  if(t.id==='waistsave'){const v=num($('#waistin').value);if(!v||v<50||v>200)return toast('Wpisz obwód w pasie w cm');(S.waist=S.waist||[]).push({d:new Date().toISOString(),cm:v});save();render();ghMark();return toast('Zapisano obwód w pasie')}
   if(t.id==='planbtn'){return loadPlan($('#planimp').value)}
   if(t.id==='planexp'){const p=PLANSRC[S.plan];return saveFile('plan-'+p.id+'.json',JSON.stringify(p,null,1),'application/json')}
   if(t.dataset.plandel){if(!twoTap('pdel'+t.dataset.plandel,t,'Usunąć plan? Dotknij ponownie'))return;armed=null;delete S.userPlans[t.dataset.plandel];installAll();save();render();return toast('Plan usunięty. Historia zostaje.')}
-  if(t.id==='bwsave'){const v=num($('#bwin').value);if(!v||v<30||v>250)return toast('Wpisz masę ciała w kg');S.bw.push({d:new Date().toISOString(),kg:v});save();render();return toast('Zapisano masę ciała')}
+  if(t.id==='bwsave'){const v=num($('#bwin').value);if(!v||v<30||v>250)return toast('Wpisz masę ciała w kg');S.bw.push({d:new Date().toISOString(),kg:v});save();render();ghMark();return toast('Zapisano masę ciała')}
   if(t.dataset.noteopen){noteOpen=t.dataset.noteopen;return render()}
   if(t.dataset.tag){const i=t.dataset.tag.lastIndexOf('|'),k=t.dataset.tag.slice(0,i),id=t.dataset.tag.slice(i+1),n=notes();
     n[k]=n[k]||{tags:[],txt:''};const tg=n[k].tags;n[k].tags=tg.includes(id)?tg.filter(x=>x!==id):[...tg,id];save();return render()}
@@ -1372,7 +1434,11 @@ $('#view').addEventListener('click',async e=>{
     const el=document.querySelector(`.part[data-ex="${window.CSS&&CSS.escape?CSS.escape(ei):ei}"][data-set="${si}"][data-part="${r.parts.length-1}"] input`);if(el)el.focus();return}
   if(t.dataset.rmpart){const a=t.dataset.rmpart.split('|'),pi=+a.pop(),si=+a.pop(),ei=a.join('|'),r=(draft()[ei]||[])[si];if(r&&r.parts)r.parts.splice(pi,1);save();return render()}
   if(t.dataset.cueopen){cueOpen=t.dataset.cueopen;render();const el=document.querySelector(`textarea[data-cue="${window.CSS&&CSS.escape?CSS.escape(cueOpen):cueOpen}"]`);if(el)el.focus();return}
-  if(t.dataset.cueclose){cueOpen=null;return render()}
+  if(t.dataset.cueclose){cueOpen=null;ghMark();return render()}
+  if(t.id==='ghsave'){return ghConnect($('#ghrepo').value.trim(),$('#ghtok').value.trim())}
+  if(t.id==='ghsync'){return ghSync(true)}
+  if(t.id==='ghrest'){return ghRestore()}
+  if(t.id==='ghoff'){if(!twoTap('ghoff',t,'Odłączyć? Dotknij ponownie'))return;armed=null;try{localStorage.removeItem(GHK)}catch(e){}render();return toast('Odłączono. Kopie na GitHubie zostają.')}
   if(t.id==='swupd'){save();try{if(window.__swr)await window.__swr.update()}catch(e){}toast('Sprawdzam nową wersję…');setTimeout(()=>location.reload(),1500);return}
   if(t.id==='beeptest'){audioInit();beep(1);setTimeout(()=>beep(3),700);return toast('Powinny być 1 + 3 piknięcia')}
   if(t.dataset.info){const k=t.dataset.info;infoOpen.has(k)?infoOpen.delete(k):infoOpen.add(k);return render()}
@@ -1406,7 +1472,7 @@ $('#view').addEventListener('click',async e=>{
     const k=pkey(); S.extras[k]=(S.extras[k]||[]).filter(x=>x.name!==t.dataset.rmx);
     delete draft()['x:'+t.dataset.rmx]; save(); render(); return toast('Usunięto z treningu');
   }
-  if(t.dataset.del!=null){ if(!twoTap('del'+t.dataset.del,t,'Na pewno? Dotknij ponownie'))return; armed=null; S.sessions.splice(+t.dataset.del,1); save(); render(); return toast('Trening usunięty') }
+  if(t.dataset.del!=null){ if(!twoTap('del'+t.dataset.del,t,'Na pewno? Dotknij ponownie'))return; armed=null; S.sessions.splice(+t.dataset.del,1); save(); render(); ghMark(); return toast('Trening usunięty') }
   if(t.id==='showexp'){const a=$('#exptxt');a.hidden=false;a.value=JSON.stringify((()=>{const o={app:'dziennik-silowy',v:2};KEEP.forEach(k=>o[k]=S[k]);return o})());a.focus();a.select();
     let ok=false;try{ok=document.execCommand('copy')}catch(e){}
     if(!ok&&navigator.clipboard){try{await navigator.clipboard.writeText(a.value);ok=true}catch(e){}}
@@ -1446,7 +1512,7 @@ function importData(o){
     if(wasEmpty&&o.plan){if(PLANS[o.plan]||(o.userPlans&&o.userPlans[o.plan]))Object.assign(S,{plan:o.plan,week:o.week||1,day:o.day||0});else S.wantPos={plan:o.plan,week:o.week||1,day:o.day||0}}
     S.migs=[...new Set([...(S.migs||[]),...(o.migs||[])])];
     installAll(); migrate();
-    save(); render(); toast(added?'Dodano treningów: '+added:'Wszystkie treningi z kopii już są w historii');
+    save(); render(); ghMark(); toast(added?'Dodano treningów: '+added:'Wszystkie treningi z kopii już są w historii');
 }
 $('#view').addEventListener('change',e=>{
   if(e.target.id==='planfile'&&e.target.files[0]){const rd=new FileReader();rd.onload=()=>importAny(rd.result);rd.onerror=()=>toast('Nie udało się odczytać pliku');rd.readAsText(e.target.files[0]);return}
@@ -1514,7 +1580,7 @@ function loadPlan(txt){
   installAll();
   if(S.wantPos&&PLANS[S.wantPos.plan]){Object.assign(S,{plan:S.wantPos.plan,week:S.wantPos.week||1,day:S.wantPos.day||0});delete S.wantPos}
   else if(!S.sessions.some(x=>x.plan===S.plan)||BUILTIN_IDS.includes(S.plan)){S.plan=first.id;S.day=0;S.week=1}
-  S.tab='trening'; save(); render(); window.scrollTo(0,0);
+  S.tab='trening'; save(); render(); window.scrollTo(0,0); ghMark();
   toast('Wczytano: '+list.map(p=>p.name).join(', ')+(conf?`. Dni z dwoma ćwiczeniami na tę samą partię: ${conf} (szczegóły w Analizie)`:'')+(warn.length?'. Brak opisu dla: '+[...new Set(warn)].join(', '):''));
 }
 function migrate(){
@@ -1535,6 +1601,7 @@ function hashImport(){
   importAny(txt);
 }
 setTimeout(hashImport,0);
+setTimeout(()=>{try{if(ghCfg().dirty)ghSync()}catch(e){}},2500);
 installAll();
 migrate();
 render();

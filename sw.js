@@ -1,5 +1,5 @@
 // Offline: aplikacja zapisana w telefonie. Przy każdym otwarciu z internetem pobiera najnowszą wersję.
-const C='dziennik-2026-10-28.7';
+const C='dziennik-2026-10-29';
 const FILES=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
 const fresh=u=>new Request(u,{cache:'reload'}); // z pominięciem pamięci podręcznej przeglądarki
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(FILES.map(fresh))).then(()=>self.skipWaiting()))});
