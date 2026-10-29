@@ -119,6 +119,7 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .animwrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px}
 .manim{margin:6px 0 10px}
 .manim .moveanim{width:100%;height:auto;display:block}
+.mvalt{gap:6px;margin:0 0 6px}
 .mvctl{justify-content:flex-end;gap:14px;margin:2px 0 0}
 .mvh{margin:6px 0 2px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .mvsteps,.mvphase{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.35}
@@ -298,11 +299,12 @@ const ALT={
   'Ściąganie drążka poziomo':['Wiosłowanie hantlem jednorącz','Wiosłowanie na maszynie'],
   'Podciąganie podchwytem':['Ściąganie drążka podchwytem','Podciąganie chwytem neutralnym','Ściąganie drążka chwytem neutralnym'],
   'Hammer na plecy szeroko':['Ściąganie drążka szerokim chwytem','Podciąganie nachwytem','Ściąganie drążka chwytem neutralnym'],
-  'Uginanie podudzi':['Rumuński martwy ciąg','Nordic curl'],
+  'Uginanie podudzi':['Uginanie podudzi siedząc','Rumuński martwy ciąg','Nordic curl'],
+  'Uginanie podudzi siedząc':['Uginanie podudzi','Rumuński martwy ciąg','Nordic curl'],
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-29d';
+const VER='2026-10-29e';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -446,7 +448,7 @@ const MX={
   hpull:['Pendlay row','Wiosłowanie podchwytem','Wiosłowanie hantlem jednorącz','Wiosłowanie na wyciągu siedząc','Kas row w oparciu o ławkę','Ściąganie drążka poziomo','Wiosłowanie na maszynie','Wiosłowanie sztangą w opadzie'],
   curl:['Biceps z supinacją','Uginanie ramion z hantlami','Uginanie ramion młotkowe','Bayesian curl'],
   ext:['Francuz z przenoszeniem','Prostowanie ramion na wyciągu'],
-  ham:['Nordic curl','Uginanie podudzi','Uginanie podudzi leżąc'],
+  ham:['Nordic curl','Uginanie podudzi','Uginanie podudzi leżąc','Uginanie podudzi siedząc'],
   cond:['Lina na rolce'],
   core:['Dead bug (zdechły robak)','Hollow body','Ab wheel','Unoszenie nóg w zwisie'],
   rot:['Brzuszki skośne','Wood chopper','Narciarz']
@@ -677,7 +679,8 @@ const G={
  'Good morning':[['hams','erect'],['glutes'],'Sztanga na plecach jak do przysiadu, kolana lekko ugięte. Pochylaj tułów, cofając biodra, aż plecy będą prawie równolegle do podłogi albo poczujesz rozciąganie z tyłu ud, i wróć.','Zacznij bardzo lekko, to ćwiczenie łatwo przeciążyć.'],
  'Hip thrust':[['glutes'],['hams','quads'],'Łopatki oparte o ławkę, sztanga na biodrach (z podkładką). Stopy tak, by na górze piszczele były pionowe. Unieś biodra do linii ciała, ściśnij pośladki na 1 sekundę, opuść.','Broda lekko przy klatce, nie wyginaj lędźwi na górze.'],
  'Nordic curl':[['hams'],['glutes','calves'],'Klęknij z zablokowanymi piętami. Trzymając linię kolana–biodra–barki, powoli opadaj do przodu tak długo, jak dasz radę, złap się rękami i odepchnij w górę.','Najważniejsza jest powolna faza opadania.'],
- 'Uginanie podudzi':[['hams'],['calves'],'Na maszynie wałek nad piętami. Ugnij kolana do końca, zatrzymaj na chwilę i opuszczaj powoli.','Biodra dociśnięte do siedziska lub ławki.'],
+ 'Uginanie podudzi':[['hams'],['calves'],'Leżąc przodem na maszynie, kolana tuż za ławką na wysokości osi, wałek nad piętami. Uginaj kolana do końca w 1–2 s, zatrzymaj 1 s na górze i opuszczaj 3 s.','Biodra przez cały czas wciśnięte w ławkę. Gdy maszyna jest zajęta, zamień tylko na dziś na wersję siedzącą (inna maszyna = inne ciężary).'],
+ 'Uginanie podudzi siedząc':[['hams'],['calves'],'Siedząc, kolana na wysokości osi maszyny, wałek uda tuż nad kolanami, wałek pod łydkami nad piętami. Uginaj do końca w 1–2 s, zatrzymaj 1 s i wracaj 3 s.','Plecy oparte, uda nie unoszą się spod wałka.'],
  'Uginanie podudzi leżąc':[['hams'],['calves'],'Leżąc przodem na maszynie, wałek nad piętami. Ugnij kolana do końca, zatrzymaj na chwilę i opuszczaj powoli.','Nie odrywaj bioder od ławki.'],
  'Przywodzenie na maszynie':[['add'],[],'Usiądź, poduszki po wewnętrznej stronie kolan. Ściskaj nogi do środka, zatrzymaj na chwilę, wracaj powoli.','Pełny, kontrolowany zakres, bez szarpania.'],
  'Wyciskanie touch and go':[['pecs'],['triceps','dF'],'Połóż się tak, by oczy były pod gryfem. Ściągnij i opuść łopatki, stopy mocno na podłodze. Opuść sztangę kontrolowanie na dolną część klatki i bez pauzy, płynnie wyciśnij w górę.','Dotknij klatki, ale nie odbijaj od niej sztangi.'],
@@ -925,6 +928,11 @@ function animView(name,key,vw,TL,frame){
   if(/wyciąg|maszyn|Hammer|Hack|Wypychanie/i.test(name))pr=pr.filter(x=>x[0]!=='bar');
   pr.forEach(([k,j,o])=>{
     if(k==='cable'){const c=V([o[0],o[1],o[2]||0]);h+=L2(c,pj(PA,j),c,pj(PB,j),'var(--muted)',1.2);return}
+    if(k==='lever'){const sg=j, P=J=>{const sd=sub3(J.an,J.kn), L=len3(sd), u=[sd[0]/L,sd[1]/L,0], n=[-u[1]*sg,u[0]*sg,0];return v3(v3(J.an,n,3.8),u,-2)};
+      const pv=v3(PA.kn,[0,0,15]), pA=P(PA), pB=P(PB);
+      h+=L2(V(pv),V(v3(pA,[0,0,15])),V(pv),V(v3(pB,[0,0,15])),'var(--muted)',2.5)+`<circle cx="${r1(V(pv)[0])}" cy="${r1(V(pv)[1])}" r="2.6" fill="var(--done)"/>`;
+      h+=vw==='side'?C2(V(pA),V(pB),3.6,'none',' stroke="var(--muted)" stroke-width="2.5"'):L2(V(v3(pA,[0,0,-12])),V(v3(pA,[0,0,15])),V(v3(pB,[0,0,-12])),V(v3(pB,[0,0,15])),'var(--muted)',5);
+      return}
     if(k==='lm'){const c=[o[0],o[1],o[2]||0], e=J=>v3(J[j],sub3(J[j],c),.18);
       h+=L2(V(c),V(e(PA)),V(c),V(e(PB)),'var(--muted)',2.5)+(vw==='side'?C2(V(e(PA)),V(e(PB)),7,'none',' stroke="var(--muted)" stroke-width="2.5"'):'');return}
     if(k==='db'){['L','R'].forEach(X=>h+=C2(pj(PA,j+X),pj(PB,j+X),3.2,'var(--muted)',vw==='side'&&X==='R'?' opacity=".45"':''));return}
@@ -971,22 +979,26 @@ const animKeyOf=n=>(ANIMNAME[n]&&ANIMNAME[n].k)||NAMEANIM[n]||PATANIM[patOf(n)]|
 const animKey=animKeyOf;
 // frame: 'A' / 'B' = jedna pozycja bez animacji (podgląd, ograniczony ruch)
 function moveAnim(name,frame){
-  const key=animKeyOf(name), g=G[name]; if(!key||!g||!ANIM[key])return '';
+  const alts=ANIMALT[name], pick0=alts&&((S.animv||{})[name]), key=alts?(alts.some(x=>x[0]===pick0)?pick0:alts[0][0]):animKeyOf(name), g=G[name]; if(!key||!g||!ANIM[key])return '';
   const a=ANIM[key], red=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(red&&!frame)frame='A';
   const TL=animTimeline(a,name), id='an'+(++animUid);
   const views=(a.v||['side','front']).map(vw=>Object.assign({vw},animView(name,key,vw,TL,frame)));
   const ground=vw=>vw!=='top';
   views.forEach(v=>{const b=v.bx; if(ground(v.vw))b[3]=Math.max(b[3],97); v.w=b[2]-b[0]+10; v.hh=b[3]-b[1]+14});
-  const H=Math.max(96,...views.map(v=>v.hh)), gap=H*.035;
-  let xo=0;
+  // obok siebie; gdy oba widoki są szerokie (postać leży) — jeden pod drugim, większe
+  const stack=views.length>1&&views.every(v=>v.w>v.hh*1.25);
+  let lay;
+  if(stack){const W=Math.max(...views.map(v=>v.w+6));let yo=0;lay=views.map(v=>{const H=Math.max(v.hh,W*.32),o={W,H,xs:0,ys:yo};yo+=H+W*.025;return o});lay.TW=W;lay.TH=yo-W*.025}
+  else{const H=Math.max(96,...views.map(v=>v.hh)), gap=H*.035;let xo=0;lay=views.map(v=>{const W=Math.max(v.w+6,H*.62),o={W,H,xs:xo,ys:0};xo+=W+gap;return o});lay.TW=xo-gap;lay.TH=H}
+  const fs=r1(Math.min(...lay.map(l=>Math.min(l.H,l.W)))*.075);
   const inner=views.map((v,i)=>{
-    const W=Math.max(v.w+6,H*.62), b=v.bx, x0=(b[0]+b[2])/2-W/2, xs=xo; xo+=W+gap;
+    const {W,H,xs,ys}=lay[i], b=v.bx, x0=(b[0]+b[2])/2-W/2,
     y0=ground(v.vw)?Math.max(b[3],97)+3-H:(b[1]+b[3])/2-H/2+4;
     const floor=ground(v.vw)&&!a.nf?`<line x1="${r1(x0)}" y1="96" x2="${r1(x0+W)}" y2="96" stroke="var(--line)" stroke-width="1.5"/>`:'';
-    const mat=v.vw==='top'&&a.fl?`<rect x="${r1(x0+3)}" y="${r1(y0+11)}" width="${r1(W-6)}" height="${r1(H-14)}" rx="4" fill="var(--line)" opacity=".35"/>`:'';
-    return `<svg x="${r1(xs)}" y="0" width="${r1(W)}" height="${r1(H)}" viewBox="${r1(x0)} ${r1(y0)} ${r1(W)} ${r1(H)}"><rect x="${r1(x0)}" y="${r1(y0)}" width="${r1(W)}" height="${r1(H)}" rx="${r1(H*.06)}" fill="var(--field)"/>${mat}${floor}<text x="${r1(x0+4)}" y="${r1(y0+H*.08)}" font-size="${r1(H*.065)}" fill="var(--muted)">${VIEWS[v.vw].l}</text>${v.h}</svg>`}).join('');
-  const TW=xo-gap;
+    const mat=v.vw==='top'&&a.fl?`<rect x="${r1(x0+3)}" y="${r1(y0+fs*1.6)}" width="${r1(W-6)}" height="${r1(H-fs*2)}" rx="4" fill="var(--line)" opacity=".35"/>`:'';
+    return `<svg x="${r1(xs)}" y="${r1(ys)}" width="${r1(W)}" height="${r1(H)}" viewBox="${r1(x0)} ${r1(y0)} ${r1(W)} ${r1(H)}"><rect x="${r1(x0)}" y="${r1(y0)}" width="${r1(W)}" height="${r1(H)}" rx="${r1(Math.min(W,H)*.06)}" fill="var(--field)"/>${mat}${floor}<text x="${r1(x0+4)}" y="${r1(y0+fs*1.25)}" font-size="${fs}" fill="var(--muted)">${VIEWS[v.vw].l}</text>${v.h}</svg>`}).join('');
+  const TW=lay.TW, H=lay.TH;
   // opis kroków: podświetlenie bieżącego kroku zsynchronizowane z animacją
   const T=TL.T, pc=x=>r1(x/T*1000)/10;
   let css='', n=0;
@@ -997,7 +1009,8 @@ function moveAnim(name,frame){
   const list=`<ol class="mvsteps">${su.map(([t],i)=>`<li${kf([TL.steps[i]])}><b>${i+1}</b>${esc(t)}</li>`).join('')}</ol>`
     +(mv.length?`<p class="mvh">Ruch</p><ul class="mvphase">${mv.map(([lab,t],i)=>`<li${kf(i?TL.p2:TL.p1)}><b>${esc(lab)}</b> ${esc(t)}</li>`).join('')}</ul>`:'');
   const ctr=frame?'':`<div class="row mvctl"><button class="link" data-animpause="${id}">Pauza</button><button class="link" data-animrestart="${id}">Od początku</button></div>`;
-  return `<div class="manim" id="${id}">${css?`<style>${css}</style>`:''}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}<p class="mvh">Ustawienie, po kolei</p>${list}</div>`;
+  const tabs=alts&&!frame?`<div class="row mvalt">${alts.map(([k,l])=>`<button class="chip" aria-pressed="${k===key}" data-animvar="${esc(name)}|${k}">${l}</button>`).join('')}</div>`:'';
+  return `<div class="manim" id="${id}">${tabs}${css?`<style>${css}</style>`:''}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}<p class="mvh">Ustawienie, po kolei</p>${list}</div>`;
 }
 function animCtl(t){
   const id=t.dataset.animpause||t.dataset.animrestart, box=document.getElementById(id); if(!box)return;
@@ -1227,14 +1240,22 @@ const ANIM={
     an:['hp',[40,24]],pr:[['bar','wr',[0,0]]],st:BENCH,
     su:[['Leżysz na ławce, stopy na podłodze',C_STOPY],['Ciężar nad klatką, łokcie na szerokość barków',[['elL',[0,0,-3],[0,0,5],'m']]]],
     mv:[['W dół:','uginaj łokcie, przenieś ciężar za głowę',[['elL',[4,0,0],[0,0,0],'m']],'wr'],['W górę:','wyprostuj i wróć nad klatkę',[],'wr']]},
-  legcurl:{sup:1,v:['side','top'],A:AN({t:-90,th:90,sh:90,ft:180,thb:3,shb:0,hold:{abs:[22,10],w:12,pole:[0,0,1]}}),B:AN({t:-90,th:90,sh:15,ft:105,thb:3,shb:0,hold:{abs:[22,10],w:12,pole:[0,0,1]}}),
-    an:['hp',[52,26]],pr:[['pad','an',[0,0]]],st:[['box',10,80,20,24,-8,8],['box',16,20,0,20,-6,6],['box',72,76,0,20,-6,6]],
-    su:[['Leżysz przodem, wałek nad piętami, kolana tuż za ławką',[]],['Biodra wciśnij w ławkę',[['hp',[0,-4,0],[0,6,0]]]]],
-    mv:[['W górę:','pięty do pośladków, zatrzymaj na chwilę',[],'an'],['W dół:','opuszczaj powoli, biodra nie unoszą się',[],'an']]},
-  legcurlS:{A:AN({t:-6,th:90,sh:95,ft:5,thb:4,shb:0,hold:{abs:[56,26],w:14,pole:[0,-1,1]}}),B:AN({t:-6,th:90,sh:205,ft:100,thb:4,shb:0,hold:{abs:[56,26],w:14,pole:[0,-1,1]}}),
-    an:['hp',[50,24]],pr:[['pad','an',[1,-1.5]]],st:[['box',36,62,19,23,-12,12],['box',33,37,23,58,-10,10],['box',58,66,28,31,-10,10],['box',44,50,0,19,-4,4]],
-    su:[['Plecy oparte, wałek uda dociśnięty nad kolanami',[['knL',[0,-4,0],[0,7,0],'m']]],['Wałek pod piętami, nogi prawie proste',[]]],
-    mv:[['W dół:','uginaj kolana do końca, zatrzymaj na chwilę',[],'an'],['Powrót:','powoli do prawie prostych nóg',[],'an']]},
+  legcurl:{sup:1,v:['side','top'],tm:{d:1.4,b:1,u:3},A:AN({t:-90,th:90,sh:90,ft:180,thb:3,shb:0,hold:{abs:[22,10],w:12,pole:[0,0,1]}}),B:AN({t:-90,th:90,sh:12,ft:102,thb:3,shb:0,hold:{abs:[22,10],w:12,pole:[0,0,1]}}),
+    an:['hp',[52,26]],pr:[['lever',1]],st:[['box',10,73,20,24,-8,8],['box',16,20,0,20,-6,6],['box',64,68,0,20,-6,6],['box',72,78,0,24,13,17]],
+    su:[['Kolana tuż za krawędzią ławki, na wysokości osi maszyny (kropka z boku)',[['knL',[0,-5,0],[0,9,0]]]],
+        ['Wałek na dole łydek, tuż nad piętami',[['anL',[-3,-4,0],[0,9,0]]]],
+        ['Biodra i brzuch wciśnięte w ławkę, ręce mocno trzymają uchwyty',[['hp',[0,-5,0],[0,9,0]],['wrL',[0,-4,0],[0,6,0],'m']]],
+        ['Stopy przyciągnięte, palce w stronę goleni',[['toL',[-3,0,0],[3,0,0],'m']]]],
+    mv:[['W górę (1–2 s):','pięty do pośladków, biodra zostają na ławce, na górze zatrzymaj 1 s',[['hp',[0,-5,0],[0,9,0]]],'an'],
+        ['W dół (3 s):','powoli do prawie prostych nóg, ciężar nie opada na stos',[],'an']]},
+  legcurlS:{tm:{d:1.4,b:1,u:3},A:AN({t:-6,th:90,sh:95,ft:5,thb:4,shb:0,hold:{abs:[56,26],w:14,pole:[0,-1,1]}}),B:AN({t:-6,th:90,sh:208,ft:100,thb:4,shb:0,hold:{abs:[56,26],w:14,pole:[0,-1,1]}}),
+    an:['hp',[50,24]],pr:[['lever',-1]],st:[['box',36,62,19,23,-12,12],['box',33,37,23,58,-10,10],['box',60,68,28,31,-10,10],['box',44,50,0,19,-4,4],['box',70,76,0,26,13,17]],
+    su:[['Oparcie ustaw tak, by kolana były na wysokości osi maszyny (kropka z boku)',[['knL',[0,-5,0],[0,9,0]]]],
+        ['Wałek uda dociśnięty tuż nad kolanami',[['knL',[-3,-4,0],[-3,9,0],'m']]],
+        ['Wałek pod łydkami, tuż nad piętami',[['anL',[0,4,0],[-2,-8,0]]]],
+        ['Plecy oparte, ręce trzymają uchwyty',[['tm',[0,-4,0],[0,7,0],'b']]]],
+    mv:[['W dół (1–2 s):','pięty pod siedzisko, zatrzymaj 1 s, uda nie unoszą się',[['knL',[0,-4,0],[0,8,0]]],'an'],
+        ['Powrót (3 s):','powoli do prawie prostych nóg, ciężar nie opada na stos',[],'an']]},
   nordic:{A:AN({ua:150,fa:150,uab:15,th:180,sh:270,ft:200,thb:3,shb:0}),B:AN({t:60,ua:120,fa:120,uab:15,th:240,sh:270,ft:200,thb:3,shb:0}),
     an:['kn',[40,3]],pr:[],st:[['box',4,28,0,3,-12,12],['box',8,13,5,8,-12,12]],
     su:[['Klęcz na miękkim, pięty zablokowane',[['anL',[0,-4,0],[0,6,0],'m']]],['Napnij pośladki i brzuch: kolano–biodro–bark w jednej linii',[...C_BRZ,['hp',[4,0,0],[-6,0,0]]]]],
@@ -1289,7 +1310,7 @@ const PATANIM={squat:'squat',squatM:'hack',uni:'split',dead:'dead',hinge:'hinge'
 const NAMEANIM={'Front squat':'fsquat','Przysiad z pauzą':'squatP','Przysiad goblet':'goblet','Hack squat':'hack','Wypychanie nóg na suwnicy':'legpress',
   'Split squat':'split','Przysiad bułgarski':'bulg','Wykroki chodzone':'walk','Wejścia na skrzynię':'stepup',
   'Martwy ciąg sumo':'sumo','Martwy ciąg z trap bar':'trap','Martwy ciąg z deficytu':'deficit','Martwy ciąg z pauzą pod kolanem':'deadP','Martwy ciąg z bloków':'blocks',
-  'Good morning':'gm','Hip thrust':'thrust','Nordic curl':'nordic','Uginanie podudzi':'legcurlS','Uginanie podudzi leżąc':'legcurl',
+  'Good morning':'gm','Hip thrust':'thrust','Nordic curl':'nordic','Uginanie podudzi':'legcurl','Uginanie podudzi leżąc':'legcurl','Uginanie podudzi siedząc':'legcurlS',
   'Wyciskanie z pauzą 2 s':'benchP','Larsen press':'larsen','Spoto press':'spoto','Floor press':'floor','JM press':'jm',
   'Wyciskanie hantli chwytem młotkowym':'cbench','Wyciskanie hantli chwytem neutralnym':'cbench',
   'Wyciskanie na skosie dodatnim':'incline','Wyciskanie hantli na skosie dodatnim':'incline','Pompki na poręczach':'dip','Pompki z obciążeniem':'pushup',
@@ -1300,6 +1321,9 @@ const NAMEANIM={'Front squat':'fsquat','Przysiad z pauzą':'squatP','Przysiad go
   'Ściąganie drążka poziomo':'crow','Wiosłowanie na wyciągu siedząc':'crow','Wiosłowanie na maszynie':'mrow',
   'Wiosłowanie sztangą w opadzie':'rowO','Pendlay row':'pendlay','Kas row w oparciu o ławkę':'csrow','Wiosłowanie hantlem jednorącz':'dbrow',
   'Bayesian curl':'bayes','Francuz z przenoszeniem':'french','Ab wheel':'abwheel','Unoszenie nóg w zwisie':'legraise','Hollow body':'hollow','Brzuszki skośne':'oblq'};
+
+// ćwiczenia z kilkoma wersjami sprzętu: przełącznik w opisie
+const ANIMALT={'Uginanie podudzi':[['legcurl','Leżąc'],['legcurlS','Siedząc']],'Uginanie podudzi leżąc':[['legcurl','Leżąc'],['legcurlS','Siedząc']],'Uginanie podudzi siedząc':[['legcurlS','Siedząc'],['legcurl','Leżąc']]};
 
 let swapOpen=null;
 // wskazówki trenera: własne (S.cues) mają pierwszeństwo przed wskazówkami z pliku planu
@@ -1893,6 +1917,7 @@ $('#view').addEventListener('click',async e=>{
   if(t.id==='swupd'){save();try{if(window.__swr)await window.__swr.update()}catch(e){}toast('Sprawdzam nową wersję…');setTimeout(()=>location.reload(),1500);return}
   if(t.id==='beeptest'){audioInit();beep(1);setTimeout(()=>beep(3),700);return toast('Powinny być 1 + 3 piknięcia')}
   if(t.dataset.animpause||t.dataset.animrestart)return animCtl(t);
+  if(t.dataset.animvar){const [n,k]=t.dataset.animvar.split('|');S.animv=Object.assign(S.animv||{},{[n]:k});save();return render()}
   if(t.dataset.info){const k=t.dataset.info;infoOpen.has(k)?infoOpen.delete(k):infoOpen.add(k);return render()}
   if(t.dataset.startnow){markStart();return toast('Zegar treningu włączony')}
   if(t.dataset.swapopen){swapOpen=+t.dataset.swapopen;return render()}
