@@ -13,7 +13,7 @@
 <style>
 :root{
   --bg:#E6EAEE; --surface:#FFFFFF; --ink:#15202B; --muted:#5B6875; --line:#CDD3DA;
-  --accent:#C8102E; --accent-ink:#FFFFFF; --done:#1F4FB8; --done-soft:#E3EAFB; --field:#F2F4F6;
+  --accent:#C8102E; --accent-ink:#FFFFFF; --done:#1F4FB8; --done-soft:#E3EAFB; --field:#F2F4F6; --bone:#D8CFC0; --m-con:#D4213D; --m-ecc:#F2892B; --m-iso:#7A1F3D; --m-rest:#E9D3CB; --m-edge:rgba(80,30,30,.35);
   --musc2:#F0A0AA; --body2:#9AA3AD;
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -24,12 +24,12 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#1A2027; --surface:#232B34; --ink:#E8EDF2; --muted:#9AA6B2; --line:#36414D;
-    --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540;
+    --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4);
    --musc2:#8A3A48; --body2:#6B7785;}
 }
 :root[data-theme="dark"]{
   --bg:#1A2027; --surface:#232B34; --ink:#E8EDF2; --muted:#9AA6B2; --line:#36414D;
-  --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540;
+  --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4);
  --musc2:#8A3A48; --body2:#6B7785;}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -120,6 +120,8 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .manim{margin:6px 0 10px}
 .manim .moveanim{width:100%;height:auto;display:block}
 .mvalt{gap:6px;margin:0 0 6px}
+.m-con{fill:var(--m-con)}.m-ecc{fill:var(--m-ecc)}.m-iso{fill:var(--m-iso)}.m-rest{fill:var(--m-rest)}
+.mleg{font-size:12.5px;line-height:1.7;margin:4px 0 0;color:var(--muted)}.mleg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin:0 4px -1px 8px}.mleg i:first-child{margin-left:0}
 .mvctl{justify-content:flex-end;gap:14px;margin:2px 0 0}
 .mvh{margin:6px 0 2px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .mvsteps,.mvphase{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.35}
@@ -304,7 +306,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-29e';
+const VER='2026-10-29f';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -884,7 +886,7 @@ function arrowsOf(list){
   return out;
 }
 function bodyVec(J,v,fl){const u=J.td, k=fl?-1:1, f=[u[1]*k,-u[0]*k,0];return [u[0]*v[0]+f[0]*v[1],u[1]*v[0]+f[1]*v[1],v[2]]}
-function animView(name,key,vw,TL,frame){
+function animView(name,key,vw,TL,frame,mode){
   const a=ANIM[key], [PA,PB]=animPoses(key), g=G[name], [p,s]=g, V=VIEWS[vw].p, bx=[1e9,1e9,-1e9,-1e9];
   const grow=(q,r=0)=>{bx[0]=Math.min(bx[0],q[0]-r);bx[1]=Math.min(bx[1],q[1]-r);bx[2]=Math.max(bx[2],q[0]+r);bx[3]=Math.max(bx[3],q[1]+r)};
   const col=part=>{const m=PARTM[part]||[];return m.some(x=>p.includes(x))?'var(--accent)':m.some(x=>s.includes(x))?'var(--musc2)':'var(--body2)'};
@@ -921,7 +923,7 @@ function animView(name,key,vw,TL,frame){
   items.push({d:V(PA.hd)[2],html:()=>C2(pj(PA,'hd'),pj(PB,'hd'),5.5,'var(--body2)')});
   ['shL','shR','hpL','hpR'].forEach(k=>items.push({d:V(PA[k])[2]+.1,X:k.slice(-1),html:()=>C2(pj(PA,k),pj(PB,k),3.4,col(k[0]==='s'?'delt':'hip'),vw==='side'&&k.endsWith('R')?' opacity=".45"':'')}));
   if(vw==='side')items.sort((x,y)=>(x.X==='R'?0:1)-(y.X==='R'?0:1)||x.d-y.d); else items.sort((x,y)=>x.d-y.d);
-  h+=items.map(i=>i.html()).join('')+post;
+  h+=(mode==='anat'?anatBody({V,PA,PB,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick}):items.map(i=>i.html()).join(''))+post;
   // rekwizyty
   let pr=(a.pr||[]).filter(x=>x[0]!=='slab'&&x[0]!=='plat');
   if(/hantl/i.test(name))pr=pr.map(x=>x[0]==='bar'?['db',x[1],x[2]]:x);
@@ -982,8 +984,8 @@ function moveAnim(name,frame){
   const alts=ANIMALT[name], pick0=alts&&((S.animv||{})[name]), key=alts?(alts.some(x=>x[0]===pick0)?pick0:alts[0][0]):animKeyOf(name), g=G[name]; if(!key||!g||!ANIM[key])return '';
   const a=ANIM[key], red=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(red&&!frame)frame='A';
-  const TL=animTimeline(a,name), id='an'+(++animUid);
-  const views=(a.v||['side','front']).map(vw=>Object.assign({vw},animView(name,key,vw,TL,frame)));
+  const TL=animTimeline(a,name), id='an'+(++animUid), mode=(S.animMode==='anat')?'anat':'sch';
+  const views=(a.v||['side','front']).map(vw=>Object.assign({vw},animView(name,key,vw,TL,frame,mode)));
   const ground=vw=>vw!=='top';
   views.forEach(v=>{const b=v.bx; if(ground(v.vw))b[3]=Math.max(b[3],97); v.w=b[2]-b[0]+10; v.hh=b[3]-b[1]+14});
   // obok siebie; gdy oba widoki są szerokie (postać leży) — jeden pod drugim, większe
@@ -1010,7 +1012,9 @@ function moveAnim(name,frame){
     +(mv.length?`<p class="mvh">Ruch</p><ul class="mvphase">${mv.map(([lab,t],i)=>`<li${kf(i?TL.p2:TL.p1)}><b>${esc(lab)}</b> ${esc(t)}</li>`).join('')}</ul>`:'');
   const ctr=frame?'':`<div class="row mvctl"><button class="link" data-animpause="${id}">Pauza</button><button class="link" data-animrestart="${id}">Od początku</button></div>`;
   const tabs=alts&&!frame?`<div class="row mvalt">${alts.map(([k,l])=>`<button class="chip" aria-pressed="${k===key}" data-animvar="${esc(name)}|${k}">${l}</button>`).join('')}</div>`:'';
-  return `<div class="manim" id="${id}">${tabs}${css?`<style>${css}</style>`:''}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}<p class="mvh">Ustawienie, po kolei</p>${list}</div>`;
+  const modes=frame?'':`<div class="row mvalt"><button class="chip" aria-pressed="${mode==='sch'}" data-animmode="sch">Schemat</button><button class="chip" aria-pressed="${mode==='anat'}" data-animmode="anat">Anatomia</button></div>`;
+  const leg=mode==='anat'?`<p class="mleg"><i style="background:var(--m-con)"></i>skraca się pod obciążeniem (koncentrycznie) <i style="background:var(--m-ecc)"></i>wydłuża się pod obciążeniem (ekscentrycznie) <i style="background:var(--m-iso)"></i>napięty, stała długość (izometrycznie) <i style="background:var(--m-rest)"></i>nie pracuje</p>`:'';
+  return `<div class="manim" id="${id}">${modes}${tabs}${css?`<style>${css}</style>`:''}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}${leg}<p class="mvh">Ustawienie, po kolei</p>${list}</div>`;
 }
 function animCtl(t){
   const id=t.dataset.animpause||t.dataset.animrestart, box=document.getElementById(id); if(!box)return;
@@ -1324,6 +1328,196 @@ const NAMEANIM={'Front squat':'fsquat','Przysiad z pauzą':'squatP','Przysiad go
 
 // ćwiczenia z kilkoma wersjami sprzętu: przełącznik w opisie
 const ANIMALT={'Uginanie podudzi':[['legcurl','Leżąc'],['legcurlS','Siedząc']],'Uginanie podudzi leżąc':[['legcurl','Leżąc'],['legcurlS','Siedząc']],'Uginanie podudzi siedząc':[['legcurlS','Siedząc'],['legcurl','Leżąc']]};
+
+// ---------- model anatomiczny: kości i mięśnie na szkielecie ruchu ----------
+// Jednostki jak w modelu ruchu (wzrost ok. 88). Kości: łańcuchy kapsuł w układach segmentów.
+// Mięśnie: pasma od przyczepu początkowego przez punkty prowadzące do końcowego; długość w 3D decyduje o rodzaju skurczu.
+const nrm3=p=>{const l=len3(p)||1e-9;return [p[0]/l,p[1]/l,p[2]/l]};
+const cross3=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const perp3=(v,a)=>v3(v,a,-dot3(v,a));
+const SPINEF=[[5.5,-3.0],[9,-2.2],[13,-2.8],[18,-3.9],[24,-3.2],[28,-1.9],[31,-1.4]];
+const spineF=u=>{for(let i=1;i<SPINEF.length;i++)if(u<=SPINEF[i][0]){const [u0,f0]=SPINEF[i-1],[u1,f1]=SPINEF[i];return f0+(f1-f0)*(u-u0)/(u1-u0)}return SPINEF[SPINEF.length-1][1]};
+// układy odniesienia jednej pozycji
+function anatFrames(J,sup){
+  const u=nrm3(sub3(J.sh,J.hp)), zt=nrm3(sub3(J.shL,J.shR));
+  let f=nrm3(cross3(u,zt)); if(sup)f=f.map(x=>-x);
+  const F={J,u,f,zt,side:{}};
+  const T=(uo,fo,zo,s=1)=>v3(v3(v3(J.hp,u,uo),f,fo),zt,zo*s);
+  F.T=T;
+  [['L',1],['R',-1]].forEach(([X,s])=>{
+    const sd=zt.map(v=>v*s);
+    const seg=(P,Q,front,fb)=>{const d=sub3(Q,P),L=len3(d),a=d.map(v=>v/L);let fr=front?perp3(front,a):[0,0,0];
+      fr=len3(fr)>.2*L&&front?nrm3(fr):nrm3(perp3(fb,a));let lat=perp3(sd,a);lat=len3(lat)>.15?nrm3(lat):nrm3(cross3(a,fr)).map(v=>v*s);
+      return {P,a,L,fr,lat,at:(t,fo=0,lo=0)=>v3(v3(v3(P,a,L*t),fr,fo),lat,lo)}};
+    const sh=J['sh'+X],el=J['el'+X],wr=J['wr'+X],hp=J['hp'+X],kn=J['kn'+X],an=J['an'+X],to=J['to'+X];
+    const hum=seg(sh,el,sub3(wr,el),f), fa=seg(el,wr,sub3(sh,el),hum.fr);
+    const fem=seg(hp,kn,sub3(kn,an).map(v=>v),f); // przód uda = strona przeciwna do zgięcia goleni
+    const tib=seg(kn,an,sub3(kn,hp).map(v=>v),fem.fr);
+    const fd=nrm3(sub3(to,an)), up=nrm3(sub3(kn,an));
+    const heel=v3(v3(an,fd,-2.3),up,-1.3);
+    // łopatka: rotacja w górę przy unoszeniu ramienia (rytm łopatkowo-ramienny), ściąganie i wysuwanie
+    const h=nrm3(sub3(el,sh)), hu=dot3(h,u), hf=dot3(h,f), el_=Math.acos(Math.max(-1,Math.min(1,-hu)))*180/Math.PI;
+    const r=Math.min(55,Math.max(0,(el_-30)/2.7))*d2r, ret=Math.min(1,Math.max(0,-hf*1.6)), pro=Math.min(1,Math.max(0,(hf-.45)*2));
+    const AC=[25.5,0,9.2], sc=(du,df,dz)=>{const ru=du-AC[0], rz=dz-AC[2];const nu=AC[0]+ru*Math.cos(r)+rz*Math.sin(r), nz=AC[2]+rz*Math.cos(r)-ru*Math.sin(r);
+      const mz=nz>6?0:1;return T(nu,df-ret*.7*mz+pro*1.2,nz-ret*1.7*mz+pro*2.2,s)};
+    const scap={AC:T(25.5,.2,9.2,s),SA:sc(24,-2.9,3.9),IA:sc(14.5,-3.7,4.9),SR:sc(22.5,-3.4,3.7),SP:sc(24.6,-2.6,7.4),MB:sc(19,-3.6,3.6),GL:T(24,-.6,8.2,s)};
+    const clav=t=>{const A=T(24.3,2.6,1.3,s),B=T(25,1.7,5,s),C=scap.AC;return t<.5?v3(A,sub3(B,A),t*2):v3(B,sub3(C,B),(t-.5)*2)};
+    F.side[X]={s,sd,hum,fa,fem,tib,fd,up,heel,an,to,wr,scap,clav};
+  });
+  return F;
+}
+// punkt z opisu: ['T',u,f,z] tułów; ['hum'|'fa'|'fem'|'tib',t,front,lat]; ['S',nazwa,du,df,dz] łopatka; ['clav',t]; ['heel']
+function anatPt(F,X,spec){
+  const S=F.side[X], s=S.s, k=spec[0];
+  if(k==='T')return F.T(spec[1],spec[2],spec[3],s);
+  if(k==='S'){const p=S.scap[spec[1]];return v3(v3(v3(p,F.u,spec[2]||0),F.f,spec[3]||0),F.zt,(spec[4]||0)*s)}
+  if(k==='clav')return S.clav(spec[1]);
+  if(k==='heel')return S.heel;
+  // owinięcie wokół stawu: punkt na dwusiecznej przodu (r>0) albo tyłu (r<0) dwóch segmentów
+  if(k==='KW'||k==='EW'||k==='HW'){const r=spec[1],w=spec[2];
+    const [c,A,B]=k==='KW'?[S.fem.at(1),S.fem.fr,S.tib.fr]:k==='EW'?[S.hum.at(1),S.hum.fr,S.fa.fr]:[S.fem.P,F.f,S.fem.fr];
+    let d=v3(A.map(v=>v*w),B,1-w);if(len3(d)<.05)d=A;return v3(c,nrm3(d),r)}
+  return S[k].at(spec[1],spec[2]||0,spec[3]||0);
+}
+// kości: [rodzaj ('L' łańcuch, 'C' koło), punkty, szerokość, po stronie?]
+const BONES=[
+  ['L',[['T',4.5,1.5,5.5],['T',5.6,-.5,6.4],['T',5,-2.6,4.5],['T',3.5,-3.4,2]],1.8,1],
+  ['L',[['T',4.5,1.5,5.5],['T',1.6,.8,5.2],['T',0,0,5]],2.6,1],
+  ['L',[['T',5,-2.6,4.5],['T',1.2,-1.3,4.7],['T',0,0,5]],2.4,1],
+  ['L',[['T',0,0,5],['T',-1.2,2.2,1.3]],1.6,1],
+  ['L',[['T',0,0,5],['T',-2.6,-1.3,3.6]],1.8,1],
+  ['L',[['T',4,-3.6,0],['T',.5,-3.6,0],['T',-1.5,-2.6,0]],3,0],
+  ['L',[['T',24,3,0],['T',16,3.9,0]],2.2,0],
+  ['L',[['clav',0],['clav',.5],['clav',1]],1.6,1],
+  ['L',[['S','SA'],['S','AC'],['S','IA'],['S','MB'],['S','SA']],1.4,1,'scap'],
+  ['L',[['S','SR'],['S','SP'],['S','AC']],1.5,1],
+  ['L',[['hum',0],['hum',.14],['hum',.86]],[3.6,2.3,2.2],1],
+  ['L',[['hum',.97,0,-1.5],['hum',.97,0,1.5]],2,1],
+  ['L',[['fa',-.06,-.9,-.6],['fa',1,0,-.9]],1.5,1],
+  ['L',[['fa',.04,.2,.9],['fa',1,.2,1.2]],1.5,1],
+  ['L',[['fem',0],['fem',.04,0,2.5]],2.6,1],
+  ['L',[['fem',.07,0,1.7],['fem',.5,.4,.5],['fem',.93,0,0]],2.5,1],
+  ['L',[['fem',.98,-.3,-1.7],['fem',.98,-.3,1.7]],2.7,1],
+  ['L',[['tib',.02,0,-1.7],['tib',.02,0,1.5]],2.3,1],
+  ['L',[['tib',.03,.5,0],['tib',.5,.4,-.2],['tib',.97,0,-.3]],2.2,1],
+  ['L',[['tib',.06,-.6,1.9],['tib',1,-.4,1.6]],1.1,1],
+  ['L',[['heel'],['fa',1]],0,1,'foot'],
+  ['C',[['fem',.97,2.5,0]],1.4,1],
+  ['C',[['fa',1.12,.2,0]],1.7,1]
+];
+// mięśnie: [grupa, punkty, szerokość brzuśca]
+const MUSC=[
+  ['quads',[['fem',.08,.6,2.3],['fem',.55,1.8,2.3],['KW',3,.75],['KW',3,.25],['tib',.12,1.5,.6]],4.4],
+  ['quads',[['T',-.5,2.3,4.2],['fem',.5,2.8,0],['KW',3.3,.75],['KW',3.3,.25],['tib',.12,1.7,0]],4.4],
+  ['quads',[['fem',.35,1.4,-1.6],['fem',.84,2.1,-2.1],['KW',2.8,.6],['tib',.1,1.4,-.6]],3.8],
+  ['hams',[['T',-2.6,-1.6,3.6],['fem',.5,-2.6,1],['fem',.95,-2.2,1.3],['tib',.06,-.9,1.9]],3.9],
+  ['hams',[['T',-2.6,-1.4,3.3],['fem',.5,-2.5,-.6],['fem',.95,-2,-1.3],['tib',.1,-.4,-1.6]],3.7],
+  ['glutes',[['T',4.5,-3.7,1.5],['T',1.5,-3.7,4.6],['HW',-3.6,.5],['fem',.22,-1.3,1.6]],6.8],
+  ['add',[['T',-1,2,1.6],['fem',.55,.8,-1.7]],4.6],
+  ['add',[['T',-2.2,.4,2.4],['fem',.92,-.6,-1.7]],3],
+  ['calves',[['fem',.93,-2.1,1.1],['tib',.25,-3.3,.8],['tib',.62,-2.3,.3],['heel']],3.9],
+  ['calves',[['fem',.93,-2.1,-1.1],['tib',.25,-3.3,-.9],['tib',.6,-2.3,-.3],['heel']],3.7],
+  ['erect',[['T',1,-3.7,1.7],['T',9,-3.6,1.9],['T',18,-4.5,1.9],['T',27,-2.8,1.1]],3.1],
+  ['abs',[['T',-.8,2.5,.9],['T',6,3.5,1.4],['T',13,4,1.5],['T',16.5,3.9,1.4]],3.7],
+  ['obl',[['T',16,1.6,6.3],['T',10,2,6.4],['T',4.6,1.3,6]],3.3],
+  ['lats',[['T',4.5,-3.5,2],['T',12,-4.1,5],['S','IA',0,-.4],['hum',.13,.8,-.6]],5.4],
+  ['lats',[['T',18,-4.3,1.2],['T',16,-3.9,5.8],['hum',.13,.8,-.6]],4.2],
+  ['traps',[['T',22,-4.3,.6],['S','SR',0,-.4,.4],['S','SP']],3.4],
+  ['traps',[['T',31,-1.5,.6],['T',27.5,-1.7,4.5],['S','AC',0,-.3,-1]],3.3],
+  ['traps',[['T',12,-4.3,.6],['S','SR',0,-.4]],2.8],
+  ['pecs',[['T',17,4.1,1],['T',18.5,3.8,6.8],['hum',.15,1.1,.2]],5.2],
+  ['pecs',[['T',24,2.9,2.2],['T',23,3.1,6.4],['hum',.18,1.1,.3]],4.2],
+  ['dF',[['clav',.85],['hum',.04,2,.6],['hum',.42,1,.9]],3.8],
+  ['dS',[['S','AC',.3,0,.5],['hum',.04,0,2.3],['hum',.42,.2,1.4]],3.8],
+  ['dR',[['S','SP',-.4],['hum',.04,-2,.8],['hum',.42,-.9,.9]],3.6],
+  ['biceps',[['S','AC',-1.6,1.6,-1.3],['hum',.15,1.6,0],['hum',.6,2.1,0],['hum',.95,1.8,0],['fa',.13,.9,.6]],3.5],
+  ['triceps',[['hum',.2,-1.5,1.2],['hum',.7,-2.1,.3],['EW',-2.2,.7],['EW',-2.2,.3],['fa',-.04,-1.1,0]],3.8],
+  ['triceps',[['S','GL',-2.5,-1.3,-.8],['hum',.3,-1.8,-.4],['hum',.75,-2.1,-.5],['EW',-2.1,.6],['fa',-.04,-1.1,0]],3.4],
+  ['fore',[['hum',.97,0,-1.7],['fa',.35,.7,-.6],['fa',.82,.3,-.4]],2.9],
+  ['fore',[['hum',.97,0,1.7],['fa',.35,-.5,.9],['fa',.82,-.3,.6]],2.7]
+];
+// mięśnie napinane w krokach ustawienia (po treści kroku)
+function stepMuscles(t){
+  const m=[];t=t.toLowerCase();
+  if(/łopatk/.test(t))m.push('traps');
+  if(/brzuch/.test(t))m.push('abs','obl','erect');
+  if(/pośladk/.test(t))m.push('glutes');
+  if(/barki w dół|barki nisko|barki aktywne/.test(t))m.push('traps','lats');
+  if(/wbij|napęd z nóg|pchaj|wypych/.test(t))m.push('quads','glutes');
+  if(/kolana (wypchnij|na zewnątrz)|rozpychają/.test(t))m.push('glutes');
+  if(/plecy proste|plecy i/.test(t))m.push('erect');
+  return m;
+}
+const catmull=(pts,n)=>{const out=[];for(let i=0;i<pts.length-1;i++){const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;
+  for(let k=0;k<n;k++){const t=k/n,t2=t*t,t3=t2*t;out.push([0,1].map(c=>.5*((2*p1[c])+(-p0[c]+p2[c])*t+(2*p0[c]-5*p1[c]+4*p2[c]-p3[c])*t2+(-p0[c]+3*p1[c]-3*p2[c]+p3[c])*t3)))}}
+  out.push(pts[pts.length-1]);return out};
+function bandPoly(p2,w){
+  const n=p2.length, out=[], back=[];
+  for(let i=0;i<n;i++){const a=p2[Math.max(0,i-1)],b=p2[Math.min(n-1,i+1)],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1, x=i/(n-1), ww=w*1.2*(.3+.7*Math.pow(Math.sin(Math.PI*Math.min(1,Math.max(0,x))),.55))/2;
+    out.push([p2[i][0]-dy/L*ww,p2[i][1]+dx/L*ww]);back.push([p2[i][0]+dy/L*ww,p2[i][1]-dx/L*ww])}
+  return out.concat(back.reverse());
+}
+// ciało anatomiczne w jednym widoku
+function anatBody(c){
+  const {V,PA,PB,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick}=c;
+  const FA=anatFrames(PA,a.sup), FB=anatFrames(PB,a.sup), r1x=r1;
+  const str=q=>q.map(x=>r1x(x[0])+','+r1x(x[1])).join(' ');
+  const anim=(attr,va,vb,isStr)=>frame?'':`<animate attributeName="${attr}" values="${TL.nodes.map(n=>isStr?str(va.map((q,i)=>lerp(q,vb[i],n[1]))):r1x(va+(vb-va)*n[1])).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`;
+  const items=[];
+  const sides=['L','R'];
+  // kości
+  const boneCol='var(--bone)';
+  BONES.forEach(([k,pts,w,sided,tag])=>{
+    (sided?sides:['L']).forEach(X=>{
+      const far=vw==='side'&&X==='R'&&sided;
+      if(tag==='foot'){const ptsA=[FA.side[X].heel,v3(v3(FA.side[X].an,FA.side[X].fd,1),FA.side[X].up,-.5),FA.side[X].to],ptsB=[FB.side[X].heel,v3(v3(FB.side[X].an,FB.side[X].fd,1),FB.side[X].up,-.5),FB.side[X].to];
+        const pa=ptsA.map(V),pb=ptsB.map(V);pa.forEach(q=>grow(q,2));pb.forEach(q=>grow(q,2));
+        items.push({d:pa.reduce((t,q)=>t+q[2],0)/pa.length-.3,html:`<polyline points="${str(pick(pa,pb))}" fill="none" stroke="${boneCol}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"${far?' opacity=".4"':''}>${anim('points',pa,pb,1)}</polyline>`});return}
+      const pa=pts.map(sp=>V(anatPt(FA,X,sp))), pb=pts.map(sp=>V(anatPt(FB,X,sp)));
+      if(k==='C'){grow(pa[0],w+1);grow(pb[0],w+1);const S1=pick(pa[0],pb[0]);
+        items.push({d:pa[0][2]-.3,html:`<circle cx="${r1x(S1[0])}" cy="${r1x(S1[1])}" r="${w}" fill="${boneCol}"${far?' opacity=".4"':''}>${anim('cx',pa[0][0],pb[0][0])}${anim('cy',pa[0][1],pb[0][1])}</circle>`});return}
+      const ws=Array.isArray(w)?w:pts.map(()=>w);
+      for(let i=0;i<pa.length-1;i++){const ww=(ws[i]+ws[i+1])/2;[pa[i],pa[i+1],pb[i],pb[i+1]].forEach(q=>grow(q,ww/2));const S1=pick(pa[i],pb[i]),S2=pick(pa[i+1],pb[i+1]);
+        items.push({d:(pa[i][2]+pa[i+1][2])/2-.3,html:`<line x1="${r1x(S1[0])}" y1="${r1x(S1[1])}" x2="${r1x(S2[0])}" y2="${r1x(S2[1])}" stroke="${boneCol}" stroke-width="${ww}" stroke-linecap="round"${far?' opacity=".4"':''}${tag==='scap'?' stroke-opacity=".9"':''}>${anim('x1',pa[i][0],pb[i][0])}${anim('y1',pa[i][1],pb[i][1])}${anim('x2',pa[i+1][0],pb[i+1][0])}${anim('y2',pa[i+1][1],pb[i+1][1])}</line>`})}
+    });
+  });
+  // kręgosłup, żebra, czaszka
+  const vert=[5.5,8,10.5,13,15,17,19,21,23,25,27,29,30.5];
+  vert.forEach(uu=>{const qa=V(FA.T(uu,spineF(uu),0)),qb=V(FB.T(uu,spineF(uu),0));grow(qa,2);grow(qb,2);const S1=pick(qa,qb);
+    items.push({d:qa[2]-.2,html:`<circle cx="${r1x(S1[0])}" cy="${r1x(S1[1])}" r="${uu>26?.95:1.25}" fill="${boneCol}">${anim('cx',qa[0],qb[0])}${anim('cy',qa[1],qb[1])}</circle>`})});
+  [[23,2.8,5],[21,3.4,6],[19,3.7,6.6],[17,3.8,6.8],[15,3.7,6.6],[13,3.3,6]].forEach(([uu,df,dz])=>{
+    const ring=F=>Array.from({length:13},(_,i)=>{const th=i/12*2*Math.PI;return V(F.T(uu-.9*(1+Math.cos(th)),-.6+df*Math.cos(th),dz*Math.sin(th)))});
+    const pa=ring(FA),pb=ring(FB);
+    items.push({d:pa.reduce((t,q)=>t+q[2],0)/pa.length-.6,html:`<polyline points="${str(pick(pa,pb))}" fill="none" stroke="${boneCol}" stroke-width=".9" opacity=".85">${anim('points',pa,pb,1)}</polyline>`})});
+  {const qa=V(FA.J.hd),qb=V(FB.J.hd);grow(qa,6);grow(qb,6);const S1=pick(qa,qb);
+    const ja=[V(FA.T(30.5,1.6,0)),V(FA.T(29.8,3.4,0)),V(FA.T(31.5,4.3,0))],jb=[V(FB.T(30.5,1.6,0)),V(FB.T(29.8,3.4,0)),V(FB.T(31.5,4.3,0))];
+    items.push({d:qa[2],html:`<circle cx="${r1x(S1[0])}" cy="${r1x(S1[1])}" r="4.8" fill="${boneCol}">${anim('cx',qa[0],qb[0])}${anim('cy',qa[1],qb[1])}</circle><polyline points="${str(pick(ja,jb))}" fill="none" stroke="${boneCol}" stroke-width="1.6" stroke-linecap="round">${anim('points',ja,jb,1)}</polyline>`})}
+  // mięśnie: kolor według rodzaju pracy w danej fazie
+  const tag={};(a.su||[]).forEach(([t],i)=>stepMuscles(t).forEach(m=>{if(tag[m]==null)tag[m]=i}));
+  const work=m=>p.includes(m)?1:s.includes(m)?2:0;
+  MUSC.forEach(([m,pts,w])=>sides.forEach(X=>{
+    if(vw==='side'&&X==='R')return;
+    const A3=pts.map(sp=>anatPt(FA,X,sp)), B3=pts.map(sp=>anatPt(FB,X,sp));
+    const len=q=>q.slice(1).reduce((t,x,i)=>t+len3(sub3(x,q[i])),0), LA=len(A3), LB=len(B3), dl=(LB-LA)/LA;
+    const wk=work(m), st1=Math.abs(dl)<.03?'iso':dl<0?'con':'ecc', st2=st1==='iso'?'iso':st1==='con'?'ecc':'con';
+    const ca=catmull(A3.map(V),3), cb=catmull(B3.map(V),3);
+    const pa=bandPoly(ca,w), pb=bandPoly(cb,w*Math.sqrt(LA/LB));
+    pa.forEach(q=>grow(q,.5));pb.forEach(q=>grow(q,.5));
+    const cv=k=>`mus m-${k}`;
+    // sekwencja kolorów w czasie: [czas, kolor]
+    const seq=[[0,'rest']];
+    if(tag[m]!=null)seq.push([TL.steps[tag[m]][0],'iso']);
+    if(wk){TL.p1.forEach(([s1,e1],i)=>{seq.push([s1,st1],[e1,'iso'],[TL.p2[i][0],st2],[TL.p2[i][1],'iso'])})}
+    else if(tag[m]!=null)seq.push([TL.setEnd,'rest']);
+    const ks=[],vs=[];seq.sort((x,y)=>x[0]-y[0]).forEach(([t,k])=>{const kt=r1x(t/TL.T*1000)/1000;if(ks.length&&ks[ks.length-1]===kt){vs[vs.length-1]=cv(k)}else{ks.push(kt);vs.push(cv(k))}});
+    const cls=frame?cv(wk?st1:'rest'):cv('rest');
+    const fa=frame?'':`<animate attributeName="class" values="${vs.join(';')}" keyTimes="${ks.join(';')}" calcMode="discrete" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`;
+    const dep=ca.reduce((t,q)=>t+q[2],0)/ca.length+.4;
+    items.push({d:dep,html:`<polygon class="${cls}" points="${str(pick(pa,pb))}" fill-opacity="${wk===2?.75:.92}" stroke="var(--m-edge)" stroke-width=".35" stroke-linejoin="round">${anim('points',pa,pb,1)}${fa}</polygon>`});
+  }));
+  items.sort((x,y)=>x.d-y.d);
+  return items.map(i=>i.html).join('');
+}
 
 let swapOpen=null;
 // wskazówki trenera: własne (S.cues) mają pierwszeństwo przed wskazówkami z pliku planu
@@ -1917,6 +2111,7 @@ $('#view').addEventListener('click',async e=>{
   if(t.id==='swupd'){save();try{if(window.__swr)await window.__swr.update()}catch(e){}toast('Sprawdzam nową wersję…');setTimeout(()=>location.reload(),1500);return}
   if(t.id==='beeptest'){audioInit();beep(1);setTimeout(()=>beep(3),700);return toast('Powinny być 1 + 3 piknięcia')}
   if(t.dataset.animpause||t.dataset.animrestart)return animCtl(t);
+  if(t.dataset.animmode){S.animMode=t.dataset.animmode;save();return render()}
   if(t.dataset.animvar){const [n,k]=t.dataset.animvar.split('|');S.animv=Object.assign(S.animv||{},{[n]:k});save();return render()}
   if(t.dataset.info){const k=t.dataset.info;infoOpen.has(k)?infoOpen.delete(k):infoOpen.add(k);return render()}
   if(t.dataset.startnow){markStart();return toast('Zegar treningu włączony')}
