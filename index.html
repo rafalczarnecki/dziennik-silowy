@@ -294,7 +294,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-29';
+const VER='2026-10-29b';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -349,18 +349,22 @@ function hintFor(ex,last){
 // ---------- zastój i słabe ogniwa ----------
 const LIFTS={
   squat:{names:['Przysiad','Front squat'],q:'W którym momencie przysiad robi się najtrudniejszy?',pts:{
-    dol:{l:'Wyjście z dołu',m:'mięśnie czworogłowe uda',ex:['Przysiad z pauzą','Front squat','Hack squat']},
-    pochyl:{l:'Pochylam się do przodu',m:'górne plecy i prostowniki grzbietu',ex:['Good morning','Front squat','Wiosłowanie sztangą w opadzie']},
-    kolana:{l:'Kolana uciekają do środka',m:'przywodziciele i pośladki',ex:['Przysiad bułgarski','Przywodzenie na maszynie','Hip thrust']}}},
+    dol:{l:'Wyjście z dołu',m:'mięśnie czworogłowe uda',ex:['Przysiad z pauzą','Front squat','Hack squat'],v:['Przysiad z pauzą','Front squat']},
+    pochyl:{l:'Pochylam się do przodu',m:'górne plecy i prostowniki grzbietu',ex:['Good morning','Front squat','Wiosłowanie sztangą w opadzie'],v:['Front squat','Przysiad z pauzą']},
+    kolana:{l:'Kolana uciekają do środka',m:'przywodziciele i pośladki',ex:['Przysiad bułgarski','Przywodzenie na maszynie','Hip thrust'],v:['Przysiad z pauzą']}},gen:'Przysiad z pauzą'},
   bench:{names:['Wyciskanie touch and go','Wyciskanie leżąc (WLZ)','Wyciskanie leżąc wąsko','Larsen press','Floor press'],q:'W którym momencie wyciskanie robi się najtrudniejsze?',pts:{
-    klatka:{l:'Tuż nad klatką',m:'klatka piersiowa',ex:['Wyciskanie z pauzą 2 s','Larsen press','Wyciskanie hantli']},
-    polowa:{l:'W połowie ruchu',m:'przednie aktony barków',ex:['Spoto press','Wyciskanie na skosie dodatnim','OHP']},
-    wyprost:{l:'Przy wyproście',m:'triceps',ex:['Wyciskanie leżąc wąsko','Floor press','JM press']}}},
+    klatka:{l:'Tuż nad klatką',m:'klatka piersiowa',ex:['Wyciskanie z pauzą 2 s','Larsen press','Wyciskanie hantli'],v:['Wyciskanie z pauzą 2 s','Larsen press']},
+    polowa:{l:'W połowie ruchu',m:'przednie aktony barków',ex:['Spoto press','Wyciskanie na skosie dodatnim','OHP'],v:['Spoto press','Wyciskanie z pauzą 2 s']},
+    wyprost:{l:'Przy wyproście',m:'triceps',ex:['Wyciskanie leżąc wąsko','Floor press','JM press'],v:['Wyciskanie leżąc wąsko','Floor press']}},gen:'Wyciskanie z pauzą 2 s'},
   dead:{names:['Martwy ciąg klasyczny'],q:'W którym momencie martwy ciąg robi się najtrudniejszy?',pts:{
-    ziemia:{l:'Oderwanie od ziemi',m:'czworogłowe uda i pozycja startowa',ex:['Martwy ciąg z deficytu','Front squat','Martwy ciąg z pauzą pod kolanem']},
-    kolano:{l:'Na wysokości kolan',m:'prostowniki grzbietu i dwugłowe uda',ex:['Martwy ciąg z pauzą pod kolanem','Rumuński martwy ciąg','Good morning']},
-    zamkniecie:{l:'Przy zamknięciu',m:'pośladki i górne plecy',ex:['Martwy ciąg z bloków','Hip thrust','Wiosłowanie sztangą w opadzie']}}}
+    ziemia:{l:'Oderwanie od ziemi',m:'czworogłowe uda i pozycja startowa',ex:['Martwy ciąg z deficytu','Front squat','Martwy ciąg z pauzą pod kolanem'],v:['Martwy ciąg z deficytu','Martwy ciąg z pauzą pod kolanem']},
+    kolano:{l:'Na wysokości kolan',m:'prostowniki grzbietu i dwugłowe uda',ex:['Martwy ciąg z pauzą pod kolanem','Rumuński martwy ciąg','Good morning'],v:['Martwy ciąg z pauzą pod kolanem']},
+    zamkniecie:{l:'Przy zamknięciu',m:'pośladki i górne plecy',ex:['Martwy ciąg z bloków','Hip thrust','Wiosłowanie sztangą w opadzie'],v:['Martwy ciąg z bloków']}},gen:'Martwy ciąg z pauzą pod kolanem'}
 };
+// wariant zamiast głównego boju na 4 tygodnie; start = część ciężaru z głównego boju
+const VWEEKS=4;
+const VSTART={'Przysiad z pauzą':.88,'Front squat':.8,'Wyciskanie z pauzą 2 s':.9,'Larsen press':.88,'Spoto press':.88,'Wyciskanie leżąc wąsko':.9,'Floor press':.95,
+  'Martwy ciąg z deficytu':.9,'Martwy ciąg z pauzą pod kolanem':.85,'Martwy ciąg z bloków':1.05};
 const liftOf=n=>Object.values(LIFTS).find(L=>L.names.includes(n));
 const TAGS=[['zle','Źle się czuję'],['koniec','Kończę trening na tym ćwiczeniu'],['powt','Za mało powtórzeń'],['ciezar','Zmieniony ciężar'],['przerwy','Dłuższe przerwy'],['bol','Ból lub dyskomfort']];
 const tagName=id=>(TAGS.find(t=>t[0]===id)||[,id])[1];
@@ -384,9 +388,9 @@ function metricHist(name){
 // zastój: dwa ostatnie treningi (tygodnie) nie przebiły wyniku sprzed nich
 function stallInfo(name){
   if(!liftOf(name))return null;
-  const h=metricHist(name); if(h.length<3)return null;
+  const all=metricHist(name), h=all.slice((S.weak[name]||{}).from||0); if(h.length<3)return null;
   const [a,b,c]=h.slice(-3);
-  return Math.max(b,c)<=a*1.005?{n:h.length,ref:a,last:c}:null;
+  return Math.max(b,c)<=a*1.005?{n:all.length,ref:a,last:c}:null;
 }
 const pkey=()=>S.plan+'-'+S.day;
 const extrasList=()=>S.extras[pkey()]||[];
@@ -526,7 +530,12 @@ function longAlert(){
     <p class="meta">Sprawdź też, czy przerwy nie wydłużają się przez telefon. Jeśli to nie wystarczy, zapytaj trenera, czy można zdjąć jedną serię z ćwiczeń pomocniczych.</p>
     <button class="link" data-longok="${b.date}">Zostaw bez zmian</button></div>`;
 }
-function stallBox(name){
+// warianty do wyboru: nie dublują planu tygodnia, nie łamią zasady jednej partii dziennie
+function variantsFor(list,name,idx){
+  const busy=new Set([...weekItems().map(i=>i.ex[0]),...doneThisWeek()]);
+  return [...new Set(list)].filter(n=>n!==name&&!busy.has(n)&&!clashesWith(n,S.plan,S.day,idx)).slice(0,2);
+}
+function stallBox(name,pi,orig,idx){
   const st=stallInfo(name); if(!st)return '';
   const w=S.weak[name]||{}, L=liftOf(name), N=esc(name);
   if(w.dismissed===st.n)return '';
@@ -536,15 +545,26 @@ function stallBox(name){
     return `<div class="stall">${head}<p>${L.q}</p><div class="row">${Object.entries(L.pts).map(([k,p])=>`<button class="ghost" data-stick="${N}|${k}">${p.l}</button>`).join('')}<button class="ghost" data-stick="${N}|nie">Nie wiem</button></div>${later}</div>`;
   const added=extrasList().find(x=>x.for===name);
   if(added)return `<div class="stall"><p>Dodatkowe ćwiczenie na tę słabość: <b>${esc(added.name)}</b>, na końcu treningu.</p></div>`;
-  if(w.pt==='nie')
-    return `<div class="stall">${head}<p>Nagraj dziś jedną serię z boku i sprawdź, w którym miejscu sztanga zwalnia. Potem wskaż to miejsce.</p><button class="ghost" data-stick="${N}|reset">Wskaż miejsce</button> ${later}</div>`;
-  const P=L.pts[w.pt];
+  const P=w.pt==='nie'?null:L.pts[w.pt];
+  const reset=`<button class="link" data-stick="${N}|reset">Zmień odpowiedź</button>`;
+  // główny bój z planu: wariant w jego miejsce, te same serie i powtórzenia
+  if(pi!=null){
+    const vs=variantsFor(P?[...P.v,L.gen]:[L.gen],name,idx), base=orig||name;
+    if(vs.length)return `<div class="stall">${head}<p>${P?`Najtrudniej: ${P.l.toLowerCase()}. Do wzmocnienia: <b>${P.m}</b>.`:'Nie wiesz, gdzie jest najtrudniej, więc proponuję wariant z pauzą: wzmacnia cały ruch i pokazuje, gdzie sztanga zwalnia.'}</p>
+      <p>Zamień <b>${esc(name)}</b> na wariant na ${VWEEKS} tygodnie. Serie i powtórzenia zostają te same, trening się nie wydłuża. Potem wracasz do: ${esc(base)}.</p>
+      <div class="row">${vs.map(v=>`<button class="ghost" data-vswap="${pi}|${esc(v)}|${esc(base)}">${esc(v)}</button>`).join('')}</div>
+      ${P?reset:`<button class="link" data-stick="${N}|reset">Wskaż miejsce</button>`} ${later}</div>`;
+  }
+  if(!P)return `<div class="stall">${head}<p>Nagraj dziś jedną serię z boku i sprawdź, w którym miejscu sztanga zwalnia. Potem wskaż to miejsce.</p><button class="ghost" data-stick="${N}|reset">Wskaż miejsce</button> ${later}</div>`;
   const cand=P.ex.filter(e=>e!==name&&fitsWeek(e)&&!clashesWith(e)).slice(0,2);
-  if(!cand.length)return `<div class="stall">${head}<p>Najtrudniej: ${P.l.toLowerCase()}. Do wzmocnienia: <b>${P.m}</b>. Wszystkie propozycje dublują ćwiczenia z tego tygodnia, pracują na partię ćwiczoną już tego dnia albo przeciążyłyby tydzień. Lepszym ruchem będzie zamiana głównego boju na wariant (link „Zamień ćwiczenie”).</p><button class="link" data-stick="${N}|reset">Zmień odpowiedź</button> ${later}</div>`;
-  return `<div class="stall">${head}<p>Najtrudniej: ${P.l.toLowerCase()}. Do wzmocnienia: <b>${P.m}</b>. Dodaj jedno ćwiczenie 3×8–10 na koniec treningu:</p>
+  if(!cand.length)return `<div class="stall">${head}<p>Najtrudniej: ${P.l.toLowerCase()}. Do wzmocnienia: <b>${P.m}</b>. Wszystkie warianty i ćwiczenia pomocnicze dublują plan tego tygodnia albo pracują na partię ćwiczoną już tego dnia. Zrób lżejszy tydzień (ok. 80% ciężarów) i sprawdź ponownie.</p>${reset} ${later}</div>`;
+  return `<div class="stall">${head}<p>Najtrudniej: ${P.l.toLowerCase()}. Do wzmocnienia: <b>${P.m}</b>. Żaden wariant nie pasuje do tego dnia. Możesz dodać jedno ćwiczenie 3×8–10 na koniec, jeśli trening mieści się w 2 h:</p>
     <div class="row">${cand.map(e=>`<button class="ghost" data-addx="${esc(e)}" data-for="${N}">+ ${esc(e)}</button>`).join('')}</div>
-    <button class="link" data-stick="${N}|reset">Zmień odpowiedź</button> ${later}</div>`;
+    ${reset} ${later}</div>`;
 }
+function vStart(v,base){const l=lastFor(base);if(!l||lastFor(v))return '';const ws=l.sets.map(x=>x.w).filter(Boolean);if(!ws.length)return '';
+  const f=VSTART[v]||.9, r=x=>Math.max(2.5,Math.round(x*f/2.5)*2.5);
+  return ` Pierwszy raz: zacznij od ok. <b>${fmt(r(ws[0]))}</b> kg i dochodź do ok. <b>${fmt(r(Math.max(...ws)))}</b> kg (ok. ${Math.round(f*100)}% ciężarów z: ${esc(base)}).`}
 
 // ---------- rozgrzewka i rozciąganie ----------
 let rt=null, rtInt=null;
@@ -894,7 +914,7 @@ function viewTrening(){
     const sets=setsFor(ex), rir=extra?null:rirFor(ex,S.week), last=lastFor(ex[0]), hint=hintFor(ex,last), sug=suggest(ex,last);
     const rows=dr[key]||[], ei=key;
     const tgt=add?`<b>${ex[1]}×${add.lo}–${ex[2]}</b>, przerwa 2 min, ostatnie powtórzenie czyste`:extra?`<b>3×8–10</b>, na słabość w: ${esc(extra.for)}`:syl?`<b>${ex[1]}×${ex[2]==='max'?(syl.lab||'max'):syl.lo+'–'+ex[2]}</b>${ex[2]==='max'?', spokojne tempo, przerwa 60 s':', RIR 1–2'}${ss?`, superseria z: ${esc(partner)}`:''}`:[ex[5]?`top set <b>1×${ex[5]}</b>, potem`:'', `<b>${ex[1]}×${ex[2]}</b>`, ex[3]?ex[3]:'', rir!=null?`RIR ${fmt(rir)}`:''].filter(Boolean).join(', ');
-    const k=extra?'x':syl?'s':add?'a':'m';
+    const k=extra?'x':syl?'s':add?'a':'m'; let vNew=false;
     if(k!==kind){kind=k;
       if(k==='a')h+='<h2 class="sec">Uzupełnienie planu<small>Tył uda, pośladki i prostowniki grzbietu, których w tym bloku brakuje. Możesz je zrobić zaraz po przysiadzie bułgarskim.</small></h2>';
       if(k==='s')h+=`<h2 class="sec">${esc(GOAL().sec)}<small>Przerwa 90 s. W superserii robisz serię jednego ćwiczenia, od razu serię drugiego, i dopiero wtedy przerwa.${DX.replaced?` ${esc(DX.replaced)} zastąpione ćwiczeniem na słabe ogniwo.`:''}</small></h2>`;
@@ -906,7 +926,11 @@ function viewTrening(){
       if(orig){
         const days=Math.floor((Date.now()-since)/864e5);
         h+=`<p class="target">${DX[idx].once?'Tylko dziś zamiast':'Zamiast'}: <b>${esc(orig)}</b>. <button class="link" data-unswap="${pi}">Wróć do: ${esc(orig)}</button></p>`;
-        if(days>=14)h+=`<p class="hint">Zamienione ${days} dni temu. Jeśli zmęczenie minęło, wróć do ćwiczenia z planu.</p>`;
+        const swi=(S.swaps[pkey()]||{})[pi]||{};
+        if(swi.v){const wk=Math.min(VWEEKS,Math.floor(days/7)+1);
+          h+=days>=VWEEKS*7?`<p class="hint up"><b>Minęły ${VWEEKS} tygodnie wariantu.</b> Wróć do: ${esc(orig)} i sprawdź, czy ciężar ruszył. <button class="link" data-unswap="${pi}">Wróć teraz</button></p>`
+            :(vNew=!!vStart(ex[0],orig),`<p class="hint">Wariant na słabe ogniwo, tydzień ${wk} z ${VWEEKS}.${vStart(ex[0],orig)}</p>`)}
+        else if(days>=14)h+=`<p class="hint">Zamienione ${days} dni temu. Jeśli zmęczenie minęło, wróć do ćwiczenia z planu.</p>`;
       } else if(ALT[base]){
         const lastSw=(S.sessions.slice().reverse().find(z=>z.plan===S.plan&&z.day===S.day&&z.ex.some(e=>e.from===base))||{ex:[]}).ex.find(e=>e.from===base);
         if(lastSw&&swapOpen!==pi)h+=`<p class="target">Ostatnio zamiast tego: <b>${esc(lastSw.name)}</b>. <button class="link" data-swap="${pi}|${esc(lastSw.name)}|once">Zamień dziś</button> <button class="link" data-swap="${pi}|${esc(lastSw.name)}">Zamień na stałe</button></p>`;
@@ -923,9 +947,9 @@ function viewTrening(){
         } else h+=`<p class="target"><button class="link" data-swapopen="${pi}">Zamień ćwiczenie</button></p>`;
       }
     }
-    h+=stallBox(ex[0]);
+    h+=stallBox(ex[0],pi,orig,idx);
     if(last) h+=`<p class="last"><span class="meta">Ostatnio ${fdate(last.date)}:</span> ${last.sets.map(fmtSet).join(', ')}</p>`;
-    h+=`<p class="hint${hint.up?' up':''}">${hint.t}</p>`;
+    if(!vNew)h+=`<p class="hint${hint.up?' up':''}">${hint.t}</p>`;
     let wi=0;
     sets.forEach((s,si)=>{
       const r=rows[si]||{}, prev=last&&last.sets[si];
@@ -1450,8 +1474,16 @@ $('#view').addEventListener('click',async e=>{
     (S.swaps[pk]=S.swaps[pk]||{})[i]=once?{name:n,since:Date.now(),once:true,dk:dkey()}:{name:n,since:Date.now()};
     swapOpen=null; save(); render(); return toast(once?'Tylko na dziś: '+n:'Zamieniono na stałe: '+n);
   }
+  if(t.dataset.vswap){
+    const [i,n,base]=t.dataset.vswap.split('|'), pk=pkey();
+    (S.swaps[pk]=S.swaps[pk]||{})[i]={name:n,since:Date.now(),v:base};
+    save(); render(); ghMark(); return toast('Wariant na '+VWEEKS+' tygodnie: '+n);
+  }
   if(t.dataset.unswap){
-    const pk=pkey(), i=t.dataset.unswap; if(S.swaps[pk])delete S.swaps[pk][i];
+    const pk=pkey(), i=t.dataset.unswap, sw=S.swaps[pk]&&S.swaps[pk][i];
+    // po powrocie z wariantu zastój liczony od nowa
+    if(sw&&sw.v){const b=sw.v;S.weak[b]={from:metricHist(b).length}}
+    if(S.swaps[pk])delete S.swaps[pk][i];
     save(); render(); return toast('Wrócono do ćwiczenia z planu');
   }
   if(t.dataset.sylrm){const pk=pkey();S.sylOff[pk]=[...(S.sylOff[pk]||[]),t.dataset.sylrm];S.longOk[pk]=t.dataset.ref;save();render();return toast('Usunięto z tego dnia. Przywrócisz w Ustawieniach.')}
@@ -1461,7 +1493,7 @@ $('#view').addEventListener('click',async e=>{
   if(t.dataset.syl){S.syl=!(S.syl!==false);save();render();return toast(S.syl?'Sekcja Sylwetka włączona':'Sekcja Sylwetka wyłączona')}
   if(t.dataset.stick){
     const [name,pt]=t.dataset.stick.split('|'), st=stallInfo(name); if(!st)return;
-    S.weak[name]=pt==='reset'?{n:st.n}:{n:st.n,pt}; save(); return render();
+    const fr=(S.weak[name]||{}).from; S.weak[name]=Object.assign(pt==='reset'?{n:st.n}:{n:st.n,pt},fr?{from:fr}:{}); save(); return render();
   }
   if(t.dataset.dismiss){const st=stallInfo(t.dataset.dismiss);S.weak[t.dataset.dismiss]=Object.assign(S.weak[t.dataset.dismiss]||{},{dismissed:st?st.n:0});save();return render()}
   if(t.dataset.addx){
