@@ -13,7 +13,7 @@
 <style>
 :root{
   --bg:#E6EAEE; --surface:#FFFFFF; --ink:#15202B; --muted:#5B6875; --line:#CDD3DA;
-  --accent:#C8102E; --accent-ink:#FFFFFF; --done:#1F4FB8; --done-soft:#E3EAFB; --field:#F2F4F6; --bone:#D8CFC0; --m-con:#D4213D; --m-ecc:#F2892B; --m-iso:#7A1F3D; --m-rest:#E9D3CB; --m-edge:rgba(80,30,30,.35);
+  --accent:#C8102E; --accent-ink:#FFFFFF; --done:#1F4FB8; --done-soft:#E3EAFB; --field:#F2F4F6; --bone:#D8CFC0; --m-con:#D4213D; --m-ecc:#F2892B; --m-iso:#7A1F3D; --m-rest:#E9D3CB; --m-edge:rgba(80,30,30,.35); --skin:#E9C9B8;
   --musc2:#F0A0AA; --body2:#9AA3AD;
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -24,12 +24,12 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#1A2027; --surface:#232B34; --ink:#E8EDF2; --muted:#9AA6B2; --line:#36414D;
-    --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4);
+    --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55;
    --musc2:#8A3A48; --body2:#6B7785;}
 }
 :root[data-theme="dark"]{
   --bg:#1A2027; --surface:#232B34; --ink:#E8EDF2; --muted:#9AA6B2; --line:#36414D;
-  --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4);
+  --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55;
  --musc2:#8A3A48; --body2:#6B7785;}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -306,7 +306,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-29f';
+const VER='2026-10-29g';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1412,7 +1412,6 @@ const MUSC=[
   ['quads',[['fem',.35,1.4,-1.6],['fem',.84,2.1,-2.1],['KW',2.8,.6],['tib',.1,1.4,-.6]],3.8],
   ['hams',[['T',-2.6,-1.6,3.6],['fem',.5,-2.6,1],['fem',.95,-2.2,1.3],['tib',.06,-.9,1.9]],3.9],
   ['hams',[['T',-2.6,-1.4,3.3],['fem',.5,-2.5,-.6],['fem',.95,-2,-1.3],['tib',.1,-.4,-1.6]],3.7],
-  ['glutes',[['T',4.5,-3.7,1.5],['T',1.5,-3.7,4.6],['HW',-3.6,.5],['fem',.22,-1.3,1.6]],6.8],
   ['add',[['T',-1,2,1.6],['fem',.55,.8,-1.7]],4.6],
   ['add',[['T',-2.2,.4,2.4],['fem',.92,-.6,-1.7]],3],
   ['calves',[['fem',.93,-2.1,1.1],['tib',.25,-3.3,.8],['tib',.62,-2.3,.3],['heel']],3.9],
@@ -1420,13 +1419,6 @@ const MUSC=[
   ['erect',[['T',1,-3.7,1.7],['T',9,-3.6,1.9],['T',18,-4.5,1.9],['T',27,-2.8,1.1]],3.1],
   ['abs',[['T',-.8,2.5,.9],['T',6,3.5,1.4],['T',13,4,1.5],['T',16.5,3.9,1.4]],3.7],
   ['obl',[['T',16,1.6,6.3],['T',10,2,6.4],['T',4.6,1.3,6]],3.3],
-  ['lats',[['T',4.5,-3.5,2],['T',12,-4.1,5],['S','IA',0,-.4],['hum',.13,.8,-.6]],5.4],
-  ['lats',[['T',18,-4.3,1.2],['T',16,-3.9,5.8],['hum',.13,.8,-.6]],4.2],
-  ['traps',[['T',22,-4.3,.6],['S','SR',0,-.4,.4],['S','SP']],3.4],
-  ['traps',[['T',31,-1.5,.6],['T',27.5,-1.7,4.5],['S','AC',0,-.3,-1]],3.3],
-  ['traps',[['T',12,-4.3,.6],['S','SR',0,-.4]],2.8],
-  ['pecs',[['T',17,4.1,1],['T',18.5,3.8,6.8],['hum',.15,1.1,.2]],5.2],
-  ['pecs',[['T',24,2.9,2.2],['T',23,3.1,6.4],['hum',.18,1.1,.3]],4.2],
   ['dF',[['clav',.85],['hum',.04,2,.6],['hum',.42,1,.9]],3.8],
   ['dS',[['S','AC',.3,0,.5],['hum',.04,0,2.3],['hum',.42,.2,1.4]],3.8],
   ['dR',[['S','SP',-.4],['hum',.04,-2,.8],['hum',.42,-.9,.9]],3.6],
@@ -1457,6 +1449,44 @@ function bandPoly(p2,w){
     out.push([p2[i][0]-dy/L*ww,p2[i][1]+dx/L*ww]);back.push([p2[i][0]+dy/L*ww,p2[i][1]-dx/L*ww])}
   return out.concat(back.reverse());
 }
+
+// triangulacja Delaunaya (Bowyer–Watson) dla punktów 2D; zwraca trójki indeksów
+function delaunay(P){
+  const n=P.length; if(n<3)return [];
+  let mnx=1e9,mny=1e9,mxx=-1e9,mxy=-1e9;P.forEach(([x,y])=>{mnx=Math.min(mnx,x);mny=Math.min(mny,y);mxx=Math.max(mxx,x);mxy=Math.max(mxy,y)});
+  const d=Math.max(mxx-mnx,mxy-mny)*20+10, cx=(mnx+mxx)/2, cy=(mny+mxy)/2;
+  const pts=P.map(p=>[p[0]+(Math.random()-.5)*1e-6,p[1]+(Math.random()-.5)*1e-6]).concat([[cx-d,cy-d],[cx+d,cy-d],[cx,cy+d]]);
+  const circ=(a,b,c)=>{const [ax,ay]=pts[a],[bx,by]=pts[b],[qx,qy]=pts[c],D=2*(ax*(by-qy)+bx*(qy-ay)+qx*(ay-by));
+    const ux=((ax*ax+ay*ay)*(by-qy)+(bx*bx+by*by)*(qy-ay)+(qx*qx+qy*qy)*(ay-by))/D, uy=((ax*ax+ay*ay)*(qx-bx)+(bx*bx+by*by)*(ax-qx)+(qx*qx+qy*qy)*(bx-ax))/D;
+    return [ux,uy,(ax-ux)**2+(ay-uy)**2]};
+  let tris=[[n,n+1,n+2,circ(n,n+1,n+2)]];
+  for(let i=0;i<n;i++){const [x,y]=pts[i],bad=[],keep=[];
+    tris.forEach(t=>{const c=t[3];((x-c[0])**2+(y-c[1])**2<c[2])?bad.push(t):keep.push(t)});
+    const edges={};bad.forEach(t=>[[t[0],t[1]],[t[1],t[2]],[t[2],t[0]]].forEach(([a,b])=>{const k=a<b?a+','+b:b+','+a;edges[k]=(edges[k]||0)+1}));
+    Object.entries(edges).forEach(([k,c])=>{if(c===1){const [a,b]=k.split(',').map(Number);keep.push([a,b,i,circ(a,b,i)])}});
+    tris=keep}
+  return tris.filter(t=>t[0]<n&&t[1]<n&&t[2]<n).map(t=>[t[0],t[1],t[2]]);
+}
+// mięśnie wachlarzowate: linia przyczepu początkowego -> linia przyczepu końcowego, włókna wygięte wokół tułowia
+// [grupa, przyczep początkowy, przyczep końcowy, odwrócenie (skręt włókien), wygięcie w układzie tułowia [u,f,z]]
+const FANS=[
+  ['pecs',[['clav',.12],['clav',.5],['T',24,3.2,1.2],['T',21,3.8,1.1],['T',18,4.1,1.1],['T',15.5,3.9,1.8]],[['hum',.12,1.1,.4],['hum',.25,1.1,.2]],1,[0,1.4,.8]],
+  ['lats',[['T',5,-1.6,6],['T',4.5,-3.5,2],['T',8,-3.9,1.2],['T',12,-4.2,1],['T',16,-4.4,1],['T',18.5,-4.3,1.2]],[['hum',.1,.9,-.6],['hum',.19,.9,-.6]],0,[0,-1.6,2.6]],
+  ['traps',[['T',32,-1.2,.3],['T',29,-1.9,.4],['T',25.5,-3.4,.4],['T',21,-4.4,.4],['T',17,-4.4,.4],['T',12,-4.3,.4]],[['clav',.78],['S','AC',0,-.2],['S','SP',0,-.3],['S','SR',0,-.4]],0,[0,-.8,.3]],
+  ['glutes',[['T',5.6,-3.2,4.6],['T',4,-3.8,2],['T',1,-3.9,1],['T',-2,-3.1,.8]],[['fem',.1,-1,2.4],['fem',.26,-1.5,1.4]],0,[0,-2.6,1.4]]
+];
+const polyAt=(pts,t)=>{const seg=[];let L=0;for(let i=1;i<pts.length;i++){const l=len3(sub3(pts[i],pts[i-1]));seg.push(l);L+=l}
+  let x=t*L;for(let i=0;i<seg.length;i++){if(x<=seg[i]||i===seg.length-1)return v3(pts[i],sub3(pts[i+1],pts[i]),seg[i]?Math.min(1,x/seg[i]):0);x-=seg[i]}return pts[pts.length-1]};
+// siatka włókien jednej pozycji: NF włókien × NT punktów
+function fanMesh(F,X,fan,NF=7,NT=6){
+  const [,org,ins,rev,bul]=fan, O=org.map(sp=>anatPt(F,X,sp)), I=ins.map(sp=>anatPt(F,X,sp));
+  const s=F.side[X].s, bv=v3(v3(F.u.map(v=>v*bul[0]),F.f,bul[1]),F.zt,bul[2]*s);
+  const grid=[], lens=[];
+  for(let i=0;i<NF;i++){const q=i/(NF-1), a=polyAt(O,q), b=polyAt(I,rev?1-q:q), m=v3(mid3(a,b),bv), row=[];let L=0,prev=null;
+    for(let j=0;j<NT;j++){const t=j/(NT-1), p=v3(v3(a.map(v=>v*(1-t)*(1-t)),m,2*t*(1-t)),b,t*t);row.push(p);if(prev)L+=len3(sub3(p,prev));prev=p}
+    grid.push(row);lens.push(L)}
+  return {grid,lens};
+}
 // ciało anatomiczne w jednym widoku
 function anatBody(c){
   const {V,PA,PB,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick}=c;
@@ -1465,56 +1495,98 @@ function anatBody(c){
   const anim=(attr,va,vb,isStr)=>frame?'':`<animate attributeName="${attr}" values="${TL.nodes.map(n=>isStr?str(va.map((q,i)=>lerp(q,vb[i],n[1]))):r1x(va+(vb-va)*n[1])).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`;
   const items=[];
   const sides=['L','R'];
-  // kości
-  const boneCol='var(--bone)';
-  BONES.forEach(([k,pts,w,sided,tag])=>{
+  // kości: łańcuchy łączone w ścieżki wg strony i grubości (mniej elementów do animacji)
+  const boneCol='var(--bone)', BG={};
+  const addB=(key,w,far,pa,pb)=>{const g=BG[key+'|'+w+'|'+far]=BG[key+'|'+w+'|'+far]||{w,far,a:[],b:[],d:0,n:0};g.a.push(pa);g.b.push(pb);pa.forEach(q=>{g.d+=q[2];g.n++;grow(q,w/2+.5)});pb.forEach(q=>grow(q,w/2+.5))};
+  BONES.forEach(([k,pts,w,sided,tg])=>{
     (sided?sides:['L']).forEach(X=>{
-      const far=vw==='side'&&X==='R'&&sided;
-      if(tag==='foot'){const ptsA=[FA.side[X].heel,v3(v3(FA.side[X].an,FA.side[X].fd,1),FA.side[X].up,-.5),FA.side[X].to],ptsB=[FB.side[X].heel,v3(v3(FB.side[X].an,FB.side[X].fd,1),FB.side[X].up,-.5),FB.side[X].to];
-        const pa=ptsA.map(V),pb=ptsB.map(V);pa.forEach(q=>grow(q,2));pb.forEach(q=>grow(q,2));
-        items.push({d:pa.reduce((t,q)=>t+q[2],0)/pa.length-.3,html:`<polyline points="${str(pick(pa,pb))}" fill="none" stroke="${boneCol}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"${far?' opacity=".4"':''}>${anim('points',pa,pb,1)}</polyline>`});return}
+      const far=vw==='side'&&X==='R'&&sided?1:0, key=sided?X:'ax';
+      if(tg==='foot'){const S=[FA,FB].map(F=>{const q=F.side[X];return [q.heel,v3(v3(q.an,q.fd,1),q.up,-.5),q.to].map(V)});addB(key,2.2,far,S[0],S[1]);return}
       const pa=pts.map(sp=>V(anatPt(FA,X,sp))), pb=pts.map(sp=>V(anatPt(FB,X,sp)));
-      if(k==='C'){grow(pa[0],w+1);grow(pb[0],w+1);const S1=pick(pa[0],pb[0]);
-        items.push({d:pa[0][2]-.3,html:`<circle cx="${r1x(S1[0])}" cy="${r1x(S1[1])}" r="${w}" fill="${boneCol}"${far?' opacity=".4"':''}>${anim('cx',pa[0][0],pb[0][0])}${anim('cy',pa[0][1],pb[0][1])}</circle>`});return}
+      if(k==='C'){addB(key,w*2,far,[pa[0],pa[0]],[pb[0],pb[0]]);return}
       const ws=Array.isArray(w)?w:pts.map(()=>w);
-      for(let i=0;i<pa.length-1;i++){const ww=(ws[i]+ws[i+1])/2;[pa[i],pa[i+1],pb[i],pb[i+1]].forEach(q=>grow(q,ww/2));const S1=pick(pa[i],pb[i]),S2=pick(pa[i+1],pb[i+1]);
-        items.push({d:(pa[i][2]+pa[i+1][2])/2-.3,html:`<line x1="${r1x(S1[0])}" y1="${r1x(S1[1])}" x2="${r1x(S2[0])}" y2="${r1x(S2[1])}" stroke="${boneCol}" stroke-width="${ww}" stroke-linecap="round"${far?' opacity=".4"':''}${tag==='scap'?' stroke-opacity=".9"':''}>${anim('x1',pa[i][0],pb[i][0])}${anim('y1',pa[i][1],pb[i][1])}${anim('x2',pa[i+1][0],pb[i+1][0])}${anim('y2',pa[i+1][1],pb[i+1][1])}</line>`})}
+      for(let i=0;i<pa.length-1;i++)addB(key,Math.round((ws[i]+ws[i+1])/2*5)/5,far,[pa[i],pa[i+1]],[pb[i],pb[i+1]]);
     });
   });
-  // kręgosłup, żebra, czaszka
-  const vert=[5.5,8,10.5,13,15,17,19,21,23,25,27,29,30.5];
-  vert.forEach(uu=>{const qa=V(FA.T(uu,spineF(uu),0)),qb=V(FB.T(uu,spineF(uu),0));grow(qa,2);grow(qb,2);const S1=pick(qa,qb);
-    items.push({d:qa[2]-.2,html:`<circle cx="${r1x(S1[0])}" cy="${r1x(S1[1])}" r="${uu>26?.95:1.25}" fill="${boneCol}">${anim('cx',qa[0],qb[0])}${anim('cy',qa[1],qb[1])}</circle>`})});
+  [5.5,8,10.5,13,15,17,19,21,23,25,27,29,30.5].forEach(uu=>{const qa=V(FA.T(uu,spineF(uu),0)),qb=V(FB.T(uu,spineF(uu),0));addB('ax',uu>26?1.9:2.5,0,[qa,qa],[qb,qb])});
   [[23,2.8,5],[21,3.4,6],[19,3.7,6.6],[17,3.8,6.8],[15,3.7,6.6],[13,3.3,6]].forEach(([uu,df,dz])=>{
     const ring=F=>Array.from({length:13},(_,i)=>{const th=i/12*2*Math.PI;return V(F.T(uu-.9*(1+Math.cos(th)),-.6+df*Math.cos(th),dz*Math.sin(th)))});
-    const pa=ring(FA),pb=ring(FB);
-    items.push({d:pa.reduce((t,q)=>t+q[2],0)/pa.length-.6,html:`<polyline points="${str(pick(pa,pb))}" fill="none" stroke="${boneCol}" stroke-width=".9" opacity=".85">${anim('points',pa,pb,1)}</polyline>`})});
-  {const qa=V(FA.J.hd),qb=V(FB.J.hd);grow(qa,6);grow(qb,6);const S1=pick(qa,qb);
-    const ja=[V(FA.T(30.5,1.6,0)),V(FA.T(29.8,3.4,0)),V(FA.T(31.5,4.3,0))],jb=[V(FB.T(30.5,1.6,0)),V(FB.T(29.8,3.4,0)),V(FB.T(31.5,4.3,0))];
-    items.push({d:qa[2],html:`<circle cx="${r1x(S1[0])}" cy="${r1x(S1[1])}" r="4.8" fill="${boneCol}">${anim('cx',qa[0],qb[0])}${anim('cy',qa[1],qb[1])}</circle><polyline points="${str(pick(ja,jb))}" fill="none" stroke="${boneCol}" stroke-width="1.6" stroke-linecap="round">${anim('points',ja,jb,1)}</polyline>`})}
+    addB('rib',.9,0,ring(FA),ring(FB))});
+  {const ja=[V(FA.T(30.5,1.6,0)),V(FA.T(29.8,3.4,0)),V(FA.T(31.5,4.3,0))],jb=[V(FB.T(30.5,1.6,0)),V(FB.T(29.8,3.4,0)),V(FB.T(31.5,4.3,0))];addB('ax',1.6,0,ja,jb);
+    const qa=V(FA.J.hd),qb=V(FB.J.hd);addB('ax',9.6,0,[qa,qa],[qb,qb])}
+  const polyD=q=>q.map(l=>'M'+l.map(p=>r1x(p[0])+' '+r1x(p[1])).join('L')).join('');
+  Object.values(BG).forEach(g=>items.push({d:g.d/g.n-.3,html:`<path d="${polyD(pick(g.a,g.b))}" fill="none" stroke="${boneCol}" stroke-width="${g.w}" stroke-linecap="round" stroke-linejoin="round"${g.far?' opacity=".4"':''}>${frame?'':`<animate attributeName="d" values="${TL.nodes.map(n=>polyD(g.a.map((l,i)=>l.map((p,k)=>lerp(p,g.b[i][k],n[1]))))).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`}</path>`}));
   // mięśnie: kolor według rodzaju pracy w danej fazie
   const tag={};(a.su||[]).forEach(([t],i)=>stepMuscles(t).forEach(m=>{if(tag[m]==null)tag[m]=i}));
   const work=m=>p.includes(m)?1:s.includes(m)?2:0;
-  MUSC.forEach(([m,pts,w])=>sides.forEach(X=>{
-    if(vw==='side'&&X==='R')return;
-    const A3=pts.map(sp=>anatPt(FA,X,sp)), B3=pts.map(sp=>anatPt(FB,X,sp));
-    const len=q=>q.slice(1).reduce((t,x,i)=>t+len3(sub3(x,q[i])),0), LA=len(A3), LB=len(B3), dl=(LB-LA)/LA;
-    const wk=work(m), st1=Math.abs(dl)<.03?'iso':dl<0?'con':'ecc', st2=st1==='iso'?'iso':st1==='con'?'ecc':'con';
-    const ca=catmull(A3.map(V),3), cb=catmull(B3.map(V),3);
-    const pa=bandPoly(ca,w), pb=bandPoly(cb,w*Math.sqrt(LA/LB));
-    pa.forEach(q=>grow(q,.5));pb.forEach(q=>grow(q,.5));
-    const cv=k=>`mus m-${k}`;
-    // sekwencja kolorów w czasie: [czas, kolor]
-    const seq=[[0,'rest']];
+  const cv=k=>`mus m-${k}`;
+  const stOf=dl=>Math.abs(dl)<.03?'iso':dl<0?'con':'ecc', inv=x=>x==='iso'?'iso':x==='con'?'ecc':'con';
+  const colAnim=(m,st1)=>{const wk=work(m),st2=inv(st1),seq=[[0,'rest']];
     if(tag[m]!=null)seq.push([TL.steps[tag[m]][0],'iso']);
     if(wk){TL.p1.forEach(([s1,e1],i)=>{seq.push([s1,st1],[e1,'iso'],[TL.p2[i][0],st2],[TL.p2[i][1],'iso'])})}
     else if(tag[m]!=null)seq.push([TL.setEnd,'rest']);
     const ks=[],vs=[];seq.sort((x,y)=>x[0]-y[0]).forEach(([t,k])=>{const kt=r1x(t/TL.T*1000)/1000;if(ks.length&&ks[ks.length-1]===kt){vs[vs.length-1]=cv(k)}else{ks.push(kt);vs.push(cv(k))}});
-    const cls=frame?cv(wk?st1:'rest'):cv('rest');
-    const fa=frame?'':`<animate attributeName="class" values="${vs.join(';')}" keyTimes="${ks.join(';')}" calcMode="discrete" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`;
-    const dep=ca.reduce((t,q)=>t+q[2],0)/ca.length+.4;
-    items.push({d:dep,html:`<polygon class="${cls}" points="${str(pick(pa,pb))}" fill-opacity="${wk===2?.75:.92}" stroke="var(--m-edge)" stroke-width=".35" stroke-linejoin="round">${anim('points',pa,pb,1)}${fa}</polygon>`});
+    return {cls:frame?cv(wk?st1:'rest'):cv('rest'),an:frame?'':`<animate attributeName="class" values="${vs.join(';')}" keyTimes="${ks.join(';')}" calcMode="discrete" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`,op:wk===2?.75:.92}};
+  const skA=[],skB=[];
+  // strona mięśnia odwrócona od oglądającego jest prawie przezroczysta (np. plecy w widoku z przodu)
+  const VD={side:[0,0,1],front:[1,0,0],top:[0,1,0]}[vw], J=PA;
+  const axes=[[J.hp,J.sh],...['L','R'].flatMap(X=>[[J['hp'+X],J['kn'+X]],[J['kn'+X],J['an'+X]],[J['sh'+X],J['el'+X]],[J['el'+X],J['wr'+X]]])];
+  const facing=pts=>{const c=pts.reduce((t,q)=>v3(t,q,1/pts.length),[0,0,0]);let best=1e9,out=[0,0,0];
+    axes.forEach(([P,Q])=>{const d=sub3(Q,P),L2=dot3(d,d)||1,t=Math.max(0,Math.min(1,dot3(sub3(c,P),d)/L2)),cp=v3(P,d,t),o=sub3(c,cp),l=len3(o);if(l<best){best=l;out=o}});
+    return dot3(nrm3(out),VD)};
+  const ghost=f=>f<-.3?' opacity=".16"':'';
+  MUSC.forEach(([m,pts,w])=>sides.forEach(X=>{
+    if(vw==='side'&&X==='R')return;
+    const A3=pts.map(sp=>anatPt(FA,X,sp)), B3=pts.map(sp=>anatPt(FB,X,sp));
+    const len=q=>q.slice(1).reduce((t,x,i)=>t+len3(sub3(x,q[i])),0), LA=len(A3), LB=len(B3);
+    const ca=catmull(A3.map(V),3), cb=catmull(B3.map(V),3);
+    const pa=bandPoly(ca,w), pb=bandPoly(cb,w*Math.sqrt(LA/LB));
+    pa.forEach(q=>grow(q,.5));pb.forEach(q=>grow(q,.5));skA.push(...pa);skB.push(...pb);
+    const C=colAnim(m,stOf((LB-LA)/LA)), gh=ghost(facing(A3));
+    items.push({d:ca.reduce((t,q)=>t+q[2],0)/ca.length+.4,html:`<polygon${gh} class="${C.cls}" points="${str(pick(pa,pb))}" fill-opacity="${C.op}" stroke="var(--m-edge)" stroke-width=".35" stroke-linejoin="round">${anim('points',pa,pb,1)}${C.an}</polygon>`});
   }));
+  // wachlarze: każde włókno ma własny rodzaj skurczu; czworokąty między włóknami łączone w ścieżki wg stanu
+  const pathD=q=>q.map(t=>'M'+t.map(p=>r1x(p[0])+' '+r1x(p[1])).join('L')+'Z').join('');
+  const animD=(qa,qb)=>frame?'':`<animate attributeName="d" values="${TL.nodes.map(n=>pathD(qa.map((t,i)=>t.map((p,k)=>lerp(p,qb[i][k],n[1]))))).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`;
+  FANS.forEach(fan=>sides.forEach(X=>{
+    if(vw==='side'&&X==='R')return;
+    const m=fan[0], MA=fanMesh(FA,X,fan), MB=fanMesh(FB,X,fan), NF=MA.grid.length, NT=MA.grid[0].length;
+    const gA=MA.grid.map(r=>r.map(V)), gB=MB.grid.map(r=>r.map(V)), st=MA.lens.map((L,i)=>stOf((MB.lens[i]-L)/L));
+    const groups={}; let dep=0;
+    for(let i=0;i<NF-1;i++){const k=st[i]===st[i+1]?st[i]:(st[i]==='iso'?st[i+1]:st[i]);
+      for(let j=0;j<NT-1;j++){const qa=[gA[i][j],gA[i][j+1],gA[i+1][j+1],gA[i+1][j]],qb=[gB[i][j],gB[i][j+1],gB[i+1][j+1],gB[i+1][j]];
+        (groups[k]=groups[k]||{a:[],b:[]}).a.push(qa);groups[k].b.push(qb);qa.forEach(q=>{grow(q,.5);dep+=q[2]});qb.forEach(q=>grow(q,.5))}}
+    dep=dep/((NF-1)*(NT-1)*4)+.5;
+    const gh=ghost(facing(MA.grid.flat()));
+    gA.forEach(r=>skA.push(...r));gB.forEach(r=>skB.push(...r));
+    Object.entries(groups).forEach(([k,g])=>{const C=colAnim(m,k);
+      items.push({d:dep,html:`<path${gh} class="${C.cls}" d="${pathD(pick(g.a,g.b))}" fill-opacity="${C.op}" stroke="${'var(--m-edge)'}" stroke-width=".12">${animD(g.a,g.b)}${C.an}</path>`})});
+    // włókna
+    const fa=gA.map(r=>r), fb=gB.map(r=>r), fd=q=>q.map(r=>'M'+r.map(p=>r1x(p[0])+' '+r1x(p[1])).join('L')).join('');
+    items.push({d:dep+.01,html:`<path${gh} d="${fd(pick(fa,fb))}" fill="none" stroke="var(--m-edge)" stroke-width=".3">${frame?'':`<animate attributeName="d" values="${TL.nodes.map(n=>fd(fa.map((r,i)=>r.map((p,k)=>lerp(p,fb[i][k],n[1]))))).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`}</path>`});
+  }));
+  // skóra: triangulacja Delaunaya punktów mięśni i kości, bez długich trójkątów (kształt alfa)
+  items.forEach(()=>{});
+  const BP=[];BONES.forEach(([k,pts,w,sided,tg])=>{if(tg==='foot')return;(sided?sides:['L']).forEach(X=>pts.forEach(sp=>BP.push([X,sp])))});
+  BP.forEach(([X,sp])=>{skA.push(V(anatPt(FA,X,sp)));skB.push(V(anatPt(FB,X,sp)))});
+  sides.forEach(X=>{[FA,FB].forEach((F,i)=>{const S=F.side[X];(i?skB:skA).push(V(S.heel),V(S.to),V(S.wr))})});
+  for(let i=0;i<12;i++){const th=i/12*2*Math.PI;[FA,FB].forEach((F,k)=>{const c=V(F.J.hd);(k?skB:skA).push([c[0]+5.6*Math.cos(th),c[1]+5.6*Math.sin(th),c[2]])})}
+  // rzadziej: co drugi punkt z gęstych obrysów
+  const idx=skA.map((_,i)=>i).filter(i=>i%2===0);
+  const PA2=idx.map(i=>skA[i]), PB2=idx.map(i=>skB[i]);
+  const tri=delaunay(PA2.map(q=>[q[0],q[1]])), ALPHA=5.4;
+  const ok=(P,t,lim)=>[[0,1],[1,2],[2,0]].every(([x,y])=>Math.hypot(P[t[x]][0]-P[t[y]][0],P[t[x]][1]-P[t[y]][1])<lim);
+  const keep=tri.filter(t=>ok(PA2,t,ALPHA)&&ok(PB2,t,ALPHA*1.9));
+  if(keep.length){
+    // brzeg kształtu alfa: krawędzie należące do jednego trójkąta, połączone w pętle
+    const ec={};keep.forEach(t=>[[t[0],t[1]],[t[1],t[2]],[t[2],t[0]]].forEach(([x,y])=>{const k=x<y?x+','+y:y+','+x;ec[k]=(ec[k]||0)+1}));
+    const nb={};Object.entries(ec).forEach(([k,c])=>{if(c!==1)return;const [x,y]=k.split(',').map(Number);(nb[x]=nb[x]||[]).push(y);(nb[y]=nb[y]||[]).push(x)});
+    const used=new Set(), loops=[];
+    Object.keys(nb).map(Number).forEach(st=>{if(used.has(st))return;const loop=[st];used.add(st);let prev=-1,cur=st;
+      for(let g=0;g<5000;g++){const nx=(nb[cur]||[]).find(v=>v!==prev&&!used.has(v));if(nx==null)break;loop.push(nx);used.add(nx);prev=cur;cur=nx}
+      if(loop.length>2)loops.push(loop)});
+    const la=loops.map(l=>l.map(i=>PA2[i])), lb=loops.map(l=>l.map(i=>PB2[i]));
+    items.push({d:-1e9,html:`<path d="${pathD(pick(la,lb))}" fill="var(--skin)" fill-rule="evenodd" stroke="var(--skin)" stroke-width="1.6" stroke-linejoin="round" opacity=".6">${animD(la,lb)}</path>`})}
   items.sort((x,y)=>x.d-y.d);
   return items.map(i=>i.html).join('');
 }
