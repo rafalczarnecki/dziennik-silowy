@@ -121,6 +121,7 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .manim .moveanim{width:100%;height:auto;display:block}
 .mvalt{gap:6px;margin:0 0 6px}
 .m-con{fill:var(--m-con)}.m-ecc{fill:var(--m-ecc)}.m-iso{fill:var(--m-iso)}.m-rest{fill:var(--m-rest)}
+.mtab{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0}.mtab th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:3px 4px}.mtab td{padding:5px 4px;border-top:1px solid var(--line);vertical-align:top}.mtab .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}.mtab .sw.m-con{background:var(--m-con)}.mtab .sw.m-ecc{background:var(--m-ecc)}.mtab .sw.m-iso{background:var(--m-iso)}.mtabmore summary{font-size:13px;color:var(--done);cursor:pointer;margin:4px 0}
 .mleg{font-size:12.5px;line-height:1.7;margin:4px 0 0;color:var(--muted)}.mleg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin:0 4px -1px 8px}.mleg i:first-child{margin-left:0}
 .mvctl{justify-content:flex-end;gap:14px;margin:2px 0 0}
 .mvh{margin:6px 0 2px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
@@ -306,7 +307,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-29h';
+const VER='2026-10-29j';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -807,8 +808,12 @@ const STAND={t:0,ua:180,fa:180,th:180,sh:180,ft:90,uab:8,fab:0,thb:4,shb:1,ftb:1
 const AN=o=>Object.assign({},STAND,o);
 const SIDES=[['L',1,''],['R',-1,'2']];
 function pose3(P,a){
-  const J={hp:[0,0,0],hpL:[0,0,5],hpR:[0,0,-5]}, td=dir3(P.t,0,1);
-  J.sh=v3(J.hp,td,SEGL.t); J.shL=v3(J.sh,[0,0,SEGL.sw]); J.shR=v3(J.sh,[0,0,-SEGL.sw]); J.hd=v3(J.sh,td,SEGL.h);
+  // kręgosłup w odcinkach: miednica (5), lędźwie (7), piersiowy (13), szyja z głową (8)
+  // pt = pochylenie miednicy (+ do przodu), lf / tf = zgięcie lędźwi / odcinka piersiowego (+ do przodu, - łuk), nf = zgięcie szyi
+  const ap=P.t+(P.pt||0), al=ap+(P.lf||0), atd=al+(P.tf||0), an_=atd+(P.nf||0);
+  const J={hp:[0,0,0],hpL:[0,0,5],hpR:[0,0,-5]};
+  J.s1=v3(J.hp,dir3(ap,0,1),5); J.s2=v3(J.s1,dir3(al,0,1),7); J.sh=v3(J.s2,dir3(atd,0,1),13);
+  J.shL=v3(J.sh,[0,0,SEGL.sw]); J.shR=v3(J.sh,[0,0,-SEGL.sw]); J.hd=v3(J.sh,dir3(an_,0,1),SEGL.h);
   const g=(n,k)=>P[n+k]??P[n];
   SIDES.forEach(([X,s,k])=>{
     J['el'+X]=v3(J['sh'+X],dir3(g('ua',k),g('uab',k),s),SEGL.ua); J['wr'+X]=v3(J['el'+X],dir3(g('fa',k),g('fab',k),s),SEGL.fa);
@@ -836,7 +841,7 @@ function pose3(P,a){
   });
   mids();
   J.tm=mid3(J.hp,J.sh);
-  J.td=sub3(J.sh,J.hp).map(v=>v/SEGL.t);
+  J.td=nrm3(sub3(J.sh,J.hp));
   return J;
 }
 // widoki: [x ekranu, y ekranu, głębokość (większa = bliżej oglądającego)]
@@ -923,7 +928,7 @@ function animView(name,key,vw,TL,frame,mode){
   items.push({d:V(PA.hd)[2],html:()=>C2(pj(PA,'hd'),pj(PB,'hd'),5.5,'var(--body2)')});
   ['shL','shR','hpL','hpR'].forEach(k=>items.push({d:V(PA[k])[2]+.1,X:k.slice(-1),html:()=>C2(pj(PA,k),pj(PB,k),3.4,col(k[0]==='s'?'delt':'hip'),vw==='side'&&k.endsWith('R')?' opacity=".45"':'')}));
   if(vw==='side')items.sort((x,y)=>(x.X==='R'?0:1)-(y.X==='R'?0:1)||x.d-y.d); else items.sort((x,y)=>x.d-y.d);
-  h+=(mode==='anat'?anatBody({V,PA,PB,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick}):items.map(i=>i.html()).join(''))+post;
+  h+=(mode==='anat'?anatBody({V,PA,PB,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick,name}):items.map(i=>i.html()).join(''))+post;
   // rekwizyty
   let pr=(a.pr||[]).filter(x=>x[0]!=='slab'&&x[0]!=='plat');
   if(/hantl/i.test(name))pr=pr.map(x=>x[0]==='bar'?['db',x[1],x[2]]:x);
@@ -1014,7 +1019,7 @@ function moveAnim(name,frame){
   const tabs=alts&&!frame?`<div class="row mvalt">${alts.map(([k,l])=>`<button class="chip" aria-pressed="${k===key}" data-animvar="${esc(name)}|${k}">${l}</button>`).join('')}</div>`:'';
   const modes=frame?'':`<div class="row mvalt"><button class="chip" aria-pressed="${mode==='sch'}" data-animmode="sch">Schemat</button><button class="chip" aria-pressed="${mode==='anat'}" data-animmode="anat">Anatomia</button></div>`;
   const leg=mode==='anat'?`<p class="mleg"><i style="background:var(--m-con)"></i>skraca się pod obciążeniem (koncentrycznie) <i style="background:var(--m-ecc)"></i>wydłuża się pod obciążeniem (ekscentrycznie) <i style="background:var(--m-iso)"></i>napięty, stała długość (izometrycznie) <i style="background:var(--m-rest)"></i>nie pracuje</p>`:'';
-  return `<div class="manim" id="${id}">${modes}${tabs}${css?`<style>${css}</style>`:''}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}${leg}<p class="mvh">Ustawienie, po kolei</p>${list}</div>`;
+  return `<div class="manim" id="${id}">${modes}${tabs}${css?`<style>${css}</style>`:''}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}${leg}<p class="mvh">Ustawienie, po kolei</p>${list}${mode==='anat'&&!frame?anatTable(name,key):''}</div>`;
 }
 function animCtl(t){
   const id=t.dataset.animpause||t.dataset.animrestart, box=document.getElementById(id); if(!box)return;
@@ -1115,7 +1120,7 @@ const ANIM={
     an:['an',[46,0]],pr:[['bar','sh',[-3,2]]],gd:'mf',
     su:[['Sztanga na górze pleców jak do przysiadu, stopy na szerokość bioder',C_STOPY],['Ściągnij łopatki, łokcie w dół',C_LOP],['Napnij brzuch, kolana lekko ugięte',C_BRZ]],
     mv:[['W dół:','cofaj biodra, tułów pochyla się z prostymi plecami',C_BIOT,'sh'],['W górę:','biodra do przodu, pośladki prowadzą',[['hp',[6,0,0],[-6,0,0]]],'sh']]},
-  thrust:{A:AN({t:-60,ft:90,ftb:10,feet:{abs:[68,0],w:9,pole:[1,1,.3]},hold:{j:'hp',o:[0,5],w:16,pole:[0,1,1]}}),B:AN({t:-90,ft:90,ftb:10,feet:{abs:[68,0],w:9,pole:[1,1,.3]},hold:{j:'hp',o:[0,5],w:16,pole:[0,1,1]}}),
+  thrust:{A:AN({t:-60,ft:90,ftb:10,feet:{abs:[68,0],w:9,pole:[1,1,.3]},hold:{j:'hp',o:[0,5],w:16,pole:[0,1,1]}}),B:AN({t:-90,pt:-6,lf:6,ft:90,ftb:10,feet:{abs:[68,0],w:9,pole:[1,1,.3]},hold:{j:'hp',o:[0,5],w:16,pole:[0,1,1]}}),
     an:['sh',[22,21]],pr:[['bar','hp',[0,5]]],st:[['box',6,24,14,19,-22,22],['box',8,11,0,14,18,22],['box',8,11,0,14,-22,-18],['box',19,22,0,14,18,22],['box',19,22,0,14,-22,-18]],
     su:[['Łopatki na krawędzi ławki, sztanga na biodrach',[['shL',[0,-4,0],[0,4,0],'m']]],['Stopy na szerokość bioder, tak by na górze goleń była pionowo',C_STOPY],['Broda przy klatce, napnij brzuch',C_BRZ]],
     mv:[['W górę:','pchaj piętami, dopychasz pośladkami, bez wyginania lędźwi',[['hp',[0,6,0],[0,-3,0]],...C_PIETY],'hp'],['W dół:','opuszczaj biodra powoli',[],'hp']]},
@@ -1123,7 +1128,7 @@ const ANIM={
     an:['hp',[50,22]],pr:[],st:[...SEAT,['box',36,40,21,56,-12,12]],
     su:[['Usiądź prosto, plecy oparte',[['tm',[0,-4,0],[0,7,0],'b']]],['Poduszki po wewnętrznej stronie kolan',[['knL',[0,0,-4],[0,0,8],'m']]]],
     mv:[['Do środka:','ściskaj nogi, zatrzymaj na chwilę',[['knL',[0,0,-5],[0,0,7],'m']],'knL'],['Powrót:','wolno, aż poczujesz rozciąganie',[],'knL']]},
-  bench:{sup:1,v:['side','top'],A:AN({t:90,ft:90,ftb:30,feet:BFEET,hold:{j:'sh',o:[-2,29],w:19,pole:[0,0,1]}}),B:AN({t:90,ft:90,ftb:30,feet:BFEET,hold:{j:'sh',o:[-7,5],w:19,pole:[-.7,-1,1.1]}}),
+  bench:{sup:1,v:['side','top'],A:AN({t:90,pt:-12,lf:12,tf:12,ft:90,ftb:30,feet:BFEET,hold:{j:'sh',o:[-2,29],w:19,pole:[0,0,1]}}),B:AN({t:90,pt:-12,lf:12,tf:12,ft:90,ftb:30,feet:BFEET,hold:{j:'sh',o:[-7,5],w:19,pole:[-.7,-1,1.1]}}),
     an:['hp',[40,24]],pr:[['bar','wr',[0,0]]],st:BENCH,su:BENCH_SU,
     mv:[['W dół:','sztanga na dolną część klatki, łokcie ok. 45–70° od tułowia',[['elL',[-3,0,-2],[0,0,0],'m']],'wr'],
         ['W górę:','wypchnij w górę i lekko w stronę głowy, stopy dalej wbite',[...C_STOPY],'wr']]},
@@ -1183,7 +1188,7 @@ const ANIM={
     an:['an',[46,0]],pr:[['cable','wr',[112,74]]],st:[['dot',[112,74,0]]],
     su:[['Linka na wysokości twarzy, stopy na szerokość bioder',C_STOPY],['Tułów prosto, napnij brzuch',C_BRZ]],
     mv:[['Do twarzy:','łokcie wysoko i na boki, końce liny obok uszu, ściągnij łopatki',[['elL',[0,0,5],[0,0,2],'m'],...C_LOP],'wrL'],['Powrót:','ręce wolno do przodu',[],'wrL']]},
-  pullup:{A:AN({ua:0,uab:20,fa:0,fab:20,th:175,sh:250,thb:2,shb:0}),B:AN({ua:195,uab:55,fa:0,fab:-10,th:170,sh:250,thb:2,shb:0}),
+  pullup:{A:AN({ua:0,uab:20,fa:0,fab:20,th:175,sh:250,thb:2,shb:0}),B:AN({tf:-8,ua:195,uab:55,fa:0,fab:-10,th:170,sh:250,thb:2,shb:0}),
     an:['wr',[62,80]],nf:1,pr:[],st:[['line',[62,80,-32],[62,80,32],5]],
     su:[['Chwyt nachwytem nieco szerzej niż barki, pełny zwis',[['wrL',[0,0,4],[0,-4,0],'m']]],['Ściągnij łopatki w dół, zanim zegniesz łokcie',[['shL',[0,-4,0],[0,3,0],'m']]],['Nogi razem, napnij brzuch',C_BRZ]],
     mv:[['W górę:','łokcie w dół do żeber, klatka do drążka, broda nad drążek',[['elL',[0,-5,0],[0,0,3],'m']],'sh'],['W dół:','powoli do pełnego zwisu',[],'sh']]},
@@ -1264,23 +1269,23 @@ const ANIM={
     an:['kn',[40,3]],pr:[],st:[['box',4,28,0,3,-12,12],['box',8,13,5,8,-12,12]],
     su:[['Klęcz na miękkim, pięty zablokowane',[['anL',[0,-4,0],[0,6,0],'m']]],['Napnij pośladki i brzuch: kolano–biodro–bark w jednej linii',[...C_BRZ,['hp',[4,0,0],[-6,0,0]]]]],
     mv:[['W dół:','opadaj powoli, ciało proste, biodra się nie zginają',[],'sh'],['W górę:','złap się rękami i odepchnij do góry',[],'sh']]},
-  abwheel:{A:AN({t:58,ua:172,fa:176,uab:-4,th:172,sh:270,ft:200,thb:3,shb:0}),B:AN({t:84,ua:108,fa:106,uab:-4,th:228,sh:270,ft:200,thb:3,shb:0}),
+  abwheel:{A:AN({t:58,lf:8,tf:6,ua:172,fa:176,uab:-4,th:172,sh:270,ft:200,thb:3,shb:0}),B:AN({t:84,lf:3,ua:108,fa:106,uab:-4,th:228,sh:270,ft:200,thb:3,shb:0}),
     an:['kn',[28,4]],pr:[['wheel','wr',[0,-4]]],
     su:[['Klęcząc, kółko pod barkami',[]],['Napnij brzuch i pośladki, plecy lekko zaokrąglone',[...C_BRZ]]],
     mv:[['Do przodu:','tocz kółko powoli, lędźwie się nie zapadają',[],'wr'],['Powrót:','przyciągnij brzuchem, biodra idą za tułowiem',[],'wr']]},
-  legraise:{A:AN({ua:0,uab:15,fa:0,fab:15,th:175,sh:185,thb:2,shb:0}),B:AN({ua:0,uab:15,fa:0,fab:15,th:85,sh:175,thb:2,shb:0}),
+  legraise:{A:AN({ua:0,uab:15,fa:0,fab:15,th:175,sh:185,thb:2,shb:0}),B:AN({pt:-20,lf:20,ua:0,uab:15,fa:0,fab:15,th:85,sh:175,thb:2,shb:0}),
     an:['wr',[60,90]],nf:1,pr:[],st:[['line',[60,90,-32],[60,90,32],5]],
     su:[['Zwis na drążku, chwyt na szerokość barków',[]],['Barki aktywne, w dół; nogi razem',[['shL',[0,-4,0],[0,3,0],'m']]]],
     mv:[['W górę:','unoś nogi, na górze podwiń miednicę',[['hp',[3,3,0],[-4,0,0]]],'kn'],['W dół:','opuszczaj wolno, bez bujania',[],'kn']]},
-  deadbug:{v:['side','top'],A:AN({t:-90,ua:0,fa:0,uab:5,th:0,sh:90,thb:4,shb:0,ft:0}),B:AN({t:-90,ua:0,fa:0,uab:5,ua2:-75,fa2:-75,th:74,sh:86,thb:4,shb:0,th2:0,sh2:90,ft:80,ft2:0}),
+  deadbug:{v:['side','top'],A:AN({t:-90,pt:-5,lf:5,ua:0,fa:0,uab:5,th:0,sh:90,thb:4,shb:0,ft:0}),B:AN({t:-90,pt:-5,lf:5,ua:0,fa:0,uab:5,ua2:-75,fa2:-75,th:74,sh:86,thb:4,shb:0,th2:0,sh2:90,ft:80,ft2:0}),
     an:['hp',[62,4]],fl:1,pr:[],
     su:[['Leżysz na plecach, ręce w górze, kolana nad biodrami',[]],['Dociśnij lędźwie do podłogi',[['tm',[0,-4,0],[0,7,0],'b']]]],
     mv:[['Wyprost:','przeciwna ręka i noga powoli w dół, wydech',[],'anL'],['Powrót:','wróć i zmień stronę',[],'anL']]},
-  hollow:{v:['side','top'],A:AN({t:-90,ua:-90,fa:-90,uab:4,th:90,sh:90,thb:2,shb:0,ft:30}),B:AN({t:-78,ua:-78,fa:-78,uab:4,th:80,sh:80,thb:2,shb:0,ft:20}),
+  hollow:{v:['side','top'],A:AN({t:-90,ua:-90,fa:-90,uab:4,th:90,sh:90,thb:2,shb:0,ft:30}),B:AN({t:-92,pt:-6,lf:8,tf:14,nf:18,ua:-78,fa:-78,uab:4,th:80,sh:80,thb:2,shb:0,ft:20}),
     an:['hp',[60,4]],fl:1,pr:[],
     su:[['Leżysz na plecach, ręce za głową, nogi proste',[]],['Dociśnij lędźwie do podłogi',[['tm',[0,-4,0],[0,7,0],'b']]]],
     mv:[['Unieś:','barki i proste nogi kilka centymetrów nad podłogę, trzymaj',[['hd',[0,4,0],[0,2,0]],['anL',[0,4,0],[0,2,0],'m']],'anL'],['Odpocznij:','opuść kontrolowanie',[],'anL']]},
-  oblq:{v:['side','top'],A:AN({t:-90,ft:90,feet:{abs:[78,0],w:7,pole:[0,1,0]},hold:{j:'hd',o:[0,0],w:6,pole:[.2,.4,1]}}),B:AN({t:-50,ft:90,feet:{abs:[78,0],w:7,pole:[0,1,0]},hold:{j:'hd',o:[0,0],w:6,pole:[.2,.4,1],poleL:[1,.6,-.6]}}),
+  oblq:{v:['side','top'],A:AN({t:-90,ft:90,feet:{abs:[78,0],w:7,pole:[0,1,0]},hold:{j:'hd',o:[0,0],w:6,pole:[.2,.4,1]}}),B:AN({t:-90,lf:18,tf:30,nf:15,ft:90,feet:{abs:[78,0],w:7,pole:[0,1,0]},hold:{j:'hd',o:[0,0],w:6,pole:[.2,.4,1],poleL:[1,.6,-.6]}}),
     an:['hp',[55,4]],fl:1,pr:[],
     su:[['Leżysz, kolana ugięte, stopy płasko',C_STOPY],['Dłonie przy głowie, łokcie na boki',[['elL',[0,0,4],[0,0,2],'m']]]],
     mv:[['W górę:','unieś tułów, łokieć do przeciwnego kolana',[['elL',[4,0,-4],[0,0,0]]],'sh'],['W dół:','wracaj powoli, zmieniaj strony',[],'sh']]},
@@ -1337,47 +1342,70 @@ const cross3=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]
 const perp3=(v,a)=>v3(v,a,-dot3(v,a));
 const SPINEF=[[5.5,-3.0],[9,-2.2],[13,-2.8],[18,-3.9],[24,-3.2],[28,-1.9],[31,-1.4]];
 const spineF=u=>{for(let i=1;i<SPINEF.length;i++)if(u<=SPINEF[i][0]){const [u0,f0]=SPINEF[i-1],[u1,f1]=SPINEF[i];return f0+(f1-f0)*(u-u0)/(u1-u0)}return SPINEF[SPINEF.length-1][1]};
-// układy odniesienia jednej pozycji
-function anatFrames(J,sup){
-  const u=nrm3(sub3(J.sh,J.hp)), zt=nrm3(sub3(J.shL,J.shR));
-  let f=nrm3(cross3(u,zt)); if(sup)f=f.map(x=>-x);
-  const F={J,u,f,zt,side:{}};
-  const T=(uo,fo,zo,s=1)=>v3(v3(v3(J.hp,u,uo),f,fo),zt,zo*s);
+// układy odniesienia jednej pozycji; pro = obrót przedramienia w stopniach (+90 podchwyt, 0 młotkowy, -90 nachwyt)
+function anatFrames(J,sup,pro=0,hang=0){
+  const zt=nrm3(sub3(J.shL,J.shR)), fl=d=>{const f=nrm3(cross3(d,zt));return sup?f.map(x=>-x):f};
+  // tułów w odcinkach: miednica (u 0–5), lędźwie (5–12), piersiowy (12–25), szyja i głowa (>25)
+  const S1=J.s1||v3(J.hp,nrm3(sub3(J.sh,J.hp)),5), S2=J.s2||v3(J.hp,nrm3(sub3(J.sh,J.hp)),12);
+  const segs=[[0,J.hp,nrm3(sub3(S1,J.hp))],[5,S1,nrm3(sub3(S2,S1))],[12,S2,nrm3(sub3(J.sh,S2))],[25,J.sh,nrm3(sub3(J.hd,J.sh))]].map(([u0,P,d])=>({u0,P,d,f:fl(d)}));
+  const segAt=u=>u<6.5?segs[0]:u<12?segs[1]:u<=25.5?segs[2]:segs[3];
+  const u=segs[2].d, f=segs[2].f;
+  const F={J,u,f,zt,side:{},segs};
+  const T=(uo,fo,zo,s=1)=>{const g=segAt(uo);return v3(v3(v3(g.P,g.d,uo-g.u0),g.f,fo),zt,zo*s)};
   F.T=T;
+  F.H=(du,df,dz,s=1)=>v3(v3(v3(J.hd,segs[3].d,du),segs[3].f,df),zt,dz*s);
+  const phi=(90-pro)*d2r;
   [['L',1],['R',-1]].forEach(([X,s])=>{
     const sd=zt.map(v=>v*s);
-    const seg=(P,Q,front,fb)=>{const d=sub3(Q,P),L=len3(d),a=d.map(v=>v/L);let fr=front?perp3(front,a):[0,0,0];
-      fr=len3(fr)>.2*L&&front?nrm3(fr):nrm3(perp3(fb,a));let lat=perp3(sd,a);lat=len3(lat)>.15?nrm3(lat):nrm3(cross3(a,fr)).map(v=>v*s);
+    // przód segmentu: strona zgięcia sąsiedniego stawu, płynnie przechodząca w kierunek odniesienia przy prostym stawie
+    const seg=(P,Q,front,fb,arm)=>{const d=sub3(Q,P),L=len3(d),a=d.map(v=>v/L);const pf=front?perp3(front,a):[0,0,0],pl=len3(pf),pb=nrm3(perp3(fb,a));
+      const w=front?Math.min(1,Math.max(0,(pl/L-.12)/.3)):0;let fr=nrm3(v3(pb.map(v=>v*(1-w)),pl>1e-6?pf.map(v=>v/pl):pb,w));
+      // bok segmentu: zwykle w stronę barku/biodra; przy ręce odwiedzonej w bok — ku górze tułowia
+      let lat=v3(perp3(sd,a),perp3(u,a),arm?Math.abs(dot3(a,sd))*2:0);lat=len3(lat)>.1?nrm3(lat):nrm3(cross3(a,fr)).map(v=>v*s);
       return {P,a,L,fr,lat,at:(t,fo=0,lo=0)=>v3(v3(v3(P,a,L*t),fr,fo),lat,lo)}};
     const sh=J['sh'+X],el=J['el'+X],wr=J['wr'+X],hp=J['hp'+X],kn=J['kn'+X],an=J['an'+X],to=J['to'+X];
-    const hum=seg(sh,el,sub3(wr,el),f), fa=seg(el,wr,sub3(sh,el),hum.fr);
+    const hum=seg(sh,el,sub3(wr,el),f,1), fa=seg(el,wr,sub3(sh,el),hum.fr,1);
     const fem=seg(hp,kn,sub3(kn,an).map(v=>v),f); // przód uda = strona przeciwna do zgięcia goleni
     const tib=seg(kn,an,sub3(kn,hp).map(v=>v),fem.fr);
     const fd=nrm3(sub3(to,an)), up=nrm3(sub3(kn,an));
     const heel=v3(v3(an,fd,-2.3),up,-1.3);
     // łopatka: rotacja w górę przy unoszeniu ramienia (rytm łopatkowo-ramienny), ściąganie i wysuwanie
     const h=nrm3(sub3(el,sh)), hu=dot3(h,u), hf=dot3(h,f), el_=Math.acos(Math.max(-1,Math.min(1,-hu)))*180/Math.PI;
-    const r=Math.min(40,Math.max(0,(el_-30)/3.2))*d2r, ret=Math.min(1,Math.max(0,-hf*1.6)), pro=Math.min(1,Math.max(0,(hf-.45)*2));
-    // obrót wokół osi przy grzebieniu łopatki; dolny kąt idzie bocznie, ale po żebrach (do przodu), nie poza tułów
+    const r=Math.min(40,Math.max(0,(el_-30)/3.2))*Math.min(1,Math.max(0,1+hf*2.5))*d2r, ret=Math.min(1,Math.max(0,-hf*1.6)), pro_=hang?0:Math.min(1,Math.max(0,(hf-.45)*2));
     const RC=[23.5,6.5], sc=(du,df,dz)=>{const ru=du-RC[0], rz=dz-RC[1];const nu=RC[0]+ru*Math.cos(r)+rz*Math.sin(r);let nz=RC[1]+rz*Math.cos(r)-ru*Math.sin(r);
       const wrap=Math.max(0,nz-6.5);nz=Math.min(nz,6.5+wrap*.55);
-      const mz=nz>6?0:1;return T(nu,df+wrap*.75-ret*.7*mz+pro*1.2,nz-ret*1.7*mz+pro*2.2,s)};
-    const scap={AC:T(25.5,.2,9.2,s),SA:sc(24,-2.9,3.9),IA:sc(14.5,-3.7,4.9),SR:sc(22.5,-3.4,3.7),SP:sc(24.6,-2.6,7.4),MB:sc(19,-3.6,3.6),GL:T(24,-.6,8.2,s)};
+      const mz=nz>6?0:1;return T(nu,df+wrap*.75-ret*.7*mz+pro_*.8,nz-ret*1.7*mz+pro_*1.2*mz,s)};
+    const scap={AC:T(26.7,.2,9.7,s),SA:sc(24,-2.9,3.9),IA:sc(14.5,-3.7,4.9),SR:sc(22.5,-3.4,3.7),SP:sc(24.6,-2.6,7.4),MB:sc(19,-3.6,3.6),GL:T(24,-.6,8.2,s)};
     const clav=t=>{const A=T(24.3,2.6,1.3,s),B=T(25,1.7,5,s),C=scap.AC;return t<.5?v3(A,sub3(B,A),t*2):v3(B,sub3(C,B),(t-.5)*2)};
-    F.side[X]={s,sd,hum,fa,fem,tib,fd,up,heel,an,to,wr,scap,clav};
+    // przedramię: kość promieniowa obraca się wokół łokciowej (nawracanie/odwracanie)
+    const ulD=fa.at(1,0,-.9), radP=fa.at(.04,.2,.9), radD=v3(ulD,v3(fa.lat.map(v=>v*Math.cos(phi)),fa.fr,Math.sin(phi)),2.1);
+    const rad=t=>v3(radP,sub3(radD,radP),t);
+    const palm=nrm3(v3(fa.fr.map(v=>v*Math.cos(phi)),fa.lat,-Math.sin(phi)));
+    const tubC=rad(.12), tub=v3(tubC,palm,.8), tubA=v3(tubC,fa.fr,.9);
+    const W=mid3(ulD,radD), K=v3(W,fa.a,3.4), Ft=v3(v3(K,palm,1.5),fa.a,-.6);
+    const ball=v3(v3(an,fd,5),up,-.9);
+    F.side[X]={s,sd,hum,fa,fem,tib,fd,up,heel,an,to,wr,scap,clav,rad,tub,tubA,hand:[W,K,Ft],ball};
   });
   return F;
 }
-// punkt z opisu: ['T',u,f,z] tułów; ['hum'|'fa'|'fem'|'tib',t,front,lat]; ['S',nazwa,du,df,dz] łopatka; ['clav',t]; ['heel']
+// punkt z opisu: ['T',u,f,z] tułów; ['H',u,f,z] głowa; ['hum'|'fa'|'fem'|'tib',t,przód,bok]; ['S',nazwa,du,df,dz] łopatka;
+// ['clav',t]; ['heel']; ['rad',t] kość promieniowa; ['tub'] / ['tubA'] guzowatość promieniowa; ['hand',i]; ['ft',wzdłuż,w górę]
 function anatPt(F,X,spec){
   const S=F.side[X], s=S.s, k=spec[0];
   if(k==='T')return F.T(spec[1],spec[2],spec[3],s);
+  if(k==='H')return F.H(spec[1],spec[2],spec[3],s);
   if(k==='S'){const p=S.scap[spec[1]];return v3(v3(v3(p,F.u,spec[2]||0),F.f,spec[3]||0),F.zt,(spec[4]||0)*s)}
   if(k==='clav')return S.clav(spec[1]);
   if(k==='heel')return S.heel;
+  if(k==='rad')return S.rad(spec[1]);
+  if(k==='tub')return S.tub;
+  if(k==='tubA')return S.tubA;
+  if(k==='hand')return S.hand[spec[1]];
+  if(k==='ball')return S.ball;
+  if(k==='ft')return v3(v3(v3(S.an,S.fd,spec[1]),S.up,spec[2]||0),S.sd,spec[3]||0);
   // owinięcie wokół stawu: punkt na dwusiecznej przodu (r>0) albo tyłu (r<0) dwóch segmentów
   if(k==='KW'||k==='EW'||k==='HW'){const r=spec[1],w=spec[2];
-    const [c,A,B]=k==='KW'?[S.fem.at(1),S.fem.fr,S.tib.fr]:k==='EW'?[S.hum.at(1),S.hum.fr,S.fa.fr]:[S.fem.P,F.f,S.fem.fr];
+    const [c,A,B]=k==='KW'?[S.fem.at(1),S.fem.fr,S.tib.fr]:k==='EW'?[S.hum.at(1),S.hum.fr,S.fa.fr]:[S.fem.P,F.segs[0].f,S.fem.fr];
     let d=v3(A.map(v=>v*w),B,1-w);if(len3(d)<.05)d=A;return v3(c,nrm3(d),r)}
   return S[k].at(spec[1],spec[2]||0,spec[3]||0);
 }
@@ -1396,7 +1424,8 @@ const BONES=[
   ['L',[['hum',0],['hum',.14],['hum',.86]],[3.6,2.3,2.2],1],
   ['L',[['hum',.97,0,-1.5],['hum',.97,0,1.5]],2,1],
   ['L',[['fa',-.06,-.9,-.6],['fa',1,0,-.9]],1.5,1],
-  ['L',[['fa',.04,.2,.9],['fa',1,.2,1.2]],1.5,1],
+  ['L',[['rad',0],['rad',.5],['rad',1]],1.5,1],
+  ['L',[['hand',0],['hand',1],['hand',2]],1.7,1],
   ['L',[['fem',0],['fem',.04,0,2.5]],2.6,1],
   ['L',[['fem',.07,0,1.7],['fem',.5,.4,.5],['fem',.93,0,0]],2.5,1],
   ['L',[['fem',.98,-.3,-1.7],['fem',.98,-.3,1.7]],2.7,1],
@@ -1404,32 +1433,89 @@ const BONES=[
   ['L',[['tib',.03,.5,0],['tib',.5,.4,-.2],['tib',.97,0,-.3]],2.2,1],
   ['L',[['tib',.06,-.6,1.9],['tib',1,-.4,1.6]],1.1,1],
   ['L',[['heel'],['fa',1]],0,1,'foot'],
-  ['C',[['fem',.97,2.5,0]],1.4,1],
-  ['C',[['fa',1.12,.2,0]],1.7,1]
+  ['C',[['fem',.97,2.5,0]],1.4,1]
 ];
-// mięśnie: [grupa, punkty, szerokość brzuśca]
+// mięśnie: [id, grupa (klucz opisu ćwiczenia), punkty, szerokość brzuśca, głęboki (tylko w tabeli)]
 const MUSC=[
-  ['quads',[['fem',.08,.6,2.3],['fem',.55,1.8,2.3],['KW',3,.75],['KW',3,.25],['tib',.12,1.5,.6]],4.4],
-  ['quads',[['T',-.5,2.3,4.2],['fem',.5,2.8,0],['KW',3.3,.75],['KW',3.3,.25],['tib',.12,1.7,0]],4.4],
-  ['quads',[['fem',.35,1.4,-1.6],['fem',.84,2.1,-2.1],['KW',2.8,.6],['tib',.1,1.4,-.6]],3.8],
-  ['hams',[['T',-2.6,-1.6,3.6],['fem',.5,-2.6,1],['fem',.95,-2.2,1.3],['tib',.06,-.9,1.9]],3.9],
-  ['hams',[['T',-2.6,-1.4,3.3],['fem',.5,-2.5,-.6],['fem',.95,-2,-1.3],['tib',.1,-.4,-1.6]],3.7],
-  ['add',[['T',-1,2,1.6],['fem',.55,.8,-1.7]],4.6],
-  ['add',[['T',-2.2,.4,2.4],['fem',.92,-.6,-1.7]],3],
-  ['calves',[['fem',.93,-2.1,1.1],['tib',.25,-3.3,.8],['tib',.62,-2.3,.3],['heel']],3.9],
-  ['calves',[['fem',.93,-2.1,-1.1],['tib',.25,-3.3,-.9],['tib',.6,-2.3,-.3],['heel']],3.7],
-  ['erect',[['T',1,-3.7,1.7],['T',9,-3.6,1.9],['T',18,-4.5,1.9],['T',27,-2.8,1.1]],3.1],
-  ['abs',[['T',-.8,2.5,.9],['T',6,3.5,1.4],['T',13,4,1.5],['T',16.5,3.9,1.4]],3.7],
-  ['obl',[['T',16,1.6,6.3],['T',10,2,6.4],['T',4.6,1.3,6]],3.3],
-  ['dF',[['clav',.85],['hum',.04,2,.6],['hum',.42,1,.9]],3.8],
-  ['dS',[['S','AC',.3,0,.5],['hum',.04,0,2.3],['hum',.42,.2,1.4]],3.8],
-  ['dR',[['S','SP',-.4],['hum',.04,-2,.8],['hum',.42,-.9,.9]],3.6],
-  ['biceps',[['S','AC',-1.6,1.6,-1.3],['hum',.15,1.6,0],['hum',.6,2.1,0],['hum',.95,1.8,0],['fa',.13,.9,.6]],3.5],
-  ['triceps',[['hum',.2,-1.5,1.2],['hum',.7,-2.1,.3],['EW',-2.2,.7],['EW',-2.2,.3],['fa',-.04,-1.1,0]],3.8],
-  ['triceps',[['S','GL',-2.5,-1.3,-.8],['hum',.3,-1.8,-.4],['hum',.75,-2.1,-.5],['EW',-2.1,.6],['fa',-.04,-1.1,0]],3.4],
-  ['fore',[['hum',.97,0,-1.7],['fa',.35,.7,-.6],['fa',.82,.3,-.4]],2.9],
-  ['fore',[['hum',.97,0,1.7],['fa',.35,-.5,.9],['fa',.82,-.3,.6]],2.7]
+  ['rectfem','quads',[['T',-.5,2.3,4.2],['fem',.5,2.8,0],['KW',2.5,.75],['KW',2.5,.25],['tib',.12,1.7,0]],4.2],
+  ['vlat','quads',[['fem',.08,.6,2.3],['fem',.55,1.8,2.3],['KW',2.4,.75],['KW',2.4,.25],['tib',.12,1.5,.6]],4.4],
+  ['vmed','quads',[['fem',.35,1.4,-1.6],['fem',.84,2.1,-2.1],['KW',2.3,.6],['tib',.1,1.4,-.6]],3.8],
+  ['vint','quads',[['fem',.15,1.2,0],['fem',.85,1.7,0],['KW',2.2,.5],['tib',.1,1.4,0]],3,1],
+  ['bflong','hams',[['T',-2.6,-1.6,3.6],['fem',.5,-2.6,1],['fem',.95,-2.2,1.4],['tib',.06,-.9,1.9]],3.4],
+  ['bfshort','hams',[['fem',.45,-1.6,1.5],['fem',.92,-2,1.7],['tib',.06,-.9,1.9]],2.4],
+  ['semit','hams',[['T',-2.6,-1.4,3.1],['fem',.55,-2.5,-.4],['fem',.95,-2,-1.3],['tib',.14,.2,-1.7]],2.8],
+  ['semim','hams',[['T',-2.4,-1.2,3.4],['fem',.6,-2.2,-1],['tib',.07,-.8,-1.6]],3.2],
+  ['glmed','glutes',[['T',5.4,-.3,6.2],['T',3.5,-.5,6.6],['fem',.03,0,2.7]],4.2],
+  ['glmin','glutes',[['T',4,.6,5.9],['fem',.02,.5,2.5]],3,1],
+  ['tfl',null,[['T',4.6,1.6,5.6],['fem',.12,.8,2.4],['fem',.95,.3,2.1],['tib',.02,.6,1.8]],2.2],
+  ['sartor',null,[['T',4.5,1.7,5.3],['fem',.45,2.3,-.4],['fem',.95,-.4,-2.1],['tib',.14,.6,-1.6]],1.8],
+  ['iliops',null,[['T',10,-1.4,2],['T',3,1,3.6],['T',-.3,2,3.5],['fem',.06,.6,-1.2]],3.2,1],
+  ['addlong','add',[['T',-1.2,2,1.3],['fem',.5,.9,-1.6]],3],
+  ['addmag','add',[['T',-2.4,0,2.6],['fem',.5,-.6,-1.8],['fem',.92,-.6,-1.8]],4],
+  ['gracil','add',[['T',-1.4,1.6,.9],['fem',.9,-.5,-2.3],['tib',.14,.3,-1.7]],1.6],
+  ['gastlat','calves',[['fem',.93,-2.1,1.1],['tib',.25,-3.3,.8],['tib',.62,-2.3,.3],['heel']],3.6],
+  ['gastmed','calves',[['fem',.93,-2.1,-1.1],['tib',.25,-3.3,-.9],['tib',.6,-2.3,-.3],['heel']],3.6],
+  ['soleus','calves',[['tib',.15,-1.8,0],['tib',.5,-2.7,0],['tib',.82,-1.9,0],['heel']],3.4],
+  ['tibant',null,[['tib',.1,.9,.9],['tib',.7,1.2,.5],['ft',2.6,1.2,-.8]],2.2],
+  ['rectab','abs',[['T',-.8,2.5,.9],['T',6,3.5,1.4],['T',13,4,1.5],['T',16.5,3.9,1.4]],3.7],
+  ['extobl','obl',[['T',16,1.6,6.3],['T',10,2,6.4],['T',4.6,1.3,6]],3.3],
+  ['intobl','obl',[['T',4.6,.6,5.8],['T',9,1.4,5.8],['T',14,2.6,4]],2.8,1],
+  ['trans','abs',[['T',4.4,.2,5.6],['T',7,2.8,4],['T',8,3.4,1]],3,1],
+  ['ilioc','erect',[['T',1,-3.5,3.2],['T',10,-3.9,3.6],['T',21,-4,4.4]],2.6],
+  ['longis','erect',[['T',1,-3.7,1.7],['T',9,-3.6,1.9],['T',18,-4.5,1.9],['T',27,-2.8,1.1]],3],
+  ['mult','erect',[['T',0,-3.7,.7],['T',6,-3.2,.7],['T',12,-3,.6]],1.6,1],
+  ['qlum','erect',[['T',4.5,-1.5,4.6],['T',8,-1.6,3.5],['T',12,-1.8,2.5]],2.4,1],
+  ['tmaj','lats',[['S','IA',0,-.3],['hum',.12,.4,-.9]],2.8],
+  ['rhomb','traps',[['T',21.5,-4.2,.6],['S','MB',0,-.3]],3],
+  ['levsc','traps',[['T',29.5,-1.2,1.4],['S','SA',0,-.3]],1.8,1],
+  ['serr',null,[['S','IA',0,1,.6],['T',16,1,7.4],['T',14.5,2.6,6.4]],3.2],
+  ['pecmin','pecs',[['T',18,3.5,4],['S','AC',-.6,2.2,-1.8]],2.6,1],
+  ['dF','dF',[['clav',.85],['hum',.04,2,.6],['hum',.42,1,.9]],3.8],
+  ['dS','dS',[['S','AC',.3,0,.5],['hum',.04,0,2.3],['hum',.42,.2,1.4]],3.8],
+  ['dR','dR',[['S','SP',-.4],['hum',.04,-2,.8],['hum',.42,-.9,.9]],3.6],
+  ['supra',null,[['S','SA',.3,.3,.5],['S','AC',.6,-.3,-.8],['hum',.01,.3,1.4]],2.2,1],
+  ['infra',null,[['S','IA',1.5,.2,0],['S','MB',.5,.3,1.2],['hum',.04,-1.2,1.4]],3.4],
+  ['tmin',null,[['S','IA',3,.2,.6],['hum',.06,-1.3,1]],1.8,1],
+  ['subsc',null,[['S','MB',0,1.2,.6],['hum',.05,1,-.8]],2.6,1],
+  ['biclong','biceps',[['S','AC',-1.6,1.6,-1.3],['hum',.15,1.6,0],['hum',.6,2.1,.3],['hum',.95,1.8,0],['tubA'],['tub']],3.2],
+  ['bicshort','biceps',[['S','AC',-.8,2.2,-1.8],['hum',.15,1.6,-.7],['hum',.6,2.1,-.3],['hum',.95,1.8,0],['tubA'],['tub']],3],
+  ['brach','biceps',[['hum',.5,1.3,0],['hum',.92,1.5,0],['fa',.1,.6,-.4]],3.2],
+  ['brrad','fore',[['hum',.75,.8,1.6],['fa',.4,.6,1.3],['rad',.97]],2.6],
+  ['trilat','triceps',[['hum',.2,-1.5,1.2],['hum',.7,-2.1,.3],['EW',-2.2,.7],['EW',-2.2,.3],['fa',-.04,-1.1,0]],3.6],
+  ['trilong','triceps',[['S','GL',-2.5,-1.3,-.8],['hum',.3,-1.8,-.4],['hum',.75,-2.1,-.5],['EW',-2.1,.6],['fa',-.04,-1.1,0]],3.4],
+  ['trimed','triceps',[['hum',.45,-1.2,-.6],['hum',.85,-1.6,-.4],['EW',-1.9,.5],['fa',-.04,-1,0]],2.6,1],
+  ['flex','fore',[['hum',.97,0,-1.7],['fa',.35,.7,-.6],['fa',.82,.3,-.4]],2.8],
+  ['ext','fore',[['hum',.97,0,1.7],['fa',.35,-.5,.9],['fa',.82,-.3,.6]],2.6],
+  ['pronter',null,[['hum',.95,.3,-1.6],['rad',.45]],1.8,1],
+  ['scm',null,[['H',-1,-1.2,2.8],['T',24.5,2.6,1.2]],2]
 ];
+const MNAME={rectfem:'Prosty uda (czworogłowy)',vlat:'Obszerny boczny (czworogłowy)',vmed:'Obszerny przyśrodkowy (czworogłowy)',vint:'Obszerny pośredni (czworogłowy)',
+  bflong:'Dwugłowy uda, głowa długa',bfshort:'Dwugłowy uda, głowa krótka',semit:'Półścięgnisty',semim:'Półbłoniasty',glmed:'Pośladkowy średni',glmin:'Pośladkowy mały',
+  tfl:'Napinacz powięzi szerokiej',sartor:'Krawiecki',iliops:'Biodrowo-lędźwiowy',addlong:'Przywodziciel długi',addmag:'Przywodziciel wielki',gracil:'Smukły',
+  gastlat:'Brzuchaty łydki, głowa boczna',gastmed:'Brzuchaty łydki, głowa przyśrodkowa',soleus:'Płaszczkowaty',tibant:'Piszczelowy przedni',
+  rectab:'Prosty brzucha',extobl:'Skośny zewnętrzny brzucha',intobl:'Skośny wewnętrzny brzucha',trans:'Poprzeczny brzucha',
+  ilioc:'Prostownik grzbietu, część biodrowo-żebrowa',longis:'Prostownik grzbietu, część najdłuższa',mult:'Wielodzielny',qlum:'Czworoboczny lędźwi',
+  tmaj:'Obły większy',rhomb:'Równoległoboczne',levsc:'Dźwigacz łopatki',serr:'Zębaty przedni',pecmin:'Piersiowy mniejszy',
+  dF:'Naramienny, akton przedni',dS:'Naramienny, akton boczny',dR:'Naramienny, akton tylny',supra:'Nadgrzebieniowy',infra:'Podgrzebieniowy',tmin:'Obły mniejszy',subsc:'Podłopatkowy',
+  biclong:'Dwugłowy ramienia, głowa długa',bicshort:'Dwugłowy ramienia, głowa krótka',brach:'Ramienny',brrad:'Ramienno-promieniowy',
+  trilat:'Trójgłowy ramienia, głowa boczna',trilong:'Trójgłowy ramienia, głowa długa',trimed:'Trójgłowy ramienia, głowa przyśrodkowa',
+  flex:'Zginacze nadgarstka i palców',ext:'Prostowniki nadgarstka',pronter:'Nawrotny obły',scm:'Mostkowo-obojczykowo-sutkowy'};
+// mięśnie pomocnicze i stabilizujące według wzorca ruchu
+const MSYN={squat:['glmed','soleus','tibant','mult','trans','qlum','addmag','intobl','vint'],squatM:['glmed','soleus','vint'],
+  uni:['glmed','tfl','soleus','tibant','trans','vint'],dead:['mult','trans','qlum','addmag','rhomb','tmaj','flex','soleus','intobl','levsc'],
+  hinge:['mult','trans','addmag','flex','rhomb'],glute:['trans','glmed','addmag'],addu:['gracil'],
+  bench:['serr','infra','subsc','supra','pecmin','trimed','bicshort'],close:['serr','infra','subsc','trimed'],
+  ohp:['serr','supra','infra','trans','mult','trimed','levsc'],lat:['supra','serr','levsc'],rear:['infra','tmin','rhomb'],
+  vpull:['tmaj','rhomb','brach','brrad','infra','pecmin','flex'],hpull:['tmaj','rhomb','brach','brrad','infra','tmin','mult','trans','flex'],
+  curl:['brach','brrad','flex','pronter'],ext:['trimed'],ham:['gracil','sartor','gastlat','gastmed'],core:['iliops','trans','intobl','rectfem','tfl','sartor'],
+  rot:['intobl','trans','extobl'],cond:['brach','brrad','flex','tmaj','trans']};
+// chwyt z nazwy ćwiczenia: [pozycja startowa, końcowa] obrotu przedramienia
+function gripOf(n){
+  if(/supinac/i.test(n))return [0,85];
+  if(/podchwyt|Uginanie ramion z hantlami|Bayesian/i.test(n))return [85,85];
+  if(/młotkow|neutraln|Landmine|Face pull|Lina|Kas row|jednorącz|goblet|bułgarsk|Split|Wykroki|skrzyn|Odwrotne|Powell|Trap Y|poziomo|na wyciągu siedząc|na maszynie|Hack|suwnic|Przywodz|podudzi|Nordic|Dead bug|Hollow|Brzuszki|Ab wheel|Wood/i.test(n))return [0,0];
+  return [-85,-85];
+}
 // mięśnie napinane w krokach ustawienia (po treści kroku)
 function stepMuscles(t){
   const m=[];t=t.toLowerCase();
@@ -1491,8 +1577,9 @@ function fanMesh(F,X,fan,NF=7,NT=6){
 }
 // ciało anatomiczne w jednym widoku
 function anatBody(c){
-  const {V,PA,PB,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick}=c;
-  const FA=anatFrames(PA,a.sup), FB=anatFrames(PB,a.sup), r1x=r1;
+  const {V,PA,PB,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick,name}=c;
+  const gr=gripOf(name), hang=/^(dead|hinge|squat|glute)$/.test(patOf(name)||''), FA=anatFrames(PA,a.sup,gr[0],hang), FB=anatFrames(PB,a.sup,gr[1],hang), r1x=r1;
+  const syn=new Set(MSYN[patOf(name)]||[]);
   const str=q=>q.map(x=>r1x(x[0])+','+r1x(x[1])).join(' ');
   const anim=(attr,va,vb,isStr)=>frame?'':`<animate attributeName="${attr}" values="${TL.nodes.map(n=>isStr?str(va.map((q,i)=>lerp(q,vb[i],n[1]))):r1x(va+(vb-va)*n[1])).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`;
   const items=[];
@@ -1503,7 +1590,7 @@ function anatBody(c){
   BONES.forEach(([k,pts,w,sided,tg])=>{
     (sided?sides:['L']).forEach(X=>{
       const far=vw==='side'&&X==='R'&&sided?1:0, key=sided?X:'ax';
-      if(tg==='foot'){const S=[FA,FB].map(F=>{const q=F.side[X];return [q.heel,v3(v3(q.an,q.fd,1),q.up,-.5),q.to].map(V)});addB(key,2.2,far,S[0],S[1]);return}
+      if(tg==='foot'){const S=[FA,FB].map(F=>{const q=F.side[X];return [q.heel,v3(v3(q.an,q.fd,1),q.up,-.5),q.ball,q.to].map(V)});addB(key,2.2,far,S[0],S[1]);return}
       const pa=pts.map(sp=>V(anatPt(FA,X,sp))), pb=pts.map(sp=>V(anatPt(FB,X,sp)));
       if(k==='C'){addB(key,w*2,far,[pa[0],pa[0]],[pb[0],pb[0]]);return}
       const ws=Array.isArray(w)?w:pts.map(()=>w);
@@ -1520,15 +1607,15 @@ function anatBody(c){
   Object.values(BG).forEach(g=>items.push({d:g.d/g.n-.3,html:`<path d="${polyD(pick(g.a,g.b))}" fill="none" stroke="${boneCol}" stroke-width="${g.w}" stroke-linecap="round" stroke-linejoin="round"${g.far?' opacity=".4"':''}>${frame?'':`<animate attributeName="d" values="${TL.nodes.map(n=>polyD(g.a.map((l,i)=>l.map((p,k)=>lerp(p,g.b[i][k],n[1]))))).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`}</path>`}));
   // mięśnie: kolor według rodzaju pracy w danej fazie
   const tag={};(a.su||[]).forEach(([t],i)=>stepMuscles(t).forEach(m=>{if(tag[m]==null)tag[m]=i}));
-  const work=m=>p.includes(m)?1:s.includes(m)?2:0;
+  const work=(m,id)=>p.includes(m)?1:s.includes(m)?2:syn.has(id)?3:0;
   const cv=k=>`mus m-${k}`;
   const stOf=dl=>Math.abs(dl)<.03?'iso':dl<0?'con':'ecc', inv=x=>x==='iso'?'iso':x==='con'?'ecc':'con';
-  const colAnim=(m,st1)=>{const wk=work(m),st2=inv(st1),seq=[[0,'rest']];
+  const colAnim=(m,st1,id)=>{const wk=work(m,id),st2=inv(st1),seq=[[0,'rest']];
     if(tag[m]!=null)seq.push([TL.steps[tag[m]][0],'iso']);
     if(wk){TL.p1.forEach(([s1,e1],i)=>{seq.push([s1,st1],[e1,'iso'],[TL.p2[i][0],st2],[TL.p2[i][1],'iso'])})}
     else if(tag[m]!=null)seq.push([TL.setEnd,'rest']);
     const ks=[],vs=[];seq.sort((x,y)=>x[0]-y[0]).forEach(([t,k])=>{const kt=r1x(t/TL.T*1000)/1000;if(ks.length&&ks[ks.length-1]===kt){vs[vs.length-1]=cv(k)}else{ks.push(kt);vs.push(cv(k))}});
-    return {cls:frame?cv(wk?st1:'rest'):cv('rest'),an:frame?'':`<animate attributeName="class" values="${vs.join(';')}" keyTimes="${ks.join(';')}" calcMode="discrete" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`,op:wk===2?.75:.92}};
+    return {cls:frame?cv(wk?st1:'rest'):cv('rest'),an:frame?'':`<animate attributeName="class" values="${vs.join(';')}" keyTimes="${ks.join(';')}" calcMode="discrete" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`,op:wk===1?.92:.75}};
   const skA=[],skB=[];
   // strona mięśnia odwrócona od oglądającego jest prawie przezroczysta (np. plecy w widoku z przodu)
   const VD={side:[0,0,1],front:[1,0,0],top:[0,1,0]}[vw], J=PA;
@@ -1537,14 +1624,16 @@ function anatBody(c){
     axes.forEach(([P,Q])=>{const d=sub3(Q,P),L2=dot3(d,d)||1,t=Math.max(0,Math.min(1,dot3(sub3(c,P),d)/L2)),cp=v3(P,d,t),o=sub3(c,cp),l=len3(o);if(l<best){best=l;out=o}});
     return dot3(nrm3(out),VD)};
   const ghost=f=>f<-.3?' opacity=".16"':'';
-  MUSC.forEach(([m,pts,w])=>sides.forEach(X=>{
+  MUSC.forEach(([id,m,pts,w,deep])=>sides.forEach(X=>{
+    if(deep)return;
     const farS=vw==='side'&&X==='R';
     const A3=pts.map(sp=>anatPt(FA,X,sp)), B3=pts.map(sp=>anatPt(FB,X,sp));
     const len=q=>q.slice(1).reduce((t,x,i)=>t+len3(sub3(x,q[i])),0), LA=len(A3), LB=len(B3);
     const ca=catmull(A3.map(V),3), cb=catmull(B3.map(V),3);
     const pa=bandPoly(ca,w), pb=bandPoly(cb,w*Math.sqrt(LA/LB));
     pa.forEach(q=>grow(q,.5));pb.forEach(q=>grow(q,.5));skA.push(...pa);skB.push(...pb);
-    const C=colAnim(m,stOf((LB-LA)/LA)), gh=farS?' opacity=".5"':ghost(facing(A3));
+    const cIso=/^(supra|infra|tmin|subsc)$/.test(id)&&!/^(rear|lat)$/.test(patOf(name)||'');
+    const C=colAnim(m,cIso?'iso':stOf((LB-LA)/LA),id), gh=farS?' opacity=".5"':ghost(facing(A3));
     items.push({d:ca.reduce((t,q)=>t+q[2],0)/ca.length+.4,html:`<polygon${gh} class="${C.cls}" points="${str(pick(pa,pb))}" fill-opacity="${C.op}" stroke="var(--m-edge)" stroke-width=".35" stroke-linejoin="round">${anim('points',pa,pb,1)}${C.an}</polygon>`});
   }));
   // wachlarze: każde włókno ma własny rodzaj skurczu; czworokąty między włóknami łączone w ścieżki wg stanu
@@ -1561,7 +1650,7 @@ function anatBody(c){
     dep=dep/((NF-1)*(NT-1)*4)+.5;
     const gh=farS?' opacity=".5"':ghost(facing(MA.grid.flat()));
     gA.forEach(r=>skA.push(...r));gB.forEach(r=>skB.push(...r));
-    Object.entries(groups).forEach(([k,g])=>{const C=colAnim(m,k);
+    Object.entries(groups).forEach(([k,g])=>{const C=colAnim(m,k,m);
       items.push({d:dep,html:`<path${gh} class="${C.cls}" d="${pathD(pick(g.a,g.b))}" fill-opacity="${C.op}" stroke="${'var(--m-edge)'}" stroke-width=".12">${animD(g.a,g.b)}${C.an}</path>`})});
     // włókna
     const fa=gA.map(r=>r), fb=gB.map(r=>r), fd=q=>q.map(r=>'M'+r.map(p=>r1x(p[0])+' '+r1x(p[1])).join('L')).join('');
@@ -1576,7 +1665,7 @@ function anatBody(c){
   // rzadziej: co drugi punkt z gęstych obrysów
   const idx=skA.map((_,i)=>i).filter(i=>i%2===0);
   const PA2=idx.map(i=>skA[i]), PB2=idx.map(i=>skB[i]);
-  const tri=delaunay(PA2.map(q=>[q[0],q[1]])), ALPHA=5.4;
+  const tri=delaunay(PA2.map(q=>[q[0],q[1]])), ALPHA=4.3;
   const ok=(P,t,lim)=>[[0,1],[1,2],[2,0]].every(([x,y])=>Math.hypot(P[t[x]][0]-P[t[y]][0],P[t[x]][1]-P[t[y]][1])<lim);
   const keep=tri.filter(t=>ok(PA2,t,ALPHA)&&ok(PB2,t,ALPHA*1.9));
   if(keep.length){
@@ -1591,6 +1680,29 @@ function anatBody(c){
     items.push({d:-1e9,html:`<path d="${pathD(pick(la,lb))}" fill="var(--skin)" fill-rule="evenodd" stroke="var(--skin)" stroke-width="1.6" stroke-linejoin="round" opacity=".6">${animD(la,lb)}</path>`})}
   items.sort((x,y)=>x.d-y.d);
   return items.map(i=>i.html).join('');
+}
+// tabela pracy mięśni: zmiana długości w każdej fazie (lewa strona ciała)
+const FANSUB={pecs:[['Piersiowy większy, część obojczykowa',0,1],['Piersiowy większy, część mostkowa',2,6]],lats:[['Najszerszy grzbietu, włókna dolne',0,3],['Najszerszy grzbietu, włókna górne',4,6]],
+  traps:[['Czworoboczny, część górna',0,1],['Czworoboczny, część środkowa',2,3],['Czworoboczny, część dolna',4,6]],glutes:[['Pośladkowy wielki, włókna górne',0,2],['Pośladkowy wielki, włókna dolne',3,6]]};
+function anatTable(name,key){
+  const a=ANIM[key], g=G[name]; if(!a||!g)return '';
+  const [p,s]=g, [PA,PB]=animPoses(key), gr=gripOf(name), hang=/^(dead|hinge|squat|glute)$/.test(patOf(name)||''), FA=anatFrames(PA,a.sup,gr[0],hang), FB=anatFrames(PB,a.sup,gr[1],hang);
+  const syn=new Set(MSYN[patOf(name)]||[]), work=(m,id)=>p.includes(m)?1:s.includes(m)?2:syn.has(id)?3:0, cuffIso=id=>/^(supra|infra|tmin|subsc)$/.test(id)&&!/^(rear|lat)$/.test(patOf(name)||'');
+  const len=q=>q.slice(1).reduce((t,x,i)=>t+len3(sub3(x,q[i])),0);
+  const rows=[];
+  MUSC.forEach(([id,m,pts,w,deep])=>{const wk=work(m,id);if(!wk)return;
+    const LA=len(pts.map(sp=>anatPt(FA,'L',sp))), LB=len(pts.map(sp=>anatPt(FB,'L',sp)));rows.push({n:MNAME[id],wk,dl:cuffIso(id)?0:(LB-LA)/LA,deep})});
+  FANS.forEach(fan=>{const m=fan[0],wk=work(m,m);if(!wk)return;const A=fanMesh(FA,'L',fan),B=fanMesh(FB,'L',fan);
+    FANSUB[m].forEach(([n,i0,i1])=>{let la=0,lb=0;for(let i=i0;i<=i1;i++){la+=A.lens[i];lb+=B.lens[i]}rows.push({n,wk,dl:(lb-la)/la})})});
+  if(!rows.length)return '';
+  rows.sort((x,y)=>x.wk-y.wk||Math.abs(y.dl)-Math.abs(x.dl));
+  const lab=i=>((a.mv&&a.mv[i]&&a.mv[i][0])||(i?'Powrót':'Ruch')).replace(/:$/,'');
+  const ph=(dl)=>{const v=Math.round(Math.abs(dl)*100);return Math.abs(dl)<.03?['iso','stała długość']:dl<0?['con',`skraca się o ${v}%`]:['ecc',`wydłuża się o ${v}%`]};
+  const role=r=>r.wk===1?'główny':r.wk===2?'pomocniczy':Math.abs(r.dl)<.03?'stabilizuje':'pomaga';
+  const tr=r=>{const [k1,t1]=ph(r.dl),[k2,t2]=ph(-r.dl);return `<tr><td><b>${esc(r.n)}</b>${r.deep?' <span class="meta">(głęboki)</span>':''}<br><span class="meta">${role(r)}</span></td><td><i class="sw m-${k1}"></i>${t1}</td><td><i class="sw m-${k2}"></i>${t2}</td></tr>`};
+  const head=`<tr><th>Mięsień</th><th>${esc(lab(0))}</th><th>${esc(lab(1))}</th></tr>`;
+  const top=rows.slice(0,8), rest=rows.slice(8);
+  return `<p class="mvh">Praca mięśni</p><table class="mtab">${head}${top.map(tr).join('')}</table>${rest.length?`<details class="mtabmore"><summary>Pozostałe mięśnie (${rest.length})</summary><table class="mtab">${head}${rest.map(tr).join('')}</table></details>`:''}<p class="meta">Stała długość przy obciążeniu oznacza pracę izometryczną (stabilizację). Mięśnie głębokie są liczone, ale nie rysowane.</p>`;
 }
 
 let swapOpen=null;
