@@ -117,10 +117,15 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .filepick{display:inline-block;cursor:pointer;margin-bottom:6px}
 .infowrap{margin:0 0 6px 28px}
 .animwrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px}
-.mviews{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:6px 0 8px}
-.mview{margin:0;border:1px solid var(--line);border-radius:10px;padding:4px 6px 6px;background:var(--bg)}
-.mview .moveanim{width:100%;height:auto;display:block}
-.mview figcaption{font-size:12.5px;line-height:1.35;display:flex;flex-direction:column;gap:3px;margin-top:2px}
+.manim{margin:6px 0 10px}
+.manim .moveanim{width:100%;height:auto;display:block}
+.mvctl{justify-content:flex-end;gap:14px;margin:2px 0 0}
+.mvh{margin:6px 0 2px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.mvsteps,.mvphase{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.35}
+.mvsteps li,.mvphase li{padding:4px 6px;border-radius:8px;opacity:.6}
+.mvsteps li b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--done);color:var(--bg);font-size:12px;margin-right:6px}
+.mvphase{margin-top:6px}.mvphase li b{color:var(--done)}
+@media (prefers-reduced-motion: reduce){.mvsteps li,.mvphase li{opacity:1}}
 .animwrap .bodymap{max-width:220px}
 .cue{margin:0 0 8px 28px;padding:8px 10px;border-left:3px solid var(--done);background:var(--done-soft);border-radius:0 8px 8px 0;font-size:14px}
 .cuebox{margin:0 0 8px 28px}.cuebox textarea{min-height:70px;font:400 15px/1.4 var(--body)}
@@ -297,7 +302,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-29c';
+const VER='2026-10-29d';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -774,18 +779,18 @@ function infoBox(name,key){
     <p><b>Jak wykonać:</b> ${d}</p><p class="meta"><b>Uwaga:</b> ${u}</p></div>`;
 }
 
-// ---------- animacje ruchu (model 3D, dwa widoki: z boku + z przodu albo z góry) ----------
+// ---------- animacje ruchu (model 3D: ustawienie krok po kroku, potem ruch; dwa widoki) ----------
 // Świat: X do przodu (osoba patrzy w +X), Y w górę (podłoga Y=0), Z w bok (+Z = lewa strona, bliższa w widoku z boku).
 // Kąt w płaszczyźnie strzałkowej: 0 = w górę, 90 = do przodu, 180 = w dół. Odwiedzenie (…b) w stopniach na zewnątrz.
 const SEGL={t:25,h:8,ua:17,fa:14,th:23,sh:23,ft:7,sw:9};
 const d2r=Math.PI/180;
 const dir3=(a,b,s)=>[Math.sin(a*d2r)*Math.cos(b*d2r),Math.cos(a*d2r)*Math.cos(b*d2r),s*Math.sin(b*d2r)];
-const v3=(p,q,k=1)=>[p[0]+q[0]*k,p[1]+q[1]*k,p[2]+q[2]*k];
+const v3=(p,q,k=1)=>[p[0]+q[0]*k,p[1]+q[1]*k,p[2]+(q[2]||0)*k];
 const sub3=(p,q)=>[p[0]-q[0],p[1]-q[1],p[2]-q[2]];
 const dot3=(p,q)=>p[0]*q[0]+p[1]*q[1]+p[2]*q[2];
 const len3=p=>Math.sqrt(dot3(p,p));
 const mid3=(p,q)=>[(p[0]+q[0])/2,(p[1]+q[1])/2,(p[2]+q[2])/2];
-// dwa odcinki (ramię + przedramię) do punktu docelowego; pole = w którą stronę idzie łokieć
+// dwa odcinki do punktu docelowego; pole = w którą stronę idzie łokieć/kolano
 function ik(S,T,a,b,pole){
   const d=sub3(T,S); let L=len3(d)||1e-6; const u=[d[0]/L,d[1]/L,d[2]/L];
   L=Math.min(Math.max(L,Math.abs(a-b)+.01),a+b-.01);
@@ -795,38 +800,38 @@ function ik(S,T,a,b,pole){
 }
 const STAND={t:0,ua:180,fa:180,th:180,sh:180,ft:90,uab:8,fab:0,thb:4,shb:1,ftb:15};
 const AN=o=>Object.assign({},STAND,o);
+const SIDES=[['L',1,''],['R',-1,'2']];
 function pose3(P,a){
   const J={hp:[0,0,0],hpL:[0,0,5],hpR:[0,0,-5]}, td=dir3(P.t,0,1);
   J.sh=v3(J.hp,td,SEGL.t); J.shL=v3(J.sh,[0,0,SEGL.sw]); J.shR=v3(J.sh,[0,0,-SEGL.sw]); J.hd=v3(J.sh,td,SEGL.h);
-  [['L',1,''],['R',-1,'2']].forEach(([X,s,k])=>{
-    const g=n=>P[n+k]??P[n];
-    J['el'+X]=v3(J['sh'+X],dir3(g('ua'),g('uab'),s),SEGL.ua); J['wr'+X]=v3(J['el'+X],dir3(g('fa'),g('fab'),s),SEGL.fa);
-    J['kn'+X]=v3(J['hp'+X],dir3(g('th'),g('thb'),s),SEGL.th); J['an'+X]=v3(J['kn'+X],dir3(g('sh'),g('shb'),s),SEGL.sh);
-    J['to'+X]=v3(J['an'+X],dir3(g('ft'),g('ftb'),s),SEGL.ft);
+  const g=(n,k)=>P[n+k]??P[n];
+  SIDES.forEach(([X,s,k])=>{
+    J['el'+X]=v3(J['sh'+X],dir3(g('ua',k),g('uab',k),s),SEGL.ua); J['wr'+X]=v3(J['el'+X],dir3(g('fa',k),g('fab',k),s),SEGL.fa);
+    J['kn'+X]=v3(J['hp'+X],dir3(g('th',k),g('thb',k),s),SEGL.th); J['an'+X]=v3(J['kn'+X],dir3(g('sh',k),g('shb',k),s),SEGL.sh);
+    J['to'+X]=v3(J['an'+X],dir3(g('ft',k),g('ftb',k),s),SEGL.ft);
   });
-  const mids=()=>['el','wr','kn','an','to'].forEach(k=>J[k]=mid3(J[k+'L'],J[k+'R']));
+  const mids=()=>{['el','wr','kn','an','to'].forEach(k=>J[k]=mid3(J[k+'L'],J[k+'R']));J.tm=mid3(J.hp,J.sh)};
   mids();
-  const [jn,at]=a.an, o=sub3([at[0],at[1],at[2]||0],J[jn]); Object.keys(J).forEach(k=>J[k]=v3(J[k],o));
-  const h=P.hold;
-  if(h){
-    const base=h.abs?[h.abs[0],h.abs[1],0]:v3(J[h.j],[h.o[0],h.o[1],0]);
-    [['L',1],['R',-1]].forEach(([X,s])=>{
-      const so=h['o'+X]||[0,0], z=s>0?(h.zL??h.w):(h.zR??-h.w);
-      const T=[base[0]+so[0],base[1]+so[1],z];
+  if(P.roll){const r=P.roll*d2r,c=Math.cos(r),sn=Math.sin(r);Object.keys(J).forEach(k=>{const [x,y,z]=J[k];J[k]=[x,y*c-z*sn,y*sn+z*c]})}
+  const at=P.at||a.an[1], o=sub3([at[0],at[1],at[2]||0],J[a.an[0]]); Object.keys(J).forEach(k=>J[k]=v3(J[k],o));
+  [].concat(P.hold||[]).forEach(h=>{
+    const base=h.abs?[h.abs[0],h.abs[1],0]:v3(J[h.j],h.o||[0,0,0]);
+    SIDES.filter(x=>!h.side||h.side===x[0]).forEach(([X,s])=>{
+      const so=h['o'+X]||[0,0], z=h.abs3?h.abs3[2]:s>0?(h.zL??h.w):(h.zR??-h.w);
+      const T=[base[0]+so[0],base[1]+so[1],h.j&&h.rz?base[2]+z:z];
       const pole=h['pole'+X]||[h.pole[0],h.pole[1],h.pole[2]*s];
       const [E,W]=ik(J['sh'+X],T,SEGL.ua,SEGL.fa,pole); J['el'+X]=E; J['wr'+X]=W;
     });
-    mids();
-  }
+  });
   const f=P.feet;
-  if(f){
-    [['L',1],['R',-1]].forEach(([X,s])=>{
-      const T=[f.abs[0],f.abs[1],s*f.w], pole=[f.pole[0],f.pole[1],f.pole[2]*s];
-      const [K,A]=ik(J['hp'+X],T,SEGL.th,SEGL.sh,pole); J['kn'+X]=K; J['an'+X]=A;
-      J['to'+X]=v3(A,dir3(P.ft??90,P.ftb??15,s),SEGL.ft);
-    });
-    mids();
-  }
+  if(f)SIDES.filter(x=>!f.side||f.side===x[0]).forEach(([X,s,k])=>{
+    const T=f[X]||[f.abs[0],f.abs[1],s*f.w], pole=f['pole'+X]||[f.pole[0],f.pole[1],f.pole[2]*s];
+    const [K,A]=ik(J['hp'+X],T,SEGL.th,SEGL.sh,pole); J['kn'+X]=K; J['an'+X]=A;
+    J['to'+X]=v3(A,dir3(g('ft',k),g('ftb',k),s),SEGL.ft);
+  });
+  mids();
+  J.tm=mid3(J.hp,J.sh);
+  J.td=sub3(J.sh,J.hp).map(v=>v/SEGL.t);
   return J;
 }
 // widoki: [x ekranu, y ekranu, głębokość (większa = bliżej oglądającego)]
@@ -835,160 +840,6 @@ const VIEWS={
   front:{l:'Z przodu',p:q=>[60+q[2],93-q[1],q[0]]},
   top:{l:'Z góry',p:q=>[q[0],50-q[2],q[1]]}
 };
-const BENCH=[['box',30,80,18,22,-8,8],['box',36,40,0,18,-6,6],['box',70,74,0,18,-6,6]];
-const SEAT=[['box',38,60,17,21,-12,12],['box',46,52,0,17,-4,4]];
-const BFEET={abs:[20,0],w:16,pole:[0,1,.6]};
-// pr: rekwizyty [rodzaj, staw, przesunięcie X/Y]; st: sprzęt w 3D; gd:'mf' = pionowa linia nad środkiem stopy (widok z boku)
-// chk: punkty kontrolne dla każdego widoku [część ciała, opis]
-const ANIM={
-  squat:{A:AN({thb:8,shb:9,ftb:25,hold:{j:'sh',o:[-3,2],w:20,pole:[-1,-1,1]}}),B:AN({t:42,th:95,thb:28,sh:207,shb:-10,ftb:25,hold:{j:'sh',o:[-3,2],w:20,pole:[-1,-1,1]}}),
-    an:['an',[50,0]],pr:[['bar','sh',[-3,2]]],gd:'mf',chk:{
-    side:[['Plecy','proste, klatka wysoko, sztanga na górze łopatek'],['Biodra','w dół i lekko w tył, co najmniej do równoległej'],['Sztanga','cały czas nad środkiem stopy (linia przerywana)']],
-    front:[['Stopy','na szerokość barków, palce lekko na zewnątrz'],['Kolana','idą w linii palców, nie uciekają do środka'],['Ręce','chwyt nieco szerzej niż barki, łokcie w dół']]}},
-  fsquat:{A:AN({thb:8,shb:9,ftb:25,hold:{j:'sh',o:[5,1],w:12,pole:[1,.25,.35]}}),B:AN({t:22,th:95,thb:26,sh:212,shb:-9,ftb:25,hold:{j:'sh',o:[5,1],w:12,pole:[1,.25,.35]}}),
-    an:['an',[50,0]],pr:[['bar','sh',[5,1]]],gd:'mf',chk:{
-    side:[['Plecy','prawie pionowo, bardziej wyprostowane niż w zwykłym przysiadzie'],['Łokcie','wysoko, ramiona równolegle do podłogi'],['Sztanga','na przednich barkach, nad środkiem stopy']],
-    front:[['Stopy','na szerokość barków, palce lekko na zewnątrz'],['Kolana','w linii palców'],['Ręce','sztanga leży na barkach, palce ją tylko przytrzymują']]}},
-  goblet:{A:AN({thb:8,shb:9,ftb:25,hold:{j:'sh',o:[7,-7],w:3,pole:[.3,-1,.6]}}),B:AN({t:28,th:95,thb:30,sh:207,shb:-11,ftb:25,hold:{j:'sh',o:[7,-7],w:3,pole:[.3,-1,.6]}}),
-    an:['an',[50,0]],pr:[['db1','wr',[0,0]]],gd:'mf',chk:{
-    side:[['Plecy','proste, ciężar przy klatce'],['Biodra','w dół między pięty']],
-    front:[['Stopy','na szerokość barków lub szerzej'],['Kolana','rozpychają się na boki, w linii palców'],['Łokcie','w dół, na dole między kolanami']]}},
-  msquat:{A:AN({thb:8,shb:9,ftb:20,hold:{j:'sh',o:[5,-5],zL:-6,zR:6,pole:[1,-1,.4]}}),B:AN({t:35,th:95,thb:25,sh:207,shb:-9,ftb:20,hold:{j:'sh',o:[5,-5],zL:-6,zR:6,pole:[1,-1,.4]}}),
-    an:['an',[50,0]],pr:[],chk:{
-    side:[['Plecy','całe oparte, lędźwie nie odrywają się na dole'],['Stopy','cała stopa na platformie, pięty zostają']],
-    front:[['Stopy','na szerokość barków'],['Kolana','w linii palców, nie do środka']]}},
-  lunge:{A:AN({th:157,sh:172,th2:205,sh2:195,ft2:110,thb:3,shb:2,ftb:10,uab:4}),B:AN({t:5,ua:185,th:97,sh:178,th2:185,sh2:265,ft2:170,thb:3,shb:2,ftb:10,uab:4}),
-    an:['anL',[78,0]],pr:[['db','wr',[0,0]]],chk:{
-    side:[['Tułów','prosto lub lekko pochylony'],['Przednia noga','goleń prawie pionowo, kolano nad stopą'],['Tylne kolano','schodzi prosto w dół, tuż nad podłogę']],
-    front:[['Stopy','na szerokość bioder, jak na torach, nie na jednej linii'],['Przednie kolano','nad stopą, nie ucieka do środka']]}},
-  dead:{A:AN({t:65,th:105,thb:11,sh:200,shb:-6,ftb:10,hold:{abs:[54,9],w:11,pole:[0,0,1]}}),B:AN({thb:3,shb:2,ftb:10,uab:4}),
-    an:['an',[50,0]],pr:[['bar','wr',[0,0]]],gd:'mf',chk:{
-    side:[['Plecy','proste od startu do końca, barki lekko przed sztangą'],['Sztanga','sunie po goleniach i udach, nad środkiem stopy'],['Góra','biodra i kolana prostują się razem, bez odchylania']],
-    front:[['Stopy','na szerokość bioder'],['Ręce','proste, tuż na zewnątrz kolan'],['Kolana','lekko rozpychają ręce, nie schodzą do środka']]}},
-  hinge:{A:AN({uab:4,ftb:10}),B:AN({t:75,ua:188,fa:188,th:166,sh:184,uab:4,ftb:10}),
-    an:['an',[46,0]],pr:[['bar','wr',[0,0]]],gd:'mf',chk:{
-    side:[['Kolana','lekko ugięte i prawie nieruchome'],['Biodra','cofają się do tyłu, plecy proste'],['Sztanga','blisko ud i goleni, nad środkiem stopy']],
-    front:[['Stopy','na szerokość bioder'],['Ręce','na szerokość barków, proste']]}},
-  thrust:{A:AN({t:-60,ft:90,ftb:10,feet:{abs:[68,0],w:9,pole:[1,1,.3]},hold:{j:'hp',o:[0,5],w:16,pole:[0,1,1]}}),B:AN({t:-90,ft:90,ftb:10,feet:{abs:[68,0],w:9,pole:[1,1,.3]},hold:{j:'hp',o:[0,5],w:16,pole:[0,1,1]}}),
-    an:['sh',[22,21]],pr:[['bar','hp',[0,5]]],st:[['box',6,24,14,19,-22,22],['box',8,11,0,14,18,22],['box',8,11,0,14,-22,-18],['box',19,22,0,14,18,22],['box',19,22,0,14,-22,-18]],chk:{
-    side:[['Plecy','łopatki na ławce, broda przy klatce'],['Góra','tułów i uda w jednej linii, goleń pionowo'],['Biodra','dopychasz pośladkami, nie wyginasz lędźwi']],
-    front:[['Stopy','na szerokość bioder, całe na podłodze'],['Kolana','nad stopami, nie schodzą do środka']]}},
-  addu:{A:AN({th:90,sh:180,thb:38,shb:-30,uab:22}),B:AN({th:90,sh:180,thb:6,shb:-4,uab:22}),
-    an:['hp',[50,22]],pr:[],st:[...SEAT,['box',36,40,21,56,-12,12]],chk:{
-    side:[['Plecy','oparte, siedzisz prosto']],
-    front:[['Uda','schodzą się równo, bez szarpnięcia'],['Powrót','wolno, aż poczujesz rozciąganie']]}},
-  bench:{v:['side','top'],A:AN({t:90,ft:90,ftb:30,feet:BFEET,hold:{j:'sh',o:[-2,29],w:19,pole:[0,0,1]}}),B:AN({t:90,ft:90,ftb:30,feet:BFEET,hold:{j:'sh',o:[-7,5],w:19,pole:[-.7,-1,1.1]}}),
-    an:['hp',[40,24]],pr:[['bar','wr',[0,0]]],st:BENCH,chk:{
-    side:[['Plecy','łopatki ściągnięte i wciśnięte w ławkę, lekki łuk'],['Sztanga','dotyka dolnej części klatki'],['Stopy','płasko na podłodze, pośladki na ławce']],
-    top:[['Ręce','chwyt nieco szerzej niż barki, przedramiona pionowo'],['Łokcie','ok. 45–70° od tułowia, nie na boki pod kątem prostym'],['Stopy','rozstawione szeroko, kolana nad stopami']]}},
-  floor:{v:['side','top'],A:AN({t:90,ft:90,ftb:15,feet:{abs:[12,0],w:10,pole:[0,1,.4]},hold:{j:'sh',o:[-2,28],w:17,pole:[0,0,1]}}),B:AN({t:90,ft:90,ftb:15,feet:{abs:[12,0],w:10,pole:[0,1,.4]},hold:{j:'sh',o:[-7,10],w:17,pole:[-.6,-1,1]}}),
-    an:['hp',[34,3.5]],fl:1,pr:[['bar','wr',[0,0]]],chk:{
-    side:[['Plecy','na podłodze, łopatki ściągnięte'],['Łokcie','na dole lekko dotykają podłogi, bez odbicia'],['Nogi','ugięte, stopy płasko']],
-    top:[['Ręce','chwyt na szerokość barków lub nieco szerzej'],['Łokcie','ok. 45° od tułowia']]}},
-  incline:{A:AN({t:-55,ft:90,ftb:25,feet:{abs:[74,0],w:14,pole:[1,1,.4]},hold:{j:'sh',o:[1,29],w:18,pole:[0,0,1]}}),B:AN({t:-55,ft:90,ftb:25,feet:{abs:[74,0],w:14,pole:[1,1,.4]},hold:{j:'sh',o:[5,3],w:18,pole:[-.6,-.8,1]}}),
-    an:['hp',[46,24]],pr:[['bar','wr',[0,0]]],st:[['box',36,56,18,22,-9,9],['quad',[[44,21.5,-9],[44,21.5,9],[18,39.7,9],[18,39.7,-9]]],['box',40,44,0,18,-6,6]],chk:{
-    side:[['Plecy','oparte, łopatki ściągnięte'],['Sztanga','do górnej części klatki, tor prawie pionowo']],
-    front:[['Ręce','chwyt nieco szerzej niż barki'],['Łokcie','pod sztangą, lekko przy tułowiu'],['Stopy','płasko na podłodze']]}},
-  pushup:{v:['side','top'],A:AN({t:70,th:250,sh:250,ft:175,ftb:0,thb:2,shb:0,hold:{abs:[83,0],w:12,pole:[-1,0,1]}}),B:AN({t:82,th:262,sh:262,ft:175,ftb:0,thb:2,shb:0,hold:{abs:[83,0],w:12,pole:[-1,.3,.8]}}),
-    an:['to',[18,0]],fl:1,pr:[],chk:{
-    side:[['Ciało','proste jak deska od głowy do pięt'],['Biodra','nie opadają i nie idą w górę'],['Klatka','schodzi tuż nad podłogę']],
-    top:[['Ręce','pod barkami, nieco szerzej niż barki'],['Łokcie','ok. 45° od tułowia, nie na boki']]}},
-  dip:{A:AN({ua:180,fa:180,uab:5.5,sh:225}),B:AN({ua:215,fa:170,uab:5.5,sh:225}),
-    an:['wr',[60,52]],pr:[],st:[['line',[44,52,12],[78,52,12],4],['line',[44,52,-12],[78,52,-12],4]],nf:1,chk:{
-    side:[['Tułów','lekko pochylony do przodu'],['Barki','schodzą do wysokości łokci, nie niżej'],['Nogi','ugięte, nieruchome']],
-    front:[['Łokcie','idą do tyłu, nie rozchodzą się na boki'],['Barki','nisko, z dala od uszu']]}},
-  ohp:{A:AN({ftb:10,hold:{j:'sh',o:[5,1],w:13,pole:[.6,-1,.4]}}),B:AN({ftb:10,hold:{j:'sh',o:[0,29],w:13,pole:[0,0,1]}}),
-    an:['an',[50,0]],pr:[['bar','wr',[0,0]]],gd:'mf',chk:{
-    side:[['Sztanga','prosto w górę, na górze nad środkiem stopy'],['Głowa','cofa się, gdy sztanga mija twarz, potem do przodu'],['Plecy','pośladki i brzuch napięte, bez odchylania']],
-    front:[['Ręce','chwyt tuż szerzej niż barki'],['Przedramiona','pionowo pod sztangą'],['Stopy','na szerokość bioder']]}},
-  lat:{A:AN({ua:175,uab:8,fa:175,fab:10}),B:AN({ua:168,uab:80,fa:168,fab:84}),
-    an:['an',[50,0]],pr:[['db','wr',[0,0]]],chk:{
-    side:[['Ręce','lekko przed tułowiem, nie z tyłu'],['Tułów','nieruchomo, bez bujania']],
-    front:[['Wysokość','do linii barków, nie wyżej'],['Łokcie','lekko ugięte, prowadzą ruch'],['Barki','nisko, z dala od uszu']]}},
-  revfly:{A:AN({t:72,th:165,sh:188,ua:180,uab:6,fa:180,fab:8}),B:AN({t:72,th:165,sh:188,ua:180,uab:80,fa:180,fab:84}),
-    an:['an',[46,0]],pr:[['db','wr',[0,0]]],chk:{
-    side:[['Plecy','proste, tułów pochylony i nieruchomy'],['Kolana','lekko ugięte']],
-    front:[['Ręce','na boki do linii barków, łokcie lekko ugięte'],['Łopatki','ściągasz na końcu ruchu']]}},
-  revflyM:{A:AN({ua:90,uab:6,fa:90,fab:6,th:90,sh:180}),B:AN({ua:90,uab:85,fa:92,fab:88,th:90,sh:180}),
-    an:['hp',[50,22]],pr:[],st:[...SEAT,['box',55,59,32,52,-7,7]],chk:{
-    side:[['Klatka','oparta o poduszkę, plecy proste']],
-    front:[['Ręce','na wysokości barków, łokcie lekko ugięte'],['Ruch','ręce szeroko na boki, łopatki ściągnięte na końcu']]}},
-  facepull:{A:AN({ua:85,fa:88,uab:8,fab:5,ftb:10}),B:AN({ftb:10,hold:{j:'hd',o:[-1,-2],w:10,pole:[-.4,-.1,1]}}),
-    an:['an',[46,0]],pr:[['cable','wr',[112,74]]],st:[['dot',[112,74,0]]],chk:{
-    side:[['Tułów','prosto lub lekko odchylony, nieruchomo'],['Linka','do twarzy, na wysokości oczu']],
-    front:[['Łokcie','wysoko, na wysokości barków'],['Ręce','rozchodzą się na boki, obok uszu'],['Stopy','na szerokość bioder']]}},
-  pullup:{A:AN({ua:0,uab:20,fa:0,fab:20,th:175,sh:250,thb:2,shb:0}),B:AN({ua:195,uab:55,fa:0,fab:-10,th:170,sh:250,thb:2,shb:0}),
-    an:['wr',[62,80]],nf:1,pr:[],st:[['line',[62,80,-32],[62,80,32],5]],chk:{
-    side:[['Klatka','idzie do drążka, broda nad drążek'],['Nogi','razem, bez bujania']],
-    front:[['Ręce','chwyt nieco szerzej niż barki'],['Łokcie','w dół, do żeber'],['Barki','na dole aktywne, nie wiszą przy uszach']]}},
-  pullupN:{A:AN({ua:0,uab:6,fa:0,fab:6,th:175,sh:250,thb:2,shb:0}),B:AN({ua:200,uab:22,fa:5,fab:-8,th:170,sh:250,thb:2,shb:0}),
-    an:['wr',[62,80]],nf:1,pr:[],st:[['line',[62,80,-32],[62,80,32],5]],chk:{
-    side:[['Klatka','do drążka, łokcie w dół i do tyłu'],['Nogi','razem, bez bujania']],
-    front:[['Ręce','na szerokość barków'],['Łokcie','blisko tułowia']]}},
-  pulldown:{A:AN({t:-8,th:90,sh:180,thb:6,ua:5,uab:25,fa:5,fab:25}),B:AN({t:-12,th:90,sh:180,thb:6,ua:185,uab:52,fa:5,fab:-15}),
-    an:['hp',[50,22]],pr:[['hbar','wr',[0,0]],['cable','wr',[52,104]]],st:[...SEAT,['box',66,74,25,28,-10,10]],chk:{
-    side:[['Tułów','lekko odchylony, nieruchomo'],['Drążek','do górnej części klatki, nie za głowę']],
-    front:[['Ręce','chwyt szerzej niż barki'],['Łokcie','w dół, do boków'],['Barki','w dół, z dala od uszu']]}},
-  row:{A:AN({t:72,ua:182,fa:182,th:165,sh:190,uab:4}),B:AN({t:72,ua:255,uab:14,fa:182,th:165,sh:190}),
-    an:['an',[46,0]],pr:[['bar','wr',[0,0]]],gd:'mf',chk:{
-    side:[['Plecy','proste, tułów pochylony ok. 45° lub niżej'],['Sztanga','do brzucha, łokcie do tyłu'],['Kolana','lekko ugięte, nieruchome']],
-    front:[['Ręce','chwyt na szerokość barków'],['Łokcie','blisko tułowia'],['Stopy','na szerokość bioder']]}},
-  crow:{A:AN({t:12,ft:20,feet:{abs:[78,6],w:8,pole:[0,1,0]},ua:90,uab:6,fa:90,fab:6}),B:AN({t:-4,ft:20,feet:{abs:[78,6],w:8,pole:[0,1,0]},hold:{j:'sh',o:[8,-12],w:8,pole:[-1,0,.3]}}),
-    an:['hp',[36,14]],pr:[['cable','wr',[112,38]]],st:[['box',16,54,9,12,-9,9],['box',80,83,0,20,-12,12]],chk:{
-    side:[['Plecy','proste, tułów prawie pionowo, bez bujania'],['Łokcie','do tyłu, uchwyt do brzucha']],
-    front:[['Łokcie','blisko tułowia'],['Łopatki','ściągasz na końcu ruchu']]}},
-  curl:{A:AN({uab:5}),B:AN({ua:175,uab:5,fa:25}),
-    an:['an',[50,0]],pr:[['db','wr',[0,0]]],chk:{
-    side:[['Łokcie','przy bokach, nie idą do przodu'],['Plecy','proste, bez bujania']],
-    front:[['Łokcie','blisko tułowia, nieruchomo'],['Nadgarstki','proste']]}},
-  ext:{A:AN({t:5,ua:175,uab:4,fa:30}),B:AN({t:5,ua:175,uab:4,fa:175}),
-    an:['an',[46,0]],pr:[['cable','wr',[62,100]]],st:[['dot',[62,100,0]]],chk:{
-    side:[['Ramię','nieruchomo, pracuje tylko przedramię'],['Tułów','lekko pochylony, stały']],
-    front:[['Łokcie','przy tułowiu'],['Dół','pełny wyprost łokci']]}},
-  french:{v:['side','top'],A:AN({t:90,ft:90,ftb:30,feet:BFEET,ua:0,uab:6,fa:0,fab:6}),B:AN({t:90,ft:90,ftb:30,feet:BFEET,ua:38,uab:6,fa:155,fab:6}),
-    an:['hp',[40,24]],pr:[['bar','wr',[0,0]]],st:BENCH,chk:{
-    side:[['Ramiona','idą lekko za głowę, ciężar schodzi za głowę'],['Plecy','na ławce, stopy na podłodze']],
-    top:[['Łokcie','na szerokość barków, nie rozchodzą się'],['Ręce','wąsko, nad twarzą na górze']]}},
-  legcurl:{v:['side','top'],A:AN({t:-90,th:90,sh:90,ft:180,thb:3,shb:0,hold:{abs:[22,10],w:12,pole:[0,0,1]}}),B:AN({t:-90,th:90,sh:15,ft:105,thb:3,shb:0,hold:{abs:[22,10],w:12,pole:[0,0,1]}}),
-    an:['hp',[52,26]],pr:[['pad','an',[0,0]]],st:[['box',10,80,20,24,-8,8],['box',16,20,0,20,-6,6],['box',72,76,0,20,-6,6]],chk:{
-    side:[['Biodra','przyciśnięte do ławki, nie unoszą się'],['Ruch','pięty do pośladków, powrót wolno']],
-    top:[['Nogi','równolegle, kolana na szerokość bioder'],['Stopy','proste, palce do siebie']]}},
-  nordic:{A:AN({ua:150,fa:150,uab:15,th:180,sh:270,ft:200,thb:3,shb:0}),B:AN({t:60,ua:120,fa:120,uab:15,th:240,sh:270,ft:200,thb:3,shb:0}),
-    an:['kn',[40,3]],pr:[],chk:{
-    side:[['Ciało','proste od kolan do głowy, biodra się nie zginają'],['Ręce','gotowe, żeby złapać upadek']],
-    front:[['Kolana','na szerokość bioder, na miękkim podłożu']]}},
-  abwheel:{A:AN({t:58,ua:172,fa:176,uab:-4,th:172,sh:270,ft:200,thb:3,shb:0}),B:AN({t:84,ua:108,fa:106,uab:-4,th:228,sh:270,ft:200,thb:3,shb:0}),
-    an:['kn',[28,4]],pr:[['wheel','wr',[0,-4]]],chk:{
-    side:[['Plecy','lekko zaokrąglone, lędźwie się nie zapadają'],['Biodra','idą za tułowiem, nie zostają w górze']],
-    front:[['Ręce','na szerokość barków na uchwytach'],['Kolana','na szerokość bioder']]}},
-  legraise:{A:AN({ua:0,uab:15,fa:0,fab:15,th:175,sh:185,thb:2,shb:0}),B:AN({ua:0,uab:15,fa:0,fab:15,th:85,sh:175,thb:2,shb:0}),
-    an:['wr',[60,90]],nf:1,pr:[],st:[['line',[60,90,-32],[60,90,32],4]],chk:{
-    side:[['Miednica','podwija się na górze'],['Ruch','bez bujania, opuszczanie wolno']],
-    front:[['Ręce','chwyt na szerokość barków'],['Nogi','razem']]}},
-  deadbug:{v:['side','top'],A:AN({t:-90,ua:0,fa:0,uab:5,th:0,sh:90,thb:4,shb:0,ft:0}),B:AN({t:-90,ua:0,fa:0,uab:5,ua2:-75,fa2:-75,th:74,sh:86,thb:4,shb:0,th2:0,sh2:90,ft:80,ft2:0}),
-    an:['hp',[62,4]],fl:1,pr:[],chk:{
-    side:[['Lędźwie','przyklejone do podłogi przez cały czas'],['Ruch','powoli, wydech przy wyproście']],
-    top:[['Ręka i noga','przeciwne: lewa noga z prawą ręką'],['Druga para','nieruchomo nad tułowiem']]}},
-  chop:{A:AN({thb:12,shb:-4,ftb:20,hold:{j:'sh',o:[9,12],zL:15,zR:11,pole:[1,0,0],poleL:[.3,-1,1],poleR:[.6,-1,-.2]}}),B:AN({th:165,sh:195,thb:12,shb:-4,ftb:20,hold:{j:'hp',o:[14,-12],zL:-13,zR:-17,pole:[1,0,0],poleL:[.6,-1,.2],poleR:[.3,-1,-1]}}),
-    an:['an',[50,0]],pr:[['db1','wr',[0,0]]],chk:{
-    side:[['Plecy','proste, ruch z bioder i tułowia'],['Kolana','lekko ugięte']],
-    front:[['Ręce','prawie proste, prowadzą po skosie'],['Stopy','szerzej niż barki'],['Biodra','obracają się razem z tułowiem']]}},
-  rope:{A:AN({ftb:15,thb:8,shb:4,hold:{j:'sh',o:[12,0],oL:[0,16],oR:[0,-6],zL:1.5,zR:-1.5,pole:[0,-1,1]}}),B:AN({ftb:15,thb:8,shb:4,hold:{j:'sh',o:[12,0],oL:[0,-6],oR:[0,16],zL:1.5,zR:-1.5,pole:[0,-1,1]}}),
-    an:['an',[50,0]],pr:[],st:[['line',[62,0,0],[62,100,0],1.5]],chk:{
-    side:[['Plecy','proste, tułów nieruchomo'],['Ręce','ciągną linę ręka za ręką']],
-    front:[['Stopy','na szerokość barków, kolana lekko ugięte'],['Oddech','spokojnie przez nos']]}}
-};
-// wariant: wyciskanie wąsko
-ANIM.cbench=Object.assign({},ANIM.bench,{A:AN(Object.assign({},ANIM.bench.A,{hold:{j:'sh',o:[-2,29],w:10,pole:[0,0,1]}})),B:AN(Object.assign({},ANIM.bench.B,{hold:{j:'sh',o:[-8,5],w:10,pole:[-1,-1,.45]}})),chk:{
-  side:ANIM.bench.chk.side,top:[['Ręce','na szerokość barków, nie węziej'],['Łokcie','blisko tułowia, ok. 30–45°'],['Stopy','płasko, kolana nad stopami']]}});
-const PATANIM={squat:'squat',squatM:'msquat',uni:'lunge',dead:'dead',hinge:'hinge',glute:'thrust',addu:'addu',bench:'bench',close:'cbench',ohp:'ohp',lat:'lat',rear:'revfly',vpull:'pullup',hpull:'row',curl:'curl',ext:'ext',ham:'legcurl',core:'deadbug',rot:'chop',cond:'rope'};
-const NAMEANIM={'Front squat':'fsquat','Przysiad goblet':'goblet','Hack squat':'msquat','Wypychanie nóg na suwnicy':'msquat','Nordic curl':'nordic','Ab wheel':'abwheel',
-  'Unoszenie nóg w zwisie':'legraise','Pompki na poręczach':'dip','Pompki z obciążeniem':'pushup','Face pull':'facepull','Good morning':'hinge','Hip thrust':'thrust',
-  'Floor press':'floor','Wyciskanie na skosie dodatnim':'incline','Wyciskanie hantli na skosie dodatnim':'incline','Francuz z przenoszeniem':'french',
-  'Odwrotne rozpiętki na maszynie':'revflyM','Ściąganie drążka poziomo':'crow','Wiosłowanie na wyciągu siedząc':'crow','Wiosłowanie na maszynie':'crow',
-  'Podciąganie podchwytem':'pullupN','Podciąganie chwytem neutralnym':'pullupN','Ściąganie drążka nachwytem':'pulldown','Ściąganie drążka szerokim chwytem':'pulldown',
-  'Ściąganie drążka podchwytem':'pulldown','Ściąganie drążka chwytem neutralnym':'pulldown','Hammer na plecy szeroko':'pulldown'};
-const animKey=n=>NAMEANIM[n]||PATANIM[patOf(n)]||null;
 const PARTM={torso:['pecs','lats','traps','abs','obl','erect'],delt:['dF','dS','dR'],ua:['biceps','triceps'],fa:['fore'],hip:['glutes','add'],th:['quads','hams','add'],shin:['calves'],ft:[]};
 const SEG3=[];['L','R'].forEach(X=>SEG3.push(['hp'+X,'kn'+X,'th',X],['kn'+X,'an'+X,'shin',X],['an'+X,'to'+X,'ft',X],['sh'+X,'el'+X,'ua',X],['el'+X,'wr'+X,'fa',X]));
 const animCache={};
@@ -998,18 +849,52 @@ function animPoses(key){
   return animCache[key]=[pose3(a.A,a),pose3(a.B,a)];
 }
 const PLATE=9;
-// jeden widok: zawartość SVG i granice rysunku; frame 'A'/'B' = jedna pozycja, bez frame = animacja
-function animView(name,key,vw,frame){
+// oś czasu: ustawienie (kroki po kolei, postać w pozycji startowej), potem 2 powtórzenia
+// węzły [czas, f], f = 0 pozycja startowa, 1 pozycja końcowa
+function animTimeline(a,name){
+  const ps=Object.assign({},a.tm||{},ANIMNAME[name]&&ANIMNAME[name].tm||{});
+  const su=a.su||[], step=1.7, t0=.5;
+  const steps=su.map((_,i)=>[t0+i*step,t0+(i+1)*step]);
+  const setEnd=t0+su.length*step+.3;
+  const nodes=[[0,0],[setEnd,0]], p1=[], p2=[];
+  let t=setEnd;
+  for(let r=0;r<2;r++){
+    const s1=t;
+    if(ps.mid){const [m,hold]=ps.mid;t+=(ps.d||1.5)*m;nodes.push([t,m]);t+=hold;nodes.push([t,m]);t+=(ps.d||1.5)*(1-m);nodes.push([t,1])}
+    else{t+=ps.d||1.5;nodes.push([t,1])}
+    p1.push([s1,t]);
+    t+=ps.b??.35; nodes.push([t,1]);
+    const s2=t; t+=ps.u||1.3; nodes.push([t,0]); p2.push([s2,t]);
+    t+=.6; nodes.push([t,0]);
+  }
+  return {T:t,nodes,steps,setEnd,p1,p2};
+}
+let animUid=0;
+const r1=v=>Math.round(v*10)/10;
+// strzałka: [staw, kierunek, przesunięcie, flagi] — flagi: b = w układzie tułowia (wzdłuż kręgosłupa, do przodu klatki, w bok), m = też lustrzanie po drugiej stronie
+function arrowsOf(list){
+  const out=[];
+  (list||[]).forEach(([j,d,o,fl=''])=>{
+    out.push({j,d,o:o||[0,0,0],b:fl.includes('b')});
+    if(fl.includes('m'))out.push({j:j.replace(/L$/,'R'),d:[d[0],d[1],-d[2]],o:o?[o[0],o[1],-o[2]]:[0,0,0],b:fl.includes('b')});
+  });
+  return out;
+}
+function bodyVec(J,v,fl){const u=J.td, k=fl?-1:1, f=[u[1]*k,-u[0]*k,0];return [u[0]*v[0]+f[0]*v[1],u[1]*v[0]+f[1]*v[1],v[2]]}
+function animView(name,key,vw,TL,frame){
   const a=ANIM[key], [PA,PB]=animPoses(key), g=G[name], [p,s]=g, V=VIEWS[vw].p, bx=[1e9,1e9,-1e9,-1e9];
   const grow=(q,r=0)=>{bx[0]=Math.min(bx[0],q[0]-r);bx[1]=Math.min(bx[1],q[1]-r);bx[2]=Math.max(bx[2],q[0]+r);bx[3]=Math.max(bx[3],q[1]+r)};
-  const r1=v=>Math.round(v*10)/10;
   const col=part=>{const m=PARTM[part]||[];return m.some(x=>p.includes(x))?'var(--accent)':m.some(x=>s.includes(x))?'var(--musc2)':'var(--body2)'};
-  const an=(attr,va,vb)=>frame?'':`<animate attributeName="${attr}" values="${va};${vb};${va}" keyTimes="0;.5;1" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1" dur="2.6s" repeatCount="indefinite"/>`;
+  const KS=TL.nodes.slice(1).map(()=>'.45 0 .55 1').join(';'), KT=TL.nodes.map(n=>r1(n[0]/TL.T*1000)/1000).join(';');
+  const lerp=(A,B,f)=>[A[0]+(B[0]-A[0])*f,A[1]+(B[1]-A[1])*f];
+  const an=(attr,A,B,i)=>frame?'':`<animate attributeName="${attr}" values="${TL.nodes.map(n=>r1(lerp(A,B,n[1])[i])).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1(TL.T)}s" repeatCount="indefinite"/>`;
   const pj=(J,k)=>V(J[k]);
   const pick=(x,y)=>frame==='B'?y:x;
   const L2=(A1,A2,B1,B2,stroke,w,extra='')=>{const S1=pick(A1,B1),S2=pick(A2,B2);[A1,A2,B1,B2].forEach(q=>grow(q,w/2));
-    return `<line x1="${r1(S1[0])}" y1="${r1(S1[1])}" x2="${r1(S2[0])}" y2="${r1(S2[1])}" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round"${extra}>${an('x1',r1(A1[0]),r1(B1[0]))}${an('y1',r1(A1[1]),r1(B1[1]))}${an('x2',r1(A2[0]),r1(B2[0]))}${an('y2',r1(A2[1]),r1(B2[1]))}</line>`};
-  const C2=(A1,B1,r,fill,extra='')=>{const S1=pick(A1,B1);grow(A1,r+1);grow(B1,r+1);return `<circle cx="${r1(S1[0])}" cy="${r1(S1[1])}" r="${r}" fill="${fill}"${extra}>${an('cx',r1(A1[0]),r1(B1[0]))}${an('cy',r1(A1[1]),r1(B1[1]))}</circle>`};
+    return `<line x1="${r1(S1[0])}" y1="${r1(S1[1])}" x2="${r1(S2[0])}" y2="${r1(S2[1])}" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round"${extra}>${an('x1',A1,B1,0)}${an('y1',A1,B1,1)}${an('x2',A2,B2,0)}${an('y2',A2,B2,1)}</line>`};
+  const C2=(A1,B1,r,fill,extra='')=>{const S1=pick(A1,B1);grow(A1,r+1);grow(B1,r+1);return `<circle cx="${r1(S1[0])}" cy="${r1(S1[1])}" r="${r}" fill="${fill}"${extra}>${an('cx',A1,B1,0)}${an('cy',A1,B1,1)}</circle>`};
+  const PG=(pa,pb,fill,extra='')=>{const str=q=>q.map(x=>r1(x[0])+','+r1(x[1])).join(' ');[...pa,...pb].forEach(q=>grow(q,2));
+    return `<polygon points="${str(pick(pa,pb))}" fill="${fill}"${extra}>${frame?'':`<animate attributeName="points" values="${TL.nodes.map(n=>str(pa.map((q,i)=>lerp(q,pb[i],n[1])))).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1(TL.T)}s" repeatCount="indefinite"/>`}</polygon>`};
   let h='',post='';
   (a.st||[]).forEach(e=>{
     if(e[0]==='box'){const q=[V([e[1],e[3],e[5]]),V([e[2],e[4],e[6]])];q.forEach(z=>grow(z));const x=Math.min(q[0][0],q[1][0]),y=Math.min(q[0][1],q[1][1]);
@@ -1018,26 +903,32 @@ function animView(name,key,vw,frame){
     if(e[0]==='line'){const q1=V(e[1]),q2=V(e[2]);if(e[1][1]<95){grow(q1,2);grow(q2,2)}post+=`<line x1="${r1(q1[0])}" y1="${r1(q1[1])}" x2="${r1(q2[0])}" y2="${r1(q2[1])}" stroke="var(--muted)" stroke-width="${e[3]||2.5}" stroke-linecap="round"/>`}
     if(e[0]==='dot'){const q=V(e[1]);grow(q,3);h+=`<circle cx="${r1(q[0])}" cy="${r1(q[1])}" r="3" fill="var(--muted)"/>`}
   });
-  if(a.gd==='mf'&&vw==='side'){const m=V(v3(mid3(PA.an,PA.to),[-1.5,0,0]));h+=`<line x1="${r1(m[0])}" y1="-40" x2="${r1(m[0])}" y2="96" stroke="var(--done)" stroke-width="1" stroke-dasharray="3 2.5"/>`}
-  // ciało: segmenty posortowane według głębokości (dalsze najpierw)
+  if(a.gd==='mf'&&vw==='side'){const m=V(v3(mid3(PA.an,PA.to),[-1.5,0,0]));h+=`<line x1="${r1(m[0])}" y1="-60" x2="${r1(m[0])}" y2="96" stroke="var(--done)" stroke-width="1" stroke-dasharray="3 2.5" opacity=".7"/>`}
+  // ruchome części sprzętu (oparcie sanek, platforma suwnicy)
+  (a.pr||[]).filter(x=>x[0]==='slab'||x[0]==='plat').forEach(([k])=>{
+    const corners=J=>{
+      if(k==='slab'){const n=[-J.td[1],J.td[0],0];return [v3(J.hp,n,3.5),v3(J.sh,n,3.5)].flatMap(c=>[v3(c,[0,0,9]),v3(c,[0,0,-9])]).filter((_,i)=>true)}
+      const c=v3(mid3(J.an,J.to),[1.5,1.5,0]), q=[-.71,.71,0];return [v3(v3(c,q,9),[0,0,15]),v3(v3(c,q,9),[0,0,-15]),v3(v3(c,q,-9),[0,0,-15]),v3(v3(c,q,-9),[0,0,15])]};
+    const ord=k==='slab'?[0,1,3,2]:[0,1,2,3], ca=corners(PA), cb=corners(PB);
+    h+=PG(ord.map(i=>V(ca[i])),ord.map(i=>V(cb[i])),'var(--line)',' stroke="var(--line)" stroke-width="3" stroke-linejoin="round"');
+  });
   const items=SEG3.map(([j1,j2,part,X])=>({d:(V(PA[j1])[2]+V(PA[j2])[2])/2,X,html:()=>L2(pj(PA,j1),pj(PA,j2),pj(PB,j1),pj(PB,j2),col(part),5,vw==='side'&&X==='R'?' opacity=".45"':'')}));
   const tq=['shL','shR','hpR','hpL'];
-  items.push({d:tq.reduce((t,k)=>t+V(PA[k])[2],0)/4-.5,html:()=>{
-    const pa=tq.map(k=>pj(PA,k)), pb=tq.map(k=>pj(PB,k)), ps=pick(pa,pb), str=q=>q.map(x=>r1(x[0])+','+r1(x[1])).join(' ');
-    [...pa,...pb].forEach(q=>grow(q,3));
-    return `<polygon points="${str(ps)}" fill="${col('torso')}" stroke="${col('torso')}" stroke-width="6" stroke-linejoin="round">${frame?'':`<animate attributeName="points" values="${str(pa)};${str(pb)};${str(pa)}" keyTimes="0;.5;1" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1" dur="2.6s" repeatCount="indefinite"/>`}</polygon>`}});
+  items.push({d:tq.reduce((t,k)=>t+V(PA[k])[2],0)/4-.5,html:()=>PG(tq.map(k=>pj(PA,k)),tq.map(k=>pj(PB,k)),col('torso'),` stroke="${col('torso')}" stroke-width="6" stroke-linejoin="round"`)});
   items.push({d:V(PA.hd)[2],html:()=>C2(pj(PA,'hd'),pj(PB,'hd'),5.5,'var(--body2)')});
   ['shL','shR','hpL','hpR'].forEach(k=>items.push({d:V(PA[k])[2]+.1,X:k.slice(-1),html:()=>C2(pj(PA,k),pj(PB,k),3.4,col(k[0]==='s'?'delt':'hip'),vw==='side'&&k.endsWith('R')?' opacity=".45"':'')}));
   if(vw==='side')items.sort((x,y)=>(x.X==='R'?0:1)-(y.X==='R'?0:1)||x.d-y.d); else items.sort((x,y)=>x.d-y.d);
   h+=items.map(i=>i.html()).join('')+post;
-  // rekwizyty: sztanga, hantle, wyciąg, kółko, wałek
-  let pr=a.pr||[];
+  // rekwizyty
+  let pr=(a.pr||[]).filter(x=>x[0]!=='slab'&&x[0]!=='plat');
   if(/hantl/i.test(name))pr=pr.map(x=>x[0]==='bar'?['db',x[1],x[2]]:x);
   if(/wyciąg|maszyn|Hammer|Hack|Wypychanie/i.test(name))pr=pr.filter(x=>x[0]!=='bar');
   pr.forEach(([k,j,o])=>{
-    if(k==='cable'){const c=V([o[0],o[1],0]);h+=L2(c,pj(PA,j),c,pj(PB,j),'var(--muted)',1.2);return}
+    if(k==='cable'){const c=V([o[0],o[1],o[2]||0]);h+=L2(c,pj(PA,j),c,pj(PB,j),'var(--muted)',1.2);return}
+    if(k==='lm'){const c=[o[0],o[1],o[2]||0], e=J=>v3(J[j],sub3(J[j],c),.18);
+      h+=L2(V(c),V(e(PA)),V(c),V(e(PB)),'var(--muted)',2.5)+(vw==='side'?C2(V(e(PA)),V(e(PB)),7,'none',' stroke="var(--muted)" stroke-width="2.5"'):'');return}
     if(k==='db'){['L','R'].forEach(X=>h+=C2(pj(PA,j+X),pj(PB,j+X),3.2,'var(--muted)',vw==='side'&&X==='R'?' opacity=".45"':''));return}
-    const cA=v3(PA[j],[o[0],o[1],0]), cB=v3(PB[j],[o[0],o[1],0]);
+    const cA=v3(PA[j],o), cB=v3(PB[j],o);
     if(k==='bar'||k==='hbar'){
       const w=k==='bar'?28:22;
       if(vw==='side'){h+=k==='bar'?C2(V(cA),V(cB),PLATE,'none',' stroke="var(--muted)" stroke-width="2.5"'):C2(V(cA),V(cB),1.8,'var(--muted)');return}
@@ -1048,26 +939,367 @@ function animView(name,key,vw,frame){
     const r=k==='wheel'?5:k==='pad'?3.5:3.2, f=k==='db1'?'var(--muted)':'none';
     h+=C2(V(cA),V(cB),r,f,` stroke="var(--muted)" stroke-width="${k==='db1'?0:2.5}"`);
   });
-  return {h,bx};
+  // strzałki: ustawienie (po kolei, z numerem) i ruch (w trakcie fazy)
+  const vis=wins=>{if(frame)return '';const ks=[0],vs=[0];wins.forEach(([s,e])=>{ks.push(s/TL.T,e/TL.T);vs.push(1,0)});
+    return `<animate attributeName="opacity" values="${vs.join(';')}" keyTimes="${ks.map(x=>r1(x*1000)/1000).join(';')}" calcMode="discrete" dur="${r1(TL.T)}s" repeatCount="indefinite"/>`};
+  const ride=(A,B)=>frame?'':`<animateTransform attributeName="transform" type="translate" values="${TL.nodes.map(n=>{const q=lerp(A,B,n[1]);return r1(q[0]-A[0])+' '+r1(q[1]-A[1])}).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1(TL.T)}s" repeatCount="indefinite"/>`;
+  const arrow=(ar,wins,num,show)=>{
+    const ptA=v3(PA[ar.j],ar.b?bodyVec(PA,ar.o,a.sup):ar.o), ptB=v3(PB[ar.j],ar.b?bodyVec(PB,ar.o,a.sup):ar.o);
+    const dv=ar.b?bodyVec(PA,ar.d,a.sup):ar.d, A0=V(ptA), A1=V(v3(ptA,dv)), vx=A1[0]-A0[0], vy=A1[1]-A0[1], L=Math.hypot(vx,vy);
+    if(L<2.5)return '';
+    const ux=vx/L,uy=vy/L, hx=A1[0]-ux*4, hy=A1[1]-uy*4;
+    grow(A0,3);grow(A1,3);
+    let g=`<line x1="${r1(A0[0])}" y1="${r1(A0[1])}" x2="${r1(hx)}" y2="${r1(hy)}" stroke="var(--done)" stroke-width="2.2" stroke-linecap="round"/><polygon points="${r1(A1[0])},${r1(A1[1])} ${r1(hx-uy*3)},${r1(hy+ux*3)} ${r1(hx+uy*3)},${r1(hy-ux*3)}" fill="var(--done)"/>`;
+    if(num){const bxp=A0[0]-ux*5.5,byp=A0[1]-uy*5.5;grow([bxp,byp],5);g+=`<circle cx="${r1(bxp)}" cy="${r1(byp)}" r="4.4" fill="var(--done)"/><text x="${r1(bxp)}" y="${r1(byp+1.9)}" font-size="5.6" font-weight="700" text-anchor="middle" fill="var(--bg)">${num}</text>`}
+    return `<g${frame&&!show?' opacity="0"':''}>${vis(wins)}<g>${ride(V(ptA),V(ptB))}${g}</g></g>`;
+  };
+  let ah='';
+  (a.su||[]).forEach(([,list],i)=>{const shown=arrowsOf(list);let first=true;shown.forEach(ar=>{const x=arrow(ar,[[TL.steps[i][0],TL.setEnd]],first?i+1:0,frame==='A'||frame==='S');if(x)first=false;ah+=x})});
+  (a.mv||[]).forEach(([,,list,pj2],pi)=>{
+    const wins=pi?TL.p2:TL.p1;
+    arrowsOf(list).forEach(ar=>ah+=arrow(ar,wins,0,false));
+    if(pj2){const [jn,off]=Array.isArray(pj2)?pj2:[pj2,[0,0,0]];
+      const P0=V(v3((pi?PB:PA)[jn],off)), P1=V(v3((pi?PA:PB)[jn],off)), vx=P1[0]-P0[0], vy=P1[1]-P0[1], L=Math.hypot(vx,vy);
+      if(L>6){const ux=vx/L,uy=vy/L, sx=-uy*7, sy=ux*7*(vw==='top'?1:1), a0=[P0[0]+sx+ux*2,P0[1]+sy+uy*2], a1=[P1[0]+sx-ux*2,P1[1]+sy-uy*2], hx=a1[0]-ux*3.2, hy=a1[1]-uy*3.2;
+        grow(a0,2);grow(a1,3);
+        ah+=`<g${frame?' opacity="0"':''}>${vis(wins)}<line x1="${r1(a0[0])}" y1="${r1(a0[1])}" x2="${r1(hx)}" y2="${r1(hy)}" stroke="var(--done)" stroke-width="1.4" stroke-dasharray="2.5 2" stroke-linecap="round"/><polygon points="${r1(a1[0])},${r1(a1[1])} ${r1(hx-uy*2.4)},${r1(hy+ux*2.4)} ${r1(hx+uy*2.4)},${r1(hy-ux*2.4)}" fill="var(--done)"/></g>`}}
+  });
+  return {h:h+ah,bx};
 }
+const ANIMNAME={};
+const animKeyOf=n=>(ANIMNAME[n]&&ANIMNAME[n].k)||NAMEANIM[n]||PATANIM[patOf(n)]||null;
+const animKey=animKeyOf;
+// frame: 'A' / 'B' = jedna pozycja bez animacji (podgląd, ograniczony ruch)
 function moveAnim(name,frame){
-  const key=animKey(name), g=G[name]; if(!key||!g||!ANIM[key])return '';
+  const key=animKeyOf(name), g=G[name]; if(!key||!g||!ANIM[key])return '';
   const a=ANIM[key], red=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(red&&!frame)frame='B';
-  const views=(a.v||['side','front']).map(vw=>Object.assign({vw},animView(name,key,vw,frame)));
-  // wspólna skala dla obu widoków: proporcje 6:5, margines na podpis
+  if(red&&!frame)frame='A';
+  const TL=animTimeline(a,name), id='an'+(++animUid);
+  const views=(a.v||['side','front']).map(vw=>Object.assign({vw},animView(name,key,vw,TL,frame)));
   const ground=vw=>vw!=='top';
-  views.forEach(v=>{const b=v.bx; if(ground(v.vw))b[3]=Math.max(b[3],97); v.w=b[2]-b[0]+10; v.hh=b[3]-b[1]+16});
-  const H=Math.max(100,...views.map(v=>Math.max(v.hh,v.w/1.2))), W=H*1.2;
-  const r1=x=>Math.round(x*10)/10;
-  return `<div class="mviews">${views.map(v=>{
-    const b=v.bx, x0=(b[0]+b[2])/2-W/2, y0=ground(v.vw)?Math.max(b[3],97)+3-H:(b[1]+b[3])/2-H/2+5;
+  views.forEach(v=>{const b=v.bx; if(ground(v.vw))b[3]=Math.max(b[3],97); v.w=b[2]-b[0]+10; v.hh=b[3]-b[1]+14});
+  const H=Math.max(96,...views.map(v=>v.hh)), gap=H*.035;
+  let xo=0;
+  const inner=views.map((v,i)=>{
+    const W=Math.max(v.w+6,H*.62), b=v.bx, x0=(b[0]+b[2])/2-W/2, xs=xo; xo+=W+gap;
+    y0=ground(v.vw)?Math.max(b[3],97)+3-H:(b[1]+b[3])/2-H/2+4;
     const floor=ground(v.vw)&&!a.nf?`<line x1="${r1(x0)}" y1="96" x2="${r1(x0+W)}" y2="96" stroke="var(--line)" stroke-width="1.5"/>`:'';
-    const mat=v.vw==='top'&&a.fl?`<rect x="${r1(x0+3)}" y="${r1(y0+12)}" width="${r1(W-6)}" height="${r1(H-15)}" rx="4" fill="var(--line)" opacity=".35"/>`:'';
-    const lab=`<text x="${r1(x0+3)}" y="${r1(y0+H*.08)}" font-size="${r1(H*.07)}" fill="var(--muted)">${VIEWS[v.vw].l}</text>`;
-    const cap=(a.chk&&a.chk[v.vw])||[];
-    return `<figure class="mview"><svg class="moveanim" viewBox="${r1(x0)} ${r1(y0)} ${r1(W)} ${r1(H)}" role="img" aria-label="Schemat ruchu ${VIEWS[v.vw].l.toLowerCase()}: ${esc(name)}">${mat}${floor}${lab}${v.h}</svg>${cap.length?`<figcaption>${cap.map(([k,t])=>`<span><b>${esc(k)}:</b> ${esc(t)}</span>`).join('')}</figcaption>`:''}</figure>`}).join('')}</div>`;
+    const mat=v.vw==='top'&&a.fl?`<rect x="${r1(x0+3)}" y="${r1(y0+11)}" width="${r1(W-6)}" height="${r1(H-14)}" rx="4" fill="var(--line)" opacity=".35"/>`:'';
+    return `<svg x="${r1(xs)}" y="0" width="${r1(W)}" height="${r1(H)}" viewBox="${r1(x0)} ${r1(y0)} ${r1(W)} ${r1(H)}"><rect x="${r1(x0)}" y="${r1(y0)}" width="${r1(W)}" height="${r1(H)}" rx="${r1(H*.06)}" fill="var(--field)"/>${mat}${floor}<text x="${r1(x0+4)}" y="${r1(y0+H*.08)}" font-size="${r1(H*.065)}" fill="var(--muted)">${VIEWS[v.vw].l}</text>${v.h}</svg>`}).join('');
+  const TW=xo-gap;
+  // opis kroków: podświetlenie bieżącego kroku zsynchronizowane z animacją
+  const T=TL.T, pc=x=>r1(x/T*1000)/10;
+  let css='', n=0;
+  const kf=wins=>{const nm=id+'k'+(n++);let k=`@keyframes ${nm}{0%{background:transparent;opacity:.6}`;
+    wins.forEach(([s,e])=>{k+=`${Math.max(0,pc(s)-.1)}%{background:transparent;opacity:.6}${pc(s)}%{background:var(--done-soft);opacity:1}${pc(e)}%{background:var(--done-soft);opacity:1}${Math.min(100,pc(e)+.1)}%{background:transparent;opacity:.6}`});
+    css+=k+`100%{background:transparent;opacity:.6}}`;return frame?'':` style="animation:${nm} ${r1(T)}s linear infinite"`};
+  const su=a.su||[], mv=a.mv||[];
+  const list=`<ol class="mvsteps">${su.map(([t],i)=>`<li${kf([TL.steps[i]])}><b>${i+1}</b>${esc(t)}</li>`).join('')}</ol>`
+    +(mv.length?`<p class="mvh">Ruch</p><ul class="mvphase">${mv.map(([lab,t],i)=>`<li${kf(i?TL.p2:TL.p1)}><b>${esc(lab)}</b> ${esc(t)}</li>`).join('')}</ul>`:'');
+  const ctr=frame?'':`<div class="row mvctl"><button class="link" data-animpause="${id}">Pauza</button><button class="link" data-animrestart="${id}">Od początku</button></div>`;
+  return `<div class="manim" id="${id}">${css?`<style>${css}</style>`:''}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}<p class="mvh">Ustawienie, po kolei</p>${list}</div>`;
 }
+function animCtl(t){
+  const id=t.dataset.animpause||t.dataset.animrestart, box=document.getElementById(id); if(!box)return;
+  const svg=box.querySelector('svg.moveanim'), lis=box.querySelectorAll('li');
+  if(t.dataset.animrestart){svg.setCurrentTime&&svg.setCurrentTime(0);svg.unpauseAnimations&&svg.unpauseAnimations();
+    lis.forEach(li=>{const a=li.style.animation;li.style.animation='none';void li.offsetWidth;li.style.animation=a;li.style.animationPlayState=''});
+    const pb=box.querySelector('[data-animpause]');if(pb)pb.textContent='Pauza';return}
+  const paused=svg.animationsPaused&&svg.animationsPaused();
+  if(paused){svg.unpauseAnimations();lis.forEach(li=>li.style.animationPlayState='');t.textContent='Pauza'}
+  else{svg.pauseAnimations&&svg.pauseAnimations();lis.forEach(li=>li.style.animationPlayState='paused');t.textContent='Wznów'}
+}
+// --- wskazówki ze strzałkami (wielokrotnego użytku) ---
+const C_LOP=[['shL',[-3.5,-3,0],[0,-4,0],'bm'],['shL',[0,0,-5],[0,-3,6],'bm']];
+const C_STOPY=[['anL',[0,-5,0],[2,7,0],'m']];
+const C_BRZ=[['hp',[0,-4,0],[7,10,0],'b'],['hp',[0,0,-4],[7,0,14],'bm']];
+const C_KOL=[['knL',[0,0,5],[0,0,3],'m']];
+const C_BIOT=[['hp',[-7,0,0],[-5,0,0]]];
+const C_KLAT=[['sh',[4,0,0],[-5,6,0],'b']];
+const C_PIETY=[['anL',[0,-5,0],[-1,6,0],'m']];
+const BENCH=[['box',30,80,18,22,-8,8],['box',36,40,0,18,-6,6],['box',70,74,0,18,-6,6]];
+const SEAT=[['box',38,60,17,21,-12,12],['box',46,52,0,17,-4,4]];
+const BFEET={abs:[20,0],w:16,pole:[0,1,.6]};
+const SQ_SU=[['Stopy na szerokość barków, palce lekko na zewnątrz. Wbij całe stopy w podłogę',C_STOPY],
+  ['Ściągnij łopatki i oprzyj sztangę na górze pleców, łokcie w dół',C_LOP],
+  ['Wdech w brzuch i napnij go dookoła jak pas',C_BRZ]];
+const BENCH_SU=[['Oczy pod sztangą. Ściągnij i opuść łopatki, wciśnij je w ławkę',C_LOP],
+  ['Stopy płasko i szeroko, wbij je w podłogę (napęd z nóg), pośladki na ławce',C_STOPY],
+  ['Chwyt nieco szerzej niż barki, nadgarstki proste nad łokciami. Wdech i napnij brzuch',[['wrL',[0,0,5],[0,4,0],'m']]]];
+const DL_SU=[['Stopy na szerokość bioder, sztanga nad środkiem stopy (linia przerywana)',C_STOPY],
+  ['Chwyć sztangę tuż na zewnątrz kolan, ręce proste',[['wrL',[0,0,-4],[0,3,8],'m']]],
+  ['Ściągnij łopatki i "schowaj" pachy: plecy proste i napięte',C_LOP],
+  ['Wdech w brzuch, napnij go i wypchnij podłogę nogami',C_BRZ]];
+const ANIM={
+  squat:{A:AN({thb:8,shb:9,ftb:25,hold:{j:'sh',o:[-3,2],w:20,pole:[-1,-1,1]}}),B:AN({t:42,th:95,thb:28,sh:207,shb:-10,ftb:25,hold:{j:'sh',o:[-3,2],w:20,pole:[-1,-1,1]}}),
+    an:['an',[50,0]],pr:[['bar','sh',[-3,2]]],gd:'mf',su:SQ_SU,
+    mv:[['W dół:','biodra w tył i w dół, kolana idą na zewnątrz w linii palców, sztanga nad środkiem stopy',[...C_KOL,...C_BIOT],'sh'],
+        ['W górę:','wypychaj podłogę całą stopą, klatka wysoko, biodra i barki wstają razem',C_STOPY,'sh']]},
+  fsquat:{A:AN({thb:8,shb:9,ftb:25,hold:{j:'sh',o:[5,1],w:12,pole:[1,.25,.35]}}),B:AN({t:22,th:95,thb:26,sh:212,shb:-9,ftb:25,hold:{j:'sh',o:[5,1],w:12,pole:[1,.25,.35]}}),
+    an:['an',[50,0]],pr:[['bar','sh',[5,1]]],gd:'mf',
+    su:[['Stopy na szerokość barków, palce lekko na zewnątrz, wbij je w podłogę',C_STOPY],
+        ['Sztanga na przednich barkach przy szyi, łokcie wysoko do przodu',[['elL',[3,3,0],[2,0,0],'m']]],
+        ['Wdech w brzuch i napnij go',C_BRZ]],
+    mv:[['W dół:','schodź pionowo, łokcie cały czas wysoko, kolana na zewnątrz',[...C_KOL,['elL',[0,4,0],[0,2,0],'m']],'sh'],
+        ['W górę:','pchaj podłogę, prowadź łokciami w górę',C_STOPY,'sh']]},
+  goblet:{A:AN({thb:8,shb:9,ftb:25,hold:{j:'sh',o:[7,-7],w:3,pole:[.3,-1,.6]}}),B:AN({t:28,th:95,thb:30,sh:207,shb:-11,ftb:25,hold:{j:'sh',o:[7,-7],w:3,pole:[.3,-1,.6]}}),
+    an:['an',[50,0]],pr:[['db1','wr',[0,0]]],gd:'mf',
+    su:[['Stopy na szerokość barków lub szerzej, wbij je w podłogę',C_STOPY],['Hantel pionowo przy klatce, łokcie w dół',[['elL',[0,-4,0],[0,2,0],'m']]],['Wdech i napnij brzuch',C_BRZ]],
+    mv:[['W dół:','biodra między pięty, łokcie między kolana, plecy proste',C_KOL,'hp'],['W górę:','wypchnij podłogę, klatka wysoko',C_STOPY,'hp']]},
+  hack:{A:AN({t:-40,at:[40,39],ft:90,ftb:15,feet:{abs:[64,4],w:8,pole:[1,1,.4]},hold:{j:'sh',o:[4,2],w:13,pole:[0,-1,1]}}),
+    B:AN({t:-40,at:[53,23.5],ft:90,ftb:15,feet:{abs:[64,4],w:8,pole:[1,1,.4]},hold:{j:'sh',o:[4,2],w:13,pole:[0,-1,1]}}),
+    an:['hp',[40,39]],pr:[['slab']],st:[['box',52,78,0,4,-14,14]],
+    su:[['Całe plecy i biodra przyklejone do oparcia, barki pod poduszkami',[['tm',[0,-4,0],[0,7,0],'b']]],['Stopy na środku platformy, na szerokość bioder',C_STOPY],['Napnij brzuch',C_BRZ]],
+    mv:[['W dół:','zginaj kolana, aż uda będą co najmniej równolegle, kolana w linii palców',C_KOL,'hp'],['W górę:','pchaj platformę całą stopą, plecy nie odrywają się',C_STOPY,'hp']]},
+  legpress:{v:['side','front'],A:AN({t:-60,ft:-45,ftb:15,feet:{abs:[70,52],w:9,pole:[-.3,1,.5]},hold:{j:'hp',o:[2,0],w:16,pole:[0,-1,1]}}),
+    B:AN({t:-60,ft:-45,ftb:15,feet:{abs:[56,38],w:9,pole:[-.3,1,.5]},hold:{j:'hp',o:[2,0],w:16,pole:[0,-1,1]}}),
+    an:['hp',[40,22]],pr:[['plat']],st:[['box',30,48,16,20,-12,12],['quad',[[34,18,-10],[34,18,10],[10,32,10],[10,32,-10]]]],
+    su:[['Plecy i biodra dociśnięte do oparcia',[['tm',[0,-4,0],[0,7,0],'b']]],['Stopy na środku platformy, na szerokość bioder, całe stopy przyklejone',[['toL',[3,-3,0],[-2,2,0],'m']]],['Napnij brzuch',C_BRZ]],
+    mv:[['W dół:','opuszczaj platformę, aż kolana zbliżą się do klatki, biodra nie odrywają się',C_KOL,'an'],['W górę:','pchaj całą stopą, nie prostuj kolan do blokady',[],'an']]},
+  split:{A:AN({t:4,at:[54,41],uab:4,ftb:10,ft2:150,ftb2:0,feet:{L:[70,0,6],R:[36,4,-6],poleL:[1,0,0],poleR:[0,-1,0]}}),
+    B:AN({t:4,at:[54,23],uab:4,ftb:10,ft2:150,ftb2:0,feet:{L:[70,0,6],R:[36,4,-6],poleL:[1,.2,0],poleR:[0,-1,0]}}),
+    an:['hp',[54,41]],pr:[['db','wr',[0,0]]],
+    su:[['Rozkrok przód–tył, stopy na szerokość bioder (jak na torach), tylna stopa na palcach',C_STOPY],['Tułów prosto, napnij brzuch',C_BRZ]],
+    mv:[['W dół:','tylne kolano schodzi pionowo prawie do podłogi, przednie kolano nad stopą',[['knR',[0,-5,0],[0,2,0]]],'hp'],['W górę:','pchaj przednią stopą, głównie piętą',[['anL',[0,-5,0],[0,7,0]]],'hp']]},
+  bulg:{A:AN({t:6,at:[56,42],uab:4,ftb:10,ft2:265,ftb2:0,feet:{L:[74,0,6],R:[30,20,-6],poleL:[1,0,0],poleR:[0,-1,0]}}),
+    B:AN({t:12,at:[57,23],uab:4,ftb:10,ft2:265,ftb2:0,feet:{L:[74,0,6],R:[30,20,-6],poleL:[1,.2,0],poleR:[0,-1,0]}}),
+    an:['hp',[56,42]],pr:[['db','wr',[0,0]]],st:[['box',12,32,13,17,-12,12],['box',16,20,0,13,-6,6]],
+    su:[['Tylna stopa grzbietem na ławce, przednia ok. dużego kroku przed ławką',C_STOPY],['Tułów lekko pochylony, napnij brzuch',C_BRZ]],
+    mv:[['W dół:','opuszczaj się pionowo, przednie kolano nad stopą, nie do środka',[['knL',[0,0,4],[0,0,3]]],'hp'],['W górę:','pchaj przednią piętą, tylna noga tylko pomaga',[['anL',[0,-5,0],[0,7,0]]],'hp']]},
+  walk:{A:AN({at:[50,45.4],uab:4,ftb:10,ft2:90,feet:{L:[50,0,6],R:[50,0,-6],poleL:[1,0,0],poleR:[1,0,0]}}),
+    B:AN({t:4,at:[52,23],uab:4,ftb:10,ft2:150,ftb2:0,feet:{L:[70,0,6],R:[34,4,-6],poleL:[1,.2,0],poleR:[0,-1,0]}}),
+    an:['hp',[50,45.4]],pr:[['db','wr',[0,0]]],
+    su:[['Stań prosto, stopy na szerokość bioder',C_STOPY],['Napnij brzuch, barki w dół',[...C_BRZ]]],
+    mv:[['Krok i w dół:','krok w przód, tylne kolano prawie do podłogi, przednie nad stopą',[['knR',[0,-5,0],[0,2,0]]],'hp'],['W górę:','wypchnij się przednią nogą i od razu kolejny krok',[['anL',[0,-5,0],[0,7,0]]],'hp']]},
+  stepup:{A:AN({t:15,at:[50,42],uab:4,ftb:10,feet:{L:[66,20,5],R:[44,0,-5],poleL:[1,0,0],poleR:[1,0,0]}}),
+    B:AN({t:3,at:[62,64],uab:4,ftb:10,feet:{L:[66,20,5],R:[63,20,-5],poleL:[1,0,0],poleR:[1,0,0]}}),
+    an:['hp',[50,42]],pr:[['db','wr',[0,0]]],st:[['box',56,82,0,20,-14,14]],
+    su:[['Cała stopa na skrzyni, kolano zgięte ok. 90°',[['anL',[0,-5,0],[0,7,0]]]],['Tułów lekko pochylony, napnij brzuch',C_BRZ]],
+    mv:[['W górę:','pchaj piętą nogi na skrzyni, nie odbijaj się dolną nogą',[['anL',[0,-5,0],[0,7,0]]],'hp'],['W dół:','zejdź powoli, kontrolując kolano nad stopą',[],'hp']]},
+  dead:{A:AN({t:65,th:105,thb:11,sh:200,shb:-6,ftb:10,hold:{abs:[54,9],w:11,pole:[0,0,1]}}),B:AN({thb:3,shb:2,ftb:10,uab:4}),
+    an:['an',[50,0]],pr:[['bar','wr',[0,0]]],gd:'mf',su:DL_SU,
+    mv:[['W górę:','pchaj podłogę, sztanga sunie po nogach, biodra i barki wstają razem',[...C_STOPY,['wrL',[-3,0,0],[3,0,9],'m']],'wr'],
+        ['W dół:','biodra w tył, sztanga po udach, za kolanami ugnij nogi',C_BIOT,'wr']]},
+  sumo:{A:AN({t:60,at:[40,24],ft:90,ftb:40,feet:{abs:[50,0],w:19,pole:[.3,0,1]},hold:{abs:[52,9],w:6,pole:[0,0,1]}}),
+    B:AN({at:[50,43],ft:90,ftb:40,uab:-6,feet:{abs:[50,0],w:19,pole:[.3,0,1]}}),
+    an:['hp',[40,24]],pr:[['bar','wr',[0,0]]],gd:'mf',
+    su:[['Szeroki rozstaw, palce mocno na zewnątrz, sztanga nad środkiem stopy',C_STOPY],['Chwyt wąski między nogami, ręce proste',[['wrL',[0,0,-3],[0,3,6],'m']]],['Kolana wypchnij na boki w linii palców',C_KOL],['Ściągnij łopatki, napnij brzuch',[...C_LOP,...C_BRZ]]],
+    mv:[['W górę:','rozpychaj podłogę na boki, biodra do sztangi',[...C_KOL,...C_STOPY],'wr'],['W dół:','biodra w tył, kolana dalej na zewnątrz',C_BIOT,'wr']]},
+  trap:{A:AN({t:42,at:[42,22],ftb:10,feet:{abs:[50,0],w:8,pole:[1,0,.3]},hold:{abs:[53,12],w:17,pole:[0,0,1]}}),
+    B:AN({at:[50,45.4],ftb:10,uab:15,feet:{abs:[50,0],w:8,pole:[1,0,.3]}}),
+    an:['hp',[42,22]],pr:[['bar','wr',[0,0]]],
+    su:[['Stań w środku sztangi, stopy na szerokość bioder',C_STOPY],['Uchwyty po bokach, ręce proste',[['wrL',[0,-4,0],[0,6,3],'m']]],['Ściągnij łopatki, napnij brzuch',[...C_LOP,...C_BRZ]]],
+    mv:[['W górę:','pchaj podłogę jak do skoku, biodra i kolana prostują się razem',C_STOPY,'wr'],['W dół:','biodra w tył i w dół, plecy proste',C_BIOT,'wr']]},
+  hinge:{A:AN({uab:4,ftb:10}),B:AN({t:75,ua:188,fa:188,th:166,sh:184,uab:4,ftb:10}),
+    an:['an',[46,0]],pr:[['bar','wr',[0,0]]],gd:'mf',
+    su:[['Stopy na szerokość bioder, kolana lekko ugięte',C_STOPY],['Ściągnij łopatki, sztanga przy udach',C_LOP],['Napnij brzuch',C_BRZ]],
+    mv:[['W dół:','biodra do tyłu, sztanga zsuwa się po udach, kolana prawie nieruchome',C_BIOT,'wr'],['W górę:','biodra do przodu, ściśnij pośladki',[['hp',[6,0,0],[-6,0,0]]],'wr']]},
+  gm:{A:AN({ftb:10,hold:{j:'sh',o:[-3,2],w:20,pole:[-1,-1,1]}}),B:AN({t:75,th:166,sh:184,ftb:10,hold:{j:'sh',o:[-3,2],w:20,pole:[-1,-1,1]}}),
+    an:['an',[46,0]],pr:[['bar','sh',[-3,2]]],gd:'mf',
+    su:[['Sztanga na górze pleców jak do przysiadu, stopy na szerokość bioder',C_STOPY],['Ściągnij łopatki, łokcie w dół',C_LOP],['Napnij brzuch, kolana lekko ugięte',C_BRZ]],
+    mv:[['W dół:','cofaj biodra, tułów pochyla się z prostymi plecami',C_BIOT,'sh'],['W górę:','biodra do przodu, pośladki prowadzą',[['hp',[6,0,0],[-6,0,0]]],'sh']]},
+  thrust:{A:AN({t:-60,ft:90,ftb:10,feet:{abs:[68,0],w:9,pole:[1,1,.3]},hold:{j:'hp',o:[0,5],w:16,pole:[0,1,1]}}),B:AN({t:-90,ft:90,ftb:10,feet:{abs:[68,0],w:9,pole:[1,1,.3]},hold:{j:'hp',o:[0,5],w:16,pole:[0,1,1]}}),
+    an:['sh',[22,21]],pr:[['bar','hp',[0,5]]],st:[['box',6,24,14,19,-22,22],['box',8,11,0,14,18,22],['box',8,11,0,14,-22,-18],['box',19,22,0,14,18,22],['box',19,22,0,14,-22,-18]],
+    su:[['Łopatki na krawędzi ławki, sztanga na biodrach',[['shL',[0,-4,0],[0,4,0],'m']]],['Stopy na szerokość bioder, tak by na górze goleń była pionowo',C_STOPY],['Broda przy klatce, napnij brzuch',C_BRZ]],
+    mv:[['W górę:','pchaj piętami, dopychasz pośladkami, bez wyginania lędźwi',[['hp',[0,6,0],[0,-3,0]],...C_PIETY],'hp'],['W dół:','opuszczaj biodra powoli',[],'hp']]},
+  addu:{A:AN({th:90,sh:180,thb:38,shb:-30,uab:22}),B:AN({th:90,sh:180,thb:6,shb:-4,uab:22}),
+    an:['hp',[50,22]],pr:[],st:[...SEAT,['box',36,40,21,56,-12,12]],
+    su:[['Usiądź prosto, plecy oparte',[['tm',[0,-4,0],[0,7,0],'b']]],['Poduszki po wewnętrznej stronie kolan',[['knL',[0,0,-4],[0,0,8],'m']]]],
+    mv:[['Do środka:','ściskaj nogi, zatrzymaj na chwilę',[['knL',[0,0,-5],[0,0,7],'m']],'knL'],['Powrót:','wolno, aż poczujesz rozciąganie',[],'knL']]},
+  bench:{sup:1,v:['side','top'],A:AN({t:90,ft:90,ftb:30,feet:BFEET,hold:{j:'sh',o:[-2,29],w:19,pole:[0,0,1]}}),B:AN({t:90,ft:90,ftb:30,feet:BFEET,hold:{j:'sh',o:[-7,5],w:19,pole:[-.7,-1,1.1]}}),
+    an:['hp',[40,24]],pr:[['bar','wr',[0,0]]],st:BENCH,su:BENCH_SU,
+    mv:[['W dół:','sztanga na dolną część klatki, łokcie ok. 45–70° od tułowia',[['elL',[-3,0,-2],[0,0,0],'m']],'wr'],
+        ['W górę:','wypchnij w górę i lekko w stronę głowy, stopy dalej wbite',[...C_STOPY],'wr']]},
+  larsen:{sup:1,v:['side','top'],A:AN({t:90,th:262,sh:270,thb:10,shb:-4,ft:180,ftb:20,hold:{j:'sh',o:[-2,29],w:19,pole:[0,0,1]}}),B:AN({t:90,th:262,sh:270,thb:10,shb:-4,ft:180,ftb:20,hold:{j:'sh',o:[-7,5],w:19,pole:[-.7,-1,1.1]}}),
+    an:['hp',[40,24]],pr:[['bar','wr',[0,0]]],st:BENCH,
+    su:[['Oczy pod sztangą. Ściągnij i opuść łopatki',C_LOP],['Nogi proste nad podłogą, bez podparcia stóp',[['anL',[0,4,0],[0,2,0],'m']]],['Wdech i mocno napnij brzuch, żeby się nie kołysać',C_BRZ]],
+    mv:[['W dół:','sztanga na dolną część klatki, łokcie ok. 45–70°',[],'wr'],['W górę:','wypchnij, tułów nieruchomo',[],'wr']]},
+  floor:{sup:1,v:['side','top'],A:AN({t:90,ft:90,ftb:15,feet:{abs:[12,0],w:10,pole:[0,1,.4]},hold:{j:'sh',o:[-2,28],w:17,pole:[0,0,1]}}),B:AN({t:90,ft:90,ftb:15,feet:{abs:[12,0],w:10,pole:[0,1,.4]},hold:{j:'sh',o:[-7,10],w:17,pole:[-.6,-1,1]}}),
+    an:['hp',[34,3.5]],fl:1,pr:[['bar','wr',[0,0]]],
+    su:[['Leżysz pod sztangą, ściągnij łopatki',C_LOP],['Nogi ugięte, stopy płasko',C_STOPY],['Chwyt na szerokość barków lub nieco szerzej',[['wrL',[0,0,4],[0,4,0],'m']]]],
+    mv:[['W dół:','aż ramiona oprą się o podłogę, bez odbijania',[['elL',[0,-4,0],[0,5,0],'m']],'wr'],['W górę:','wyciśnij do prostych rąk',[],'wr']]},
+  incline:{A:AN({t:-55,ft:90,ftb:25,feet:{abs:[74,0],w:14,pole:[1,1,.4]},hold:{j:'sh',o:[1,29],w:18,pole:[0,0,1]}}),B:AN({t:-55,ft:90,ftb:25,feet:{abs:[74,0],w:14,pole:[1,1,.4]},hold:{j:'sh',o:[5,3],w:18,pole:[-.6,-.8,1]}}),
+    an:['hp',[46,24]],pr:[['bar','wr',[0,0]]],st:[['box',36,56,18,22,-9,9],['quad',[[44,21.5,-9],[44,21.5,9],[18,39.7,9],[18,39.7,-9]]],['box',40,44,0,18,-6,6]],
+    su:[['Plecy oparte, ściągnij i opuść łopatki',C_LOP],['Stopy płasko na podłodze, wbij je',C_STOPY],['Chwyt nieco szerzej niż barki, napnij brzuch',[['wrL',[0,0,4],[0,4,0],'m']]]],
+    mv:[['W dół:','ciężar do górnej części klatki, łokcie pod nadgarstkami',[],'wr'],['W górę:','wypchnij prosto w górę',[],'wr']]},
+  pushup:{v:['side','top'],A:AN({t:70,th:250,sh:250,ft:175,ftb:0,thb:2,shb:0,hold:{abs:[83,0],w:12,pole:[-1,0,1]}}),B:AN({t:82,th:262,sh:262,ft:175,ftb:0,thb:2,shb:0,hold:{abs:[83,0],w:12,pole:[-1,.3,.8]}}),
+    an:['to',[18,0]],fl:1,pr:[],
+    su:[['Dłonie pod barkami, nieco szerzej niż barki, wbij je w podłogę',[['wrL',[0,-4,0],[0,6,0],'m']]],['Ciało proste jak deska: napnij brzuch i pośladki',[...C_BRZ,['hp',[0,4,0],[0,-6,0]]]]],
+    mv:[['W dół:','klatka tuż nad podłogę, łokcie ok. 45° od tułowia',[['elL',[-3,0,2],[0,0,0],'m']],'sh'],['W górę:','odepchnij podłogę, ciało nadal proste',[],'sh']]},
+  dip:{A:AN({ua:180,fa:180,uab:5.5,sh:225}),B:AN({ua:215,fa:170,uab:5.5,sh:225}),
+    an:['wr',[60,52]],pr:[],st:[['line',[44,52,12],[78,52,12],4],['line',[44,52,-12],[78,52,-12],4]],nf:1,
+    su:[['Podpór na prostych rękach, barki w dół, z dala od uszu',[['shL',[0,-4,0],[0,5,0],'m']]],['Nogi ugięte, napnij brzuch',C_BRZ]],
+    mv:[['W dół:','łokcie do tyłu, tułów lekko do przodu, barki do wysokości łokci',[['elL',[-4,0,0],[-2,0,0],'m']],'sh'],['W górę:','wypchnij poręcze w dół do prostych rąk',[['wrL',[0,-4,0],[0,6,0],'m']],'sh']]},
+  ohp:{A:AN({ftb:10,hold:{j:'sh',o:[5,1],w:13,pole:[.6,-1,.4]}}),B:AN({ftb:10,hold:{j:'sh',o:[0,29],w:13,pole:[0,0,1]}}),
+    an:['an',[50,0]],pr:[['bar','wr',[0,0]]],gd:'mf',
+    su:[['Stopy na szerokość bioder, wbij je w podłogę',C_STOPY],['Sztanga na przednich barkach, przedramiona pionowo',[['elL',[0,-4,0],[2,0,0],'m']]],['Napnij pośladki i brzuch',C_BRZ]],
+    mv:[['W górę:','głowa w tył, sztanga prosto w górę, na górze głowa "przez okno"',[['hd',[-4,0,0],[-4,0,0]]],'wr'],['W dół:','sztanga wraca na barki, łokcie lekko przed sztangą',[],'wr']]},
+  ohpS:{A:AN({th:90,sh:180,thb:15,shb:-6,hold:{j:'sh',o:[0,7],w:20,pole:[0,-1,.6]}}),B:AN({th:90,sh:180,thb:15,shb:-6,hold:{j:'sh',o:[0,29],w:11,pole:[0,0,1]}}),
+    an:['hp',[50,22]],pr:[['bar','wr',[0,0]]],st:[['box',40,60,17,21,-12,12],['box',43,46,21,62,-9,9],['box',46,52,0,17,-4,4]],
+    su:[['Plecy oparte, stopy płasko na podłodze',C_STOPY],['Hantle na wysokości uszu, łokcie pod nadgarstkami',[['elL',[0,-4,0],[0,0,0],'m']]],['Napnij brzuch, nie odrywaj lędźwi',C_BRZ]],
+    mv:[['W górę:','wyciśnij w górę, hantle lekko zbliżają się nad głową',[],'wr'],['W dół:','powoli do uszu',[],'wr']]},
+  landmine:{A:AN({ftb:10,thb:5,th:170,th2:190,sh2:185,ua2:180,uab2:6,hold:{j:'sh',o:[6,-3],w:5,side:'L',pole:[0,-1,1]}}),B:AN({t:8,ftb:10,thb:5,th:170,th2:190,sh2:185,ua2:180,uab2:6,hold:{j:'sh',o:[22,19],w:4,side:'L',pole:[0,-1,1]}}),
+    an:['an',[50,0]],pr:[['lm','wrL',[115,1,0]]],
+    su:[['Rozkrok przód–tył, wbij stopy w podłogę',C_STOPY],['Koniec sztangi przy barku, łokieć w dół',[['elL',[0,-4,0],[0,0,0]]]],['Napnij brzuch i pośladki',C_BRZ]],
+    mv:[['W górę:','wyciśnij po skosie w górę i do przodu, tułów lekko za ręką',[],'wrL'],['W dół:','wróć do barku powoli',[],'wrL']]},
+  lat:{A:AN({ua:175,uab:8,fa:175,fab:10}),B:AN({ua:168,uab:80,fa:168,fab:84}),
+    an:['an',[50,0]],pr:[['db','wr',[0,0]]],
+    su:[['Stopy na szerokość bioder, tułów nieruchomo',C_STOPY],['Barki w dół, z dala od uszu',[['shL',[0,-4,0],[0,5,0],'m']]],['Łokcie lekko ugięte, ręce lekko przed tułowiem',[]]],
+    mv:[['W górę:','unoś bokiem łokciami, do linii barków, nie wyżej',[['elL',[0,4,0],[0,2,2],'m']],'wrL'],['W dół:','opuszczaj wolno, bez bujania',[],'wrL']]},
+  revfly:{A:AN({t:60,th:148,sh:192,ua:180,uab:6,fa:180,fab:8}),B:AN({t:60,th:148,sh:192,ua:180,uab:80,fa:180,fab:84}),
+    an:['an',[46,0]],pr:[['db','wr',[0,0]]],
+    su:[['Pochyl tułów z prostymi plecami, kolana lekko ugięte',C_BIOT],['Napnij brzuch, ręce zwisają pod barkami',C_BRZ]],
+    mv:[['W górę:','ręce na boki do linii barków, na końcu ściągnij łopatki',[...C_LOP],'wrL'],['W dół:','opuszczaj wolno',[],'wrL']]},
+  revflyM:{A:AN({ua:90,uab:6,fa:90,fab:6,th:90,sh:180}),B:AN({ua:90,uab:85,fa:92,fab:88,th:90,sh:180}),
+    an:['hp',[50,22]],pr:[],st:[...SEAT,['box',55,59,32,52,-7,7]],
+    su:[['Klatka oparta o poduszkę, plecy proste',[['tm',[4,0,0],[0,-6,0],'b']]],['Uchwyty na wysokości barków, barki w dół',[['shL',[0,-4,0],[0,5,0],'m']]]],
+    mv:[['Na boki:','ręce prawie proste do tyłu do linii barków, ściągnij łopatki',C_LOP,'wrL'],['Powrót:','powoli do przodu',[],'wrL']]},
+  powell:{v:['side','front'],A:AN({roll:-90,t:90,th:255,sh:285,ua:90,uab:-80,fa:90,fab:-85,ua2:20,fa2:150,uab2:0,fab2:0}),B:AN({roll:-90,t:90,th:255,sh:285,ua:90,uab:85,fa:90,fab:80,ua2:20,fa2:150,uab2:0,fab2:0}),
+    an:['hp',[44,24]],pr:[['db1','wrL',[0,0]]],st:[['box',22,80,9,13,-9,9],['box',30,34,0,9,-6,6],['box',70,74,0,9,-6,6]],
+    su:[['Leżysz bokiem na ławce, dolna ręka podpiera głowę',[]],['Górna ręka z hantlem zwisa przed tułowiem, łokieć lekko ugięty',[['elL',[0,-4,0],[0,2,0]]]]],
+    mv:[['W górę:','unoś ramię do pionu, prowadź łokciem',[['elL',[0,4,0],[0,2,0]]],'wrL'],['W dół:','opuszczaj wolno',[],'wrL']]},
+  yraise:{A:AN({t:48,ua:180,uab:8,fa:180,fab:8,ft:90,feet:{abs:[22,0],w:8,pole:[1,0,0]}}),B:AN({t:48,ua:40,uab:30,fa:40,fab:32,ft:90,feet:{abs:[22,0],w:8,pole:[1,0,0]}}),
+    an:['hp',[40,30]],pr:[['db','wr',[0,0]]],st:[['quad',[[42,27.5,-8],[42,27.5,8],[65,46.5,8],[65,46.5,-8]]],['box',38,42,0,27,-5,5]],
+    su:[['Klatka oparta o ławkę skośną, stopy na podłodze',[['tm',[0,-4,0],[0,-7,0],'b']]],['Barki w dół, z dala od uszu',[['shL',[-4,0,0],[0,0,0],'bm']]]],
+    mv:[['W górę:','proste ręce przed siebie i na skos, w kształt litery Y',[['wrL',[2,0,3],[0,0,0],'bm']],'wrL'],['W dół:','opuszczaj powoli',[],'wrL']]},
+  facepull:{A:AN({ua:85,fa:88,uab:8,fab:5,ftb:10}),B:AN({ftb:10,hold:{j:'hd',o:[-1,-2],w:10,pole:[-.4,-.1,1]}}),
+    an:['an',[46,0]],pr:[['cable','wr',[112,74]]],st:[['dot',[112,74,0]]],
+    su:[['Linka na wysokości twarzy, stopy na szerokość bioder',C_STOPY],['Tułów prosto, napnij brzuch',C_BRZ]],
+    mv:[['Do twarzy:','łokcie wysoko i na boki, końce liny obok uszu, ściągnij łopatki',[['elL',[0,0,5],[0,0,2],'m'],...C_LOP],'wrL'],['Powrót:','ręce wolno do przodu',[],'wrL']]},
+  pullup:{A:AN({ua:0,uab:20,fa:0,fab:20,th:175,sh:250,thb:2,shb:0}),B:AN({ua:195,uab:55,fa:0,fab:-10,th:170,sh:250,thb:2,shb:0}),
+    an:['wr',[62,80]],nf:1,pr:[],st:[['line',[62,80,-32],[62,80,32],5]],
+    su:[['Chwyt nachwytem nieco szerzej niż barki, pełny zwis',[['wrL',[0,0,4],[0,-4,0],'m']]],['Ściągnij łopatki w dół, zanim zegniesz łokcie',[['shL',[0,-4,0],[0,3,0],'m']]],['Nogi razem, napnij brzuch',C_BRZ]],
+    mv:[['W górę:','łokcie w dół do żeber, klatka do drążka, broda nad drążek',[['elL',[0,-5,0],[0,0,3],'m']],'sh'],['W dół:','powoli do pełnego zwisu',[],'sh']]},
+  pullupN:{A:AN({ua:0,uab:6,fa:0,fab:6,th:175,sh:250,thb:2,shb:0}),B:AN({ua:200,uab:22,fa:5,fab:-8,th:170,sh:250,thb:2,shb:0}),
+    an:['wr',[62,80]],nf:1,pr:[],st:[['line',[62,80,-32],[62,80,32],5]],
+    su:[['Chwyt na szerokość barków, pełny zwis',[]],['Ściągnij łopatki w dół',[['shL',[0,-4,0],[0,3,0],'m']]],['Nogi razem, napnij brzuch',C_BRZ]],
+    mv:[['W górę:','łokcie w dół i do tyłu, blisko tułowia, broda nad drążek',[['elL',[0,-5,0],[0,0,0],'m']],'sh'],['W dół:','powoli do pełnego zwisu',[],'sh']]},
+  pulldown:{A:AN({t:-8,th:90,sh:180,thb:6,ua:5,uab:25,fa:5,fab:25}),B:AN({t:-12,th:90,sh:180,thb:6,ua:185,uab:52,fa:5,fab:-15}),
+    an:['hp',[50,22]],pr:[['hbar','wr',[0,0]],['cable','wr',[52,104]]],st:[...SEAT,['box',66,74,25,28,-10,10]],
+    su:[['Uda pod wałkami, stopy na podłodze',[['knL',[0,4,0],[0,6,0],'m']]],['Chwyt szerzej niż barki, ręce proste',[['wrL',[0,0,4],[0,-4,0],'m']]],['Ściągnij łopatki w dół, tułów lekko odchylony',[['shL',[0,-4,0],[0,3,0],'m']]]],
+    mv:[['W dół:','drążek do górnej części klatki, łokcie w dół do boków',[['elL',[0,-5,0],[0,0,3],'m']],'wr'],['W górę:','powoli do prostych rąk',[],'wr']]},
+  pulldownN:{A:AN({t:-8,th:90,sh:180,thb:6,ua:5,uab:7,fa:5,fab:7}),B:AN({t:-14,th:90,sh:180,thb:6,ua:205,uab:20,fa:5,fab:-4}),
+    an:['hp',[50,22]],pr:[['hbar','wr',[0,0]],['cable','wr',[52,104]]],st:[...SEAT,['box',66,74,25,28,-10,10]],
+    su:[['Uda pod wałkami, stopy na podłodze',[['knL',[0,4,0],[0,6,0],'m']]],['Chwyt na szerokość barków',[]],['Ściągnij łopatki w dół',[['shL',[0,-4,0],[0,3,0],'m']]]],
+    mv:[['W dół:','do górnej części klatki, łokcie blisko tułowia, w dół i do tyłu',[['elL',[-3,-3,0],[0,0,0],'m']],'wr'],['W górę:','powoli do prostych rąk',[],'wr']]},
+  row:{A:AN({t:50,ua:180,fa:180,th:145,sh:192,uab:4}),B:AN({t:50,th:145,sh:192,hold:{j:'hp',o:[10,2],w:11,pole:[-1,1,.3]}}),
+    an:['an',[46,0]],pr:[['bar','wr',[0,0]]],gd:'mf',
+    su:[['Stopy na szerokość bioder, kolana lekko ugięte',C_STOPY],['Pochyl tułów ok. 45° lub niżej, plecy proste',C_BIOT],['Chwyt na szerokość barków, napnij brzuch',C_BRZ]],
+    mv:[['W górę:','łokcie do tyłu blisko tułowia, sztanga do brzucha, ściągnij łopatki',[['elL',[-4,2,0],[0,0,0],'m'],...C_LOP],'wr'],['W dół:','opuść do prostych rąk, tułów nieruchomo',[],'wr']]},
+  rowO:{A:AN({t:65,ua:180,fa:180,th:135,sh:195,uab:6}),B:AN({t:65,th:135,sh:195,hold:{j:'hp',o:[14,2],w:14,pole:[-.5,1,.9]}}),
+    an:['an',[46,0]],pr:[['bar','wr',[0,0]]],gd:'mf',
+    su:[['Stopy na szerokość bioder, kolana lekko ugięte',C_STOPY],['Tułów mocno pochylony, plecy proste',C_BIOT],['Chwyt nachwytem, napnij brzuch',C_BRZ]],
+    mv:[['W górę:','sztanga do dołu klatki, łokcie do tyłu i lekko na boki',[['elL',[-3,3,2],[0,0,0],'m'],...C_LOP],'wr'],['W dół:','opuść do prostych rąk',[],'wr']]},
+  pendlay:{A:AN({t:85,th:130,sh:195,ftb:10,hold:{abs:[56,9],w:12,pole:[0,0,1]}}),B:AN({t:85,th:130,sh:195,ftb:10,hold:{j:'sh',o:[-6,-9],w:12,pole:[-1,.3,.3]}}),
+    an:['an',[50,0]],pr:[['bar','wr',[0,0]]],gd:'mf',
+    su:[['Tułów równolegle do podłogi, sztanga na podłodze pod barkami',[['tm',[0,-4,0],[0,7,0],'b']]],['Ściągnij łopatki, plecy proste',C_LOP],['Napnij brzuch',C_BRZ]],
+    mv:[['W górę:','dynamicznie do dołu klatki, tułów się nie podnosi',[['elL',[-3,3,0],[0,0,0],'m']],'wr'],['W dół:','odłóż sztangę na podłogę, każde powtórzenie od zera',[],'wr']]},
+  csrow:{A:AN({t:48,ua:180,uab:8,fa:180,fab:6,ft:90,feet:{abs:[22,0],w:8,pole:[1,0,0]}}),B:AN({t:48,ft:90,feet:{abs:[22,0],w:8,pole:[1,0,0]},hold:{j:'tm',o:[2,-8],w:12,pole:[-1,.5,.4]}}),
+    an:['hp',[40,30]],pr:[['db','wr',[0,0]]],st:[['quad',[[42,27.5,-8],[42,27.5,8],[65,46.5,8],[65,46.5,-8]]],['box',38,42,0,27,-5,5]],
+    su:[['Klatka oparta o ławkę skośną, stopy na podłodze',[['tm',[0,-4,0],[0,-7,0],'b']]],['Ręce zwisają, barki w dół',[['shL',[-4,0,0],[0,0,0],'bm']]]],
+    mv:[['W górę:','łokcie do tyłu, ciężar do dołu klatki, ściągnij łopatki',[...C_LOP],'wr'],['W dół:','opuść do prostych rąk',[],'wr']]},
+  dbrow:{A:AN({t:88,th:180,thb:6,sh2:270,th2:180,thb2:0,ft2:265,ftb:20,ua:180,uab:4,fa:180,feet:{side:'L',L:[38,0,16],poleL:[1,0,.4]},hold:{abs:[65,21],abs3:[0,0,-9],side:'R',pole:[-1,0,0]}}),
+    B:AN({t:88,th:180,thb:6,sh2:270,th2:180,thb2:0,ft2:265,ftb:20,feet:{side:'L',L:[38,0,16],poleL:[1,0,.4]},hold:[{abs:[65,21],abs3:[0,0,-9],side:'R',pole:[-1,0,0]},{j:'hp',o:[6,4],w:10,side:'L',pole:[-1,1,.3]}]}),
+    an:['hp',[42,44]],pr:[['db1','wrL',[0,0]]],st:[['box',22,74,16,20,-16,2],['box',26,30,0,16,-10,-4],['box',66,70,0,16,-10,-4]],
+    su:[['Kolano i ręka na ławce, plecy równolegle do podłogi',[['tm',[0,-4,0],[0,7,0],'b']]],['Druga stopa na podłodze, wbij ją',[['anL',[0,-5,0],[0,7,0]]]],['Napnij brzuch, barki równo',C_BRZ]],
+    mv:[['W górę:','hantel do biodra, łokieć blisko tułowia, ściągnij łopatkę',[['elL',[-3,3,0],[0,0,0]]],'wrL'],['W dół:','opuść do prostej ręki',[],'wrL']]},
+  crow:{A:AN({t:12,ft:20,feet:{abs:[78,6],w:8,pole:[0,1,0]},ua:90,uab:6,fa:90,fab:6}),B:AN({t:-4,ft:20,feet:{abs:[78,6],w:8,pole:[0,1,0]},hold:{j:'sh',o:[8,-12],w:8,pole:[-1,0,.3]}}),
+    an:['hp',[36,14]],pr:[['cable','wr',[112,38]]],st:[['box',16,54,9,12,-9,9],['box',80,83,0,20,-12,12]],
+    su:[['Stopy na podpórkach, kolana lekko ugięte',[['anL',[4,0,0],[-6,0,0],'m']]],['Tułów prosto, plecy proste, napnij brzuch',C_BRZ]],
+    mv:[['Do siebie:','uchwyt do brzucha, łokcie do tyłu blisko tułowia, ściągnij łopatki',[['elL',[-4,0,0],[0,0,0],'m'],...C_LOP],'wr'],['Powrót:','ręce do przodu, tułów prawie nieruchomo',[],'wr']]},
+  mrow:{A:AN({th:90,sh:180,ua:90,uab:6,fa:90,fab:6}),B:AN({th:90,sh:180,hold:{j:'sh',o:[7,-8],w:9,pole:[-1,0,.4]}}),
+    an:['hp',[40,22]],pr:[],st:[['box',28,50,17,21,-12,12],['box',36,42,0,17,-4,4],['box',47,51,30,50,-7,7]],
+    su:[['Klatka oparta o poduszkę, stopy na podłodze',[['tm',[4,0,0],[0,-6,0],'b']]],['Ręce proste, barki w dół',[['shL',[0,-4,0],[0,5,0],'m']]]],
+    mv:[['Do siebie:','łokcie do tyłu, zatrzymaj z ściągniętymi łopatkami',[...C_LOP],'wr'],['Powrót:','powoli do prostych rąk',[],'wr']]},
+  curl:{A:AN({uab:5}),B:AN({ua:175,uab:5,fa:25}),
+    an:['an',[50,0]],pr:[['db','wr',[0,0]]],
+    su:[['Stopy na szerokość bioder, napnij brzuch',C_BRZ],['Łokcie przy bokach i niech tam zostaną',[['elL',[0,0,-4],[0,0,6],'m']]]],
+    mv:[['W górę:','uginaj łokcie, ramiona nieruchomo',[['elL',[-3,0,0],[2,0,0],'m']],'wrL'],['W dół:','opuszczaj wolno do prostych rąk',[],'wrL']]},
+  bayes:{A:AN({ua:200,uab:6,fa:200,ua2:180,uab2:5,fa2:180,ftb:10}),B:AN({ua:198,uab:6,fa:40,ua2:180,uab2:5,fa2:180,ftb:10}),
+    an:['an',[52,0]],pr:[['cable','wrL',[12,5,9]]],st:[['dot',[12,5,9]]],
+    su:[['Stań tyłem do wyciągu dolnego, krok do przodu',C_STOPY],['Ręka za linią tułowia, ramię rozciągnięte',[['elL',[-4,0,0],[0,0,0]]]]],
+    mv:[['W górę:','uginaj łokieć, ramię zostaje z tyłu',[['elL',[-3,0,0],[2,0,0]]],'wrL'],['W dół:','powoli do pełnego wyprostu',[],'wrL']]},
+  ext:{A:AN({t:5,ua:175,uab:4,fa:30}),B:AN({t:5,ua:175,uab:4,fa:175}),
+    an:['an',[46,0]],pr:[['cable','wr',[62,100]]],st:[['dot',[62,100,0]]],
+    su:[['Stań przy wyciągu, tułów lekko pochylony, napnij brzuch',C_BRZ],['Łokcie przy tułowiu, nieruchomo',[['elL',[0,0,-4],[0,0,6],'m']]]],
+    mv:[['W dół:','prostuj ręce do pełnego wyprostu, zatrzymaj',[['wrL',[0,-4,0],[3,0,0],'m']],'wr'],['W górę:','powoli do kąta prostego, łokcie dalej w miejscu',[],'wr']]},
+  french:{sup:1,v:['side','top'],A:AN({t:90,ft:90,ftb:30,feet:BFEET,ua:0,uab:6,fa:0,fab:6}),B:AN({t:90,ft:90,ftb:30,feet:BFEET,ua:38,uab:6,fa:155,fab:6}),
+    an:['hp',[40,24]],pr:[['bar','wr',[0,0]]],st:BENCH,
+    su:[['Leżysz na ławce, stopy na podłodze',C_STOPY],['Ciężar nad klatką, łokcie na szerokość barków',[['elL',[0,0,-3],[0,0,5],'m']]]],
+    mv:[['W dół:','uginaj łokcie, przenieś ciężar za głowę',[['elL',[4,0,0],[0,0,0],'m']],'wr'],['W górę:','wyprostuj i wróć nad klatkę',[],'wr']]},
+  legcurl:{sup:1,v:['side','top'],A:AN({t:-90,th:90,sh:90,ft:180,thb:3,shb:0,hold:{abs:[22,10],w:12,pole:[0,0,1]}}),B:AN({t:-90,th:90,sh:15,ft:105,thb:3,shb:0,hold:{abs:[22,10],w:12,pole:[0,0,1]}}),
+    an:['hp',[52,26]],pr:[['pad','an',[0,0]]],st:[['box',10,80,20,24,-8,8],['box',16,20,0,20,-6,6],['box',72,76,0,20,-6,6]],
+    su:[['Leżysz przodem, wałek nad piętami, kolana tuż za ławką',[]],['Biodra wciśnij w ławkę',[['hp',[0,-4,0],[0,6,0]]]]],
+    mv:[['W górę:','pięty do pośladków, zatrzymaj na chwilę',[],'an'],['W dół:','opuszczaj powoli, biodra nie unoszą się',[],'an']]},
+  legcurlS:{A:AN({t:-6,th:90,sh:95,ft:5,thb:4,shb:0,hold:{abs:[56,26],w:14,pole:[0,-1,1]}}),B:AN({t:-6,th:90,sh:205,ft:100,thb:4,shb:0,hold:{abs:[56,26],w:14,pole:[0,-1,1]}}),
+    an:['hp',[50,24]],pr:[['pad','an',[1,-1.5]]],st:[['box',36,62,19,23,-12,12],['box',33,37,23,58,-10,10],['box',58,66,28,31,-10,10],['box',44,50,0,19,-4,4]],
+    su:[['Plecy oparte, wałek uda dociśnięty nad kolanami',[['knL',[0,-4,0],[0,7,0],'m']]],['Wałek pod piętami, nogi prawie proste',[]]],
+    mv:[['W dół:','uginaj kolana do końca, zatrzymaj na chwilę',[],'an'],['Powrót:','powoli do prawie prostych nóg',[],'an']]},
+  nordic:{A:AN({ua:150,fa:150,uab:15,th:180,sh:270,ft:200,thb:3,shb:0}),B:AN({t:60,ua:120,fa:120,uab:15,th:240,sh:270,ft:200,thb:3,shb:0}),
+    an:['kn',[40,3]],pr:[],st:[['box',4,28,0,3,-12,12],['box',8,13,5,8,-12,12]],
+    su:[['Klęcz na miękkim, pięty zablokowane',[['anL',[0,-4,0],[0,6,0],'m']]],['Napnij pośladki i brzuch: kolano–biodro–bark w jednej linii',[...C_BRZ,['hp',[4,0,0],[-6,0,0]]]]],
+    mv:[['W dół:','opadaj powoli, ciało proste, biodra się nie zginają',[],'sh'],['W górę:','złap się rękami i odepchnij do góry',[],'sh']]},
+  abwheel:{A:AN({t:58,ua:172,fa:176,uab:-4,th:172,sh:270,ft:200,thb:3,shb:0}),B:AN({t:84,ua:108,fa:106,uab:-4,th:228,sh:270,ft:200,thb:3,shb:0}),
+    an:['kn',[28,4]],pr:[['wheel','wr',[0,-4]]],
+    su:[['Klęcząc, kółko pod barkami',[]],['Napnij brzuch i pośladki, plecy lekko zaokrąglone',[...C_BRZ]]],
+    mv:[['Do przodu:','tocz kółko powoli, lędźwie się nie zapadają',[],'wr'],['Powrót:','przyciągnij brzuchem, biodra idą za tułowiem',[],'wr']]},
+  legraise:{A:AN({ua:0,uab:15,fa:0,fab:15,th:175,sh:185,thb:2,shb:0}),B:AN({ua:0,uab:15,fa:0,fab:15,th:85,sh:175,thb:2,shb:0}),
+    an:['wr',[60,90]],nf:1,pr:[],st:[['line',[60,90,-32],[60,90,32],5]],
+    su:[['Zwis na drążku, chwyt na szerokość barków',[]],['Barki aktywne, w dół; nogi razem',[['shL',[0,-4,0],[0,3,0],'m']]]],
+    mv:[['W górę:','unoś nogi, na górze podwiń miednicę',[['hp',[3,3,0],[-4,0,0]]],'kn'],['W dół:','opuszczaj wolno, bez bujania',[],'kn']]},
+  deadbug:{v:['side','top'],A:AN({t:-90,ua:0,fa:0,uab:5,th:0,sh:90,thb:4,shb:0,ft:0}),B:AN({t:-90,ua:0,fa:0,uab:5,ua2:-75,fa2:-75,th:74,sh:86,thb:4,shb:0,th2:0,sh2:90,ft:80,ft2:0}),
+    an:['hp',[62,4]],fl:1,pr:[],
+    su:[['Leżysz na plecach, ręce w górze, kolana nad biodrami',[]],['Dociśnij lędźwie do podłogi',[['tm',[0,-4,0],[0,7,0],'b']]]],
+    mv:[['Wyprost:','przeciwna ręka i noga powoli w dół, wydech',[],'anL'],['Powrót:','wróć i zmień stronę',[],'anL']]},
+  hollow:{v:['side','top'],A:AN({t:-90,ua:-90,fa:-90,uab:4,th:90,sh:90,thb:2,shb:0,ft:30}),B:AN({t:-78,ua:-78,fa:-78,uab:4,th:80,sh:80,thb:2,shb:0,ft:20}),
+    an:['hp',[60,4]],fl:1,pr:[],
+    su:[['Leżysz na plecach, ręce za głową, nogi proste',[]],['Dociśnij lędźwie do podłogi',[['tm',[0,-4,0],[0,7,0],'b']]]],
+    mv:[['Unieś:','barki i proste nogi kilka centymetrów nad podłogę, trzymaj',[['hd',[0,4,0],[0,2,0]],['anL',[0,4,0],[0,2,0],'m']],'anL'],['Odpocznij:','opuść kontrolowanie',[],'anL']]},
+  oblq:{v:['side','top'],A:AN({t:-90,ft:90,feet:{abs:[78,0],w:7,pole:[0,1,0]},hold:{j:'hd',o:[0,0],w:6,pole:[.2,.4,1]}}),B:AN({t:-50,ft:90,feet:{abs:[78,0],w:7,pole:[0,1,0]},hold:{j:'hd',o:[0,0],w:6,pole:[.2,.4,1],poleL:[1,.6,-.6]}}),
+    an:['hp',[55,4]],fl:1,pr:[],
+    su:[['Leżysz, kolana ugięte, stopy płasko',C_STOPY],['Dłonie przy głowie, łokcie na boki',[['elL',[0,0,4],[0,0,2],'m']]]],
+    mv:[['W górę:','unieś tułów, łokieć do przeciwnego kolana',[['elL',[4,0,-4],[0,0,0]]],'sh'],['W dół:','wracaj powoli, zmieniaj strony',[],'sh']]},
+  chop:{A:AN({thb:12,shb:-4,ftb:20,hold:{j:'sh',o:[9,12],zL:15,zR:11,pole:[1,0,0],poleL:[.3,-1,1],poleR:[.6,-1,-.2]}}),B:AN({th:165,sh:195,thb:12,shb:-4,ftb:20,hold:{j:'hp',o:[14,-12],zL:-13,zR:-17,pole:[1,0,0],poleL:[.6,-1,.2],poleR:[.3,-1,-1]}}),
+    an:['an',[50,0]],pr:[['db1','wr',[0,0]],['cable','wr',[50,98,40]]],
+    su:[['Stopy szerzej niż barki, bokiem do wyciągu',C_STOPY],['Ręce prawie proste, napnij brzuch',C_BRZ]],
+    mv:[['Po skosie:','przeciągnij uchwyt łukiem w dół, obracają się biodra i tułów',[['hp',[0,0,-5],[4,0,0]]],'wr'],['Powrót:','wolno tą samą drogą',[],'wr']]},
+  rope:{A:AN({ftb:15,thb:8,shb:4,hold:{j:'sh',o:[12,0],oL:[0,16],oR:[0,-6],zL:1.5,zR:-1.5,pole:[0,-1,1]}}),B:AN({ftb:15,thb:8,shb:4,hold:{j:'sh',o:[12,0],oL:[0,-6],oR:[0,16],zL:1.5,zR:-1.5,pole:[0,-1,1]}}),
+    an:['an',[50,0]],pr:[],st:[['line',[62,0,0],[62,100,0],1.5]],
+    su:[['Stopy na szerokość barków, kolana lekko ugięte',C_STOPY],['Plecy proste, napnij brzuch, oddychaj nosem',C_BRZ]],
+    mv:[['Ciągnij:','jedna ręka ciągnie w dół, druga łapie wysoko',[['wrL',[0,-5,0],[3,0,0]]],'wrL'],['Zmiana:','ręce na zmianę, spokojne tempo',[['wrR',[0,-5,0],[3,0,0]]],'wrR']]}
+};
+// warianty
+const VAR=(base,o)=>Object.assign({},ANIM[base],o);
+ANIM.cbench=VAR('bench',{A:AN(Object.assign({},ANIM.bench.A,{hold:{j:'sh',o:[-2,29],w:10,pole:[0,0,1]}})),B:AN(Object.assign({},ANIM.bench.B,{hold:{j:'sh',o:[-8,5],w:10,pole:[-1,-1,.45]}})),
+  su:[BENCH_SU[0],BENCH_SU[1],['Chwyt na szerokość barków, łokcie blisko tułowia. Wdech i napnij brzuch',[['elL',[0,0,-4],[0,0,6],'m']]]],
+  mv:[['W dół:','sztanga na dolną część mostka, łokcie ok. 30–45° od tułowia',[],'wr'],['W górę:','wypchnij, łokcie dalej blisko',C_STOPY,'wr']]});
+ANIM.spoto=VAR('bench',{B:AN(Object.assign({},ANIM.bench.B,{hold:{j:'sh',o:[-7,9],w:19,pole:[-.7,-1,1.1]}})),tm:{b:1.5},
+  mv:[['W dół:','zatrzymaj sztangę 2–3 cm nad klatką na 1–2 s, napięcie zostaje',[],'wr'],['W górę:','wyciśnij z zatrzymania',C_STOPY,'wr']]});
+ANIM.jm=VAR('cbench',{B:AN(Object.assign({},ANIM.bench.B,{hold:{j:'sh',o:[3,10],w:10,pole:[-1,.5,.2]}})),
+  mv:[['W dół:','sztanga w stronę brody, łokcie zginają się do przodu',[['elL',[-4,0,0],[0,0,0],'m']],'wr'],['W górę:','wyprostuj łokcie',[],'wr']]});
+ANIM.deficit=VAR('dead',{A:AN({t:62,th:100,thb:11,sh:203,shb:-6,ftb:10,hold:{abs:[54,9],w:11,pole:[0,0,1]}}),B:AN({thb:3,shb:2,ftb:10,uab:4}),an:['an',[50,3]],
+  st:[['box',30,74,0,3,-14,14]],su:[['Stań na podwyższeniu 2–5 cm, sztanga nad środkiem stopy',C_STOPY],...DL_SU.slice(1)]});
+ANIM.blocks=VAR('dead',{A:AN({t:48,th:150,thb:6,sh:188,shb:-2,ftb:10,hold:{abs:[52,21],w:11,pole:[0,0,1]}}),
+  st:[['box',40,64,0,12,20,28],['box',40,64,0,12,-28,-20]],su:[['Sztanga na blokach na wysokości kolan lub tuż pod nimi',[['wrL',[0,-4,0],[0,8,9],'m']]],...DL_SU.slice(2)],
+  mv:[['W górę:','biodra do przodu, ściśnij pośladki, barki do tyłu',[['hp',[6,0,0],[-6,0,0]]],'wr'],['W dół:','odłóż na bloki z prostymi plecami',[],'wr']]});
+ANIM.squatP=VAR('squat',{tm:{b:2}});
+ANIM.benchP=VAR('bench',{tm:{b:2},mv:[['W dół:','sztanga na klatkę i zatrzymaj 2 s bez rozluźniania',[],'wr'],['W górę:','wyciśnij z zatrzymania',C_STOPY,'wr']]});
+ANIM.deadP=VAR('dead',{tm:{mid:[.3,2]},mv:[['W górę:','zatrzymaj sztangę 2 s tuż pod kolanami, plecy proste, potem dokończ',C_STOPY,'wr'],['W dół:','biodra w tył, sztanga po nogach',C_BIOT,'wr']]});
+const PATANIM={squat:'squat',squatM:'hack',uni:'split',dead:'dead',hinge:'hinge',glute:'thrust',addu:'addu',bench:'bench',close:'cbench',ohp:'ohp',lat:'lat',rear:'revfly',vpull:'pullup',hpull:'row',curl:'curl',ext:'ext',ham:'legcurl',core:'deadbug',rot:'chop',cond:'rope'};
+const NAMEANIM={'Front squat':'fsquat','Przysiad z pauzą':'squatP','Przysiad goblet':'goblet','Hack squat':'hack','Wypychanie nóg na suwnicy':'legpress',
+  'Split squat':'split','Przysiad bułgarski':'bulg','Wykroki chodzone':'walk','Wejścia na skrzynię':'stepup',
+  'Martwy ciąg sumo':'sumo','Martwy ciąg z trap bar':'trap','Martwy ciąg z deficytu':'deficit','Martwy ciąg z pauzą pod kolanem':'deadP','Martwy ciąg z bloków':'blocks',
+  'Good morning':'gm','Hip thrust':'thrust','Nordic curl':'nordic','Uginanie podudzi':'legcurlS','Uginanie podudzi leżąc':'legcurl',
+  'Wyciskanie z pauzą 2 s':'benchP','Larsen press':'larsen','Spoto press':'spoto','Floor press':'floor','JM press':'jm',
+  'Wyciskanie hantli chwytem młotkowym':'cbench','Wyciskanie hantli chwytem neutralnym':'cbench',
+  'Wyciskanie na skosie dodatnim':'incline','Wyciskanie hantli na skosie dodatnim':'incline','Pompki na poręczach':'dip','Pompki z obciążeniem':'pushup',
+  'Wyciskanie hantli nad głowę siedząc':'ohpS','Landmine press':'landmine','Powell raises':'powell','Trap Y raise':'yraise','Face pull':'facepull',
+  'Odwrotne rozpiętki na maszynie':'revflyM','Podciąganie podchwytem':'pullupN','Podciąganie chwytem neutralnym':'pullupN',
+  'Ściąganie drążka nachwytem':'pulldown','Ściąganie drążka szerokim chwytem':'pulldown','Hammer na plecy szeroko':'pulldown',
+  'Ściąganie drążka podchwytem':'pulldownN','Ściąganie drążka chwytem neutralnym':'pulldownN',
+  'Ściąganie drążka poziomo':'crow','Wiosłowanie na wyciągu siedząc':'crow','Wiosłowanie na maszynie':'mrow',
+  'Wiosłowanie sztangą w opadzie':'rowO','Pendlay row':'pendlay','Kas row w oparciu o ławkę':'csrow','Wiosłowanie hantlem jednorącz':'dbrow',
+  'Bayesian curl':'bayes','Francuz z przenoszeniem':'french','Ab wheel':'abwheel','Unoszenie nóg w zwisie':'legraise','Hollow body':'hollow','Brzuszki skośne':'oblq'};
 
 let swapOpen=null;
 // wskazówki trenera: własne (S.cues) mają pierwszeństwo przed wskazówkami z pliku planu
@@ -1660,6 +1892,7 @@ $('#view').addEventListener('click',async e=>{
   if(t.id==='ghoff'){if(!twoTap('ghoff',t,'Odłączyć? Dotknij ponownie'))return;armed=null;try{localStorage.removeItem(GHK)}catch(e){}render();return toast('Odłączono. Kopie na GitHubie zostają.')}
   if(t.id==='swupd'){save();try{if(window.__swr)await window.__swr.update()}catch(e){}toast('Sprawdzam nową wersję…');setTimeout(()=>location.reload(),1500);return}
   if(t.id==='beeptest'){audioInit();beep(1);setTimeout(()=>beep(3),700);return toast('Powinny być 1 + 3 piknięcia')}
+  if(t.dataset.animpause||t.dataset.animrestart)return animCtl(t);
   if(t.dataset.info){const k=t.dataset.info;infoOpen.has(k)?infoOpen.delete(k):infoOpen.add(k);return render()}
   if(t.dataset.startnow){markStart();return toast('Zegar treningu włączony')}
   if(t.dataset.swapopen){swapOpen=+t.dataset.swapopen;return render()}
