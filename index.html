@@ -13,7 +13,7 @@
 <style>
 :root{
   --bg:#E6EAEE; --surface:#FFFFFF; --ink:#15202B; --muted:#5B6875; --line:#CDD3DA;
-  --accent:#C8102E; --accent-ink:#FFFFFF; --done:#1F4FB8; --done-soft:#E3EAFB; --field:#F2F4F6; --bone:#D8CFC0; --m-con:#D4213D; --m-ecc:#F2892B; --m-iso:#7A1F3D; --m-rest:#E9D3CB; --m-edge:rgba(80,30,30,.35); --skin:#E9C9B8;
+  --accent:#C8102E; --accent-ink:#FFFFFF; --done:#1F4FB8; --done-soft:#E3EAFB; --field:#F2F4F6; --bone:#D8CFC0; --m-con:#D4213D; --m-ecc:#F2892B; --m-iso:#7A1F3D; --m-rest:#E9D3CB; --m-edge:rgba(80,30,30,.35); --skin:#E9C9B8; --tendon:#F4EEE2;
   --musc2:#F0A0AA; --body2:#9AA3AD;
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -24,12 +24,12 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#1A2027; --surface:#232B34; --ink:#E8EDF2; --muted:#9AA6B2; --line:#36414D;
-    --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55;
+    --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55; --tendon:#CFC6B4;
    --musc2:#8A3A48; --body2:#6B7785;}
 }
 :root[data-theme="dark"]{
   --bg:#1A2027; --surface:#232B34; --ink:#E8EDF2; --muted:#9AA6B2; --line:#36414D;
-  --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55;
+  --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55; --tendon:#CFC6B4;
  --musc2:#8A3A48; --body2:#6B7785;}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -307,7 +307,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-10-29j';
+const VER='2026-10-29k';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -859,6 +859,47 @@ function animPoses(key){
   return animCache[key]=[pose3(a.A,a),pose3(a.B,a)];
 }
 const PLATE=9;
+// ---------- ruch pośredni w 3D: kości sztywne, obroty w stawach ----------
+const SKEL=[['hp','hpL'],['hp','hpR'],['hpL','knL'],['hpR','knR'],['knL','anL'],['knR','anR'],['anL','toL'],['anR','toR'],
+  ['hp','s1'],['s1','s2'],['s2','sh'],['sh','shL'],['sh','shR'],['sh','hd'],['shL','elL'],['shR','elR'],['elL','wrL'],['elR','wrR']];
+const ROOTOF={an:'anL',kn:'knL',to:'toL',wr:'wrL',el:'elL'};
+function slerpDir(a,b,f){
+  const d=Math.max(-1,Math.min(1,dot3(a,b))), th=Math.acos(d);
+  if(th<1e-4)return a;
+  if(Math.PI-th<1e-3){const ax=nrm3(cross3(a,[0,0,1]));const r=f*th;return v3(a.map(v=>v*Math.cos(r)),cross3(ax,a),Math.sin(r))}
+  const s=Math.sin(th);return v3(a.map(v=>v*Math.sin((1-f)*th)/s),b,Math.sin(f*th)/s);
+}
+const lerp3=(a,b,f)=>[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f];
+const ipCache={};
+function interpPose(key,f){
+  const [A,B]=animPoses(key), a=ANIM[key];
+  if(f<=0)return A; if(f>=1)return B;
+  const ck=key+'|'+f; if(ipCache[ck])return ipCache[ck];
+  const root=ROOTOF[a.an[0]]||a.an[0], adj={};
+  SKEL.forEach(([x,y])=>{(adj[x]=adj[x]||[]).push(y);(adj[y]=adj[y]||[]).push(x)});
+  const J={}; J[root]=lerp3(A[root],B[root],f);
+  const seen=new Set([root]), q=[root];
+  while(q.length){const p=q.shift();(adj[p]||[]).forEach(c=>{if(seen.has(c))return;seen.add(c);q.push(c);
+    const dA=sub3(A[c],A[p]), dB=sub3(B[c],B[p]), lA=len3(dA), lB=len3(dB);
+    J[c]=v3(J[p],slerpDir(nrm3(dA),nrm3(dB),f),lA+(lB-lA)*f)})}
+  // ograniczenia: dłonie na torze ciężaru (lub na drążku), stopy na podłodze; łokieć i kolano z kinematyki odwrotnej
+  const holds=P=>[].concat(P.hold||[]);
+  const carries=(a.pr||[]).some(x=>/^wr/.test(x[1]||''))||holds(a.A).length||holds(a.B).length;
+  ['L','R'].forEach(X=>{
+    const sh='sh'+X,el='el'+X,wr='wr'+X;
+    const hj=(holds(a.A).find(h=>h.j&&(!h.side||h.side===X))||{}).j, hjB=(holds(a.B).find(h=>h.j&&(!h.side||h.side===X))||{}).j;
+    let T=null;
+    if(hj&&hj===hjB&&J[hj])T=v3(J[hj],lerp3(sub3(A[wr],A[hj]),sub3(B[wr],B[hj]),f));
+    else if(carries||len3(sub3(A[wr],B[wr]))<1.5)T=lerp3(A[wr],B[wr],f);
+    if(T){const pole=sub3(J[el],mid3(J[sh],J[wr]));const [E,W]=ik(J[sh],T,SEGL.ua,SEGL.fa,len3(pole)>.01?pole:[0,-1,0]);J[el]=E;J[wr]=W}
+    const hp='hp'+X,kn='kn'+X,an='an'+X,to='to'+X;
+    if(len3(sub3(A[an],B[an]))<1.5||(a.A.feet&&a.B.feet)){const T2=lerp3(A[an],B[an],f), fd=sub3(J[to],J[an]);
+      const pole=sub3(J[kn],mid3(J[hp],J[an]));const [K,Q]=ik(J[hp],T2,SEGL.th,SEGL.sh,len3(pole)>.01?pole:[1,0,0]);J[kn]=K;J[an]=Q;J[to]=v3(Q,fd)}
+  });
+  ['el','wr','kn','an','to'].forEach(k=>J[k]=mid3(J[k+'L'],J[k+'R']));
+  J.tm=mid3(J.hp,J.sh); J.td=nrm3(sub3(J.sh,J.hp));
+  return ipCache[ck]=J;
+}
 // oś czasu: ustawienie (kroki po kolei, postać w pozycji startowej), potem 2 powtórzenia
 // węzły [czas, f], f = 0 pozycja startowa, 1 pozycja końcowa
 function animTimeline(a,name){
@@ -891,8 +932,9 @@ function arrowsOf(list){
   return out;
 }
 function bodyVec(J,v,fl){const u=J.td, k=fl?-1:1, f=[u[1]*k,-u[0]*k,0];return [u[0]*v[0]+f[0]*v[1],u[1]*v[0]+f[1]*v[1],v[2]]}
-function animView(name,key,vw,TL,frame,mode){
-  const a=ANIM[key], [PA,PB]=animPoses(key), g=G[name], [p,s]=g, V=VIEWS[vw].p, bx=[1e9,1e9,-1e9,-1e9];
+function animView(name,key,vw,TL,frame,mode,smp){
+  const a=ANIM[key], [PA0,PB0]=animPoses(key), still=!!frame&&!smp; let PA=PA0,PB=PB0; if(smp){PA=PB=smp.P;frame='S'}
+  const _u=0, g=G[name], [p,s]=g, V=VIEWS[vw].p, bx=[1e9,1e9,-1e9,-1e9];
   const grow=(q,r=0)=>{bx[0]=Math.min(bx[0],q[0]-r);bx[1]=Math.min(bx[1],q[1]-r);bx[2]=Math.max(bx[2],q[0]+r);bx[3]=Math.max(bx[3],q[1]+r)};
   const col=part=>{const m=PARTM[part]||[];return m.some(x=>p.includes(x))?'var(--accent)':m.some(x=>s.includes(x))?'var(--musc2)':'var(--body2)'};
   const KS=TL.nodes.slice(1).map(()=>'.45 0 .55 1').join(';'), KT=TL.nodes.map(n=>r1(n[0]/TL.T*1000)/1000).join(';');
@@ -913,7 +955,7 @@ function animView(name,key,vw,TL,frame,mode){
     if(e[0]==='line'){const q1=V(e[1]),q2=V(e[2]);if(e[1][1]<95){grow(q1,2);grow(q2,2)}post+=`<line x1="${r1(q1[0])}" y1="${r1(q1[1])}" x2="${r1(q2[0])}" y2="${r1(q2[1])}" stroke="var(--muted)" stroke-width="${e[3]||2.5}" stroke-linecap="round"/>`}
     if(e[0]==='dot'){const q=V(e[1]);grow(q,3);h+=`<circle cx="${r1(q[0])}" cy="${r1(q[1])}" r="3" fill="var(--muted)"/>`}
   });
-  if(a.gd==='mf'&&vw==='side'){const m=V(v3(mid3(PA.an,PA.to),[-1.5,0,0]));h+=`<line x1="${r1(m[0])}" y1="-60" x2="${r1(m[0])}" y2="96" stroke="var(--done)" stroke-width="1" stroke-dasharray="3 2.5" opacity=".7"/>`}
+  if(a.gd==='mf'&&vw==='side'){const m=V(v3(mid3(PA0.an,PA0.to),[-1.5,0,0]));h+=`<line x1="${r1(m[0])}" y1="-60" x2="${r1(m[0])}" y2="96" stroke="var(--done)" stroke-width="1" stroke-dasharray="3 2.5" opacity=".7"/>`}
   // ruchome części sprzętu (oparcie sanek, platforma suwnicy)
   (a.pr||[]).filter(x=>x[0]==='slab'||x[0]==='plat').forEach(([k])=>{
     const corners=J=>{
@@ -922,13 +964,13 @@ function animView(name,key,vw,TL,frame,mode){
     const ord=k==='slab'?[0,1,3,2]:[0,1,2,3], ca=corners(PA), cb=corners(PB);
     h+=PG(ord.map(i=>V(ca[i])),ord.map(i=>V(cb[i])),'var(--line)',' stroke="var(--line)" stroke-width="3" stroke-linejoin="round"');
   });
-  const items=SEG3.map(([j1,j2,part,X])=>({d:(V(PA[j1])[2]+V(PA[j2])[2])/2,X,html:()=>L2(pj(PA,j1),pj(PA,j2),pj(PB,j1),pj(PB,j2),col(part),5,vw==='side'&&X==='R'?' opacity=".45"':'')}));
+  const items=SEG3.map(([j1,j2,part,X])=>({d:(V(PA0[j1])[2]+V(PA0[j2])[2])/2,X,html:()=>L2(pj(PA,j1),pj(PA,j2),pj(PB,j1),pj(PB,j2),col(part),5,vw==='side'&&X==='R'?' opacity=".45"':'')}));
   const tq=['shL','shR','hpR','hpL'];
-  items.push({d:tq.reduce((t,k)=>t+V(PA[k])[2],0)/4-.5,html:()=>PG(tq.map(k=>pj(PA,k)),tq.map(k=>pj(PB,k)),col('torso'),` stroke="${col('torso')}" stroke-width="6" stroke-linejoin="round"`)});
-  items.push({d:V(PA.hd)[2],html:()=>C2(pj(PA,'hd'),pj(PB,'hd'),5.5,'var(--body2)')});
-  ['shL','shR','hpL','hpR'].forEach(k=>items.push({d:V(PA[k])[2]+.1,X:k.slice(-1),html:()=>C2(pj(PA,k),pj(PB,k),3.4,col(k[0]==='s'?'delt':'hip'),vw==='side'&&k.endsWith('R')?' opacity=".45"':'')}));
-  if(vw==='side')items.sort((x,y)=>(x.X==='R'?0:1)-(y.X==='R'?0:1)||x.d-y.d); else items.sort((x,y)=>x.d-y.d);
-  h+=(mode==='anat'?anatBody({V,PA,PB,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick,name}):items.map(i=>i.html()).join(''))+post;
+  items.push({d:tq.reduce((t,k)=>t+V(PA0[k])[2],0)/4-.5,html:()=>PG(tq.map(k=>pj(PA,k)),tq.map(k=>pj(PB,k)),col('torso'),` stroke="${col('torso')}" stroke-width="6" stroke-linejoin="round"`)});
+  items.push({d:V(PA0.hd)[2],html:()=>C2(pj(PA,'hd'),pj(PB,'hd'),5.5,'var(--body2)')});
+  ['shL','shR','hpL','hpR'].forEach(k=>items.push({d:V(PA0[k])[2]+.1,X:k.slice(-1),html:()=>C2(pj(PA,k),pj(PB,k),3.4,col(k[0]==='s'?'delt':'hip'),vw==='side'&&k.endsWith('R')?' opacity=".45"':'')}));
+  if(vw==='side')items.sort((x,y)=>(x.X==='R'?0:1)-(y.X==='R'?0:1)||x.d-y.d); else items.sort((x,y)=>x.d-y.d); // głębokość z pozycji startowej: ta sama kolejność w każdej klatce
+  h+=(mode==='anat'?anatBody({V,PA,PB,PA0,PB0,smp,still,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick,name}):items.map(i=>i.html()).join(''))+post;
   // rekwizyty
   let pr=(a.pr||[]).filter(x=>x[0]!=='slab'&&x[0]!=='plat');
   if(/hantl/i.test(name))pr=pr.map(x=>x[0]==='bar'?['db',x[1],x[2]]:x);
@@ -936,7 +978,7 @@ function animView(name,key,vw,TL,frame,mode){
   pr.forEach(([k,j,o])=>{
     if(k==='cable'){const c=V([o[0],o[1],o[2]||0]);h+=L2(c,pj(PA,j),c,pj(PB,j),'var(--muted)',1.2);return}
     if(k==='lever'){const sg=j, P=J=>{const sd=sub3(J.an,J.kn), L=len3(sd), u=[sd[0]/L,sd[1]/L,0], n=[-u[1]*sg,u[0]*sg,0];return v3(v3(J.an,n,3.8),u,-2)};
-      const pv=v3(PA.kn,[0,0,15]), pA=P(PA), pB=P(PB);
+      const pv=v3(PA0.kn,[0,0,15]), pA=P(PA), pB=P(PB);
       h+=L2(V(pv),V(v3(pA,[0,0,15])),V(pv),V(v3(pB,[0,0,15])),'var(--muted)',2.5)+`<circle cx="${r1(V(pv)[0])}" cy="${r1(V(pv)[1])}" r="2.6" fill="var(--done)"/>`;
       h+=vw==='side'?C2(V(pA),V(pB),3.6,'none',' stroke="var(--muted)" stroke-width="2.5"'):L2(V(v3(pA,[0,0,-12])),V(v3(pA,[0,0,15])),V(v3(pB,[0,0,-12])),V(v3(pB,[0,0,15])),'var(--muted)',5);
       return}
@@ -955,29 +997,29 @@ function animView(name,key,vw,TL,frame,mode){
     h+=C2(V(cA),V(cB),r,f,` stroke="var(--muted)" stroke-width="${k==='db1'?0:2.5}"`);
   });
   // strzałki: ustawienie (po kolei, z numerem) i ruch (w trakcie fazy)
-  const vis=wins=>{if(frame)return '';const ks=[0],vs=[0];wins.forEach(([s,e])=>{ks.push(s/TL.T,e/TL.T);vs.push(1,0)});
+  const vis=wins=>{if(still)return '';const ks=[0],vs=[0];wins.forEach(([s,e])=>{ks.push(s/TL.T,e/TL.T);vs.push(1,0)});
     return `<animate attributeName="opacity" values="${vs.join(';')}" keyTimes="${ks.map(x=>r1(x*1000)/1000).join(';')}" calcMode="discrete" dur="${r1(TL.T)}s" repeatCount="indefinite"/>`};
   const ride=(A,B)=>frame?'':`<animateTransform attributeName="transform" type="translate" values="${TL.nodes.map(n=>{const q=lerp(A,B,n[1]);return r1(q[0]-A[0])+' '+r1(q[1]-A[1])}).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1(TL.T)}s" repeatCount="indefinite"/>`;
   const arrow=(ar,wins,num,show)=>{
+    {const q0=v3(PA0[ar.j],ar.b?bodyVec(PA0,ar.o,a.sup):ar.o),q1=V(v3(q0,ar.b?bodyVec(PA0,ar.d,a.sup):ar.d)),qq=V(q0);if(Math.hypot(q1[0]-qq[0],q1[1]-qq[1])<2.5)return ''}
     const ptA=v3(PA[ar.j],ar.b?bodyVec(PA,ar.o,a.sup):ar.o), ptB=v3(PB[ar.j],ar.b?bodyVec(PB,ar.o,a.sup):ar.o);
-    const dv=ar.b?bodyVec(PA,ar.d,a.sup):ar.d, A0=V(ptA), A1=V(v3(ptA,dv)), vx=A1[0]-A0[0], vy=A1[1]-A0[1], L=Math.hypot(vx,vy);
-    if(L<2.5)return '';
+    const dv=ar.b?bodyVec(PA,ar.d,a.sup):ar.d, A0=V(ptA), A1=V(v3(ptA,dv)), vx=A1[0]-A0[0], vy=A1[1]-A0[1], L=Math.max(.01,Math.hypot(vx,vy));
     const ux=vx/L,uy=vy/L, hx=A1[0]-ux*4, hy=A1[1]-uy*4;
     grow(A0,3);grow(A1,3);
     let g=`<line x1="${r1(A0[0])}" y1="${r1(A0[1])}" x2="${r1(hx)}" y2="${r1(hy)}" stroke="var(--done)" stroke-width="2.2" stroke-linecap="round"/><polygon points="${r1(A1[0])},${r1(A1[1])} ${r1(hx-uy*3)},${r1(hy+ux*3)} ${r1(hx+uy*3)},${r1(hy-ux*3)}" fill="var(--done)"/>`;
     if(num){const bxp=A0[0]-ux*5.5,byp=A0[1]-uy*5.5;grow([bxp,byp],5);g+=`<circle cx="${r1(bxp)}" cy="${r1(byp)}" r="4.4" fill="var(--done)"/><text x="${r1(bxp)}" y="${r1(byp+1.9)}" font-size="5.6" font-weight="700" text-anchor="middle" fill="var(--bg)">${num}</text>`}
-    return `<g${frame&&!show?' opacity="0"':''}>${vis(wins)}<g>${ride(V(ptA),V(ptB))}${g}</g></g>`;
+    return `<g${still&&!show?' opacity="0"':''}>${vis(wins)}<g>${ride(V(ptA),V(ptB))}${g}</g></g>`;
   };
   let ah='';
-  (a.su||[]).forEach(([,list],i)=>{const shown=arrowsOf(list);let first=true;shown.forEach(ar=>{const x=arrow(ar,[[TL.steps[i][0],TL.setEnd]],first?i+1:0,frame==='A'||frame==='S');if(x)first=false;ah+=x})});
+  (a.su||[]).forEach(([,list],i)=>{const shown=arrowsOf(list);let first=true;shown.forEach(ar=>{const x=arrow(ar,[[TL.steps[i][0],TL.setEnd]],first?i+1:0,frame==='A');if(x)first=false;ah+=x})});
   (a.mv||[]).forEach(([,,list,pj2],pi)=>{
     const wins=pi?TL.p2:TL.p1;
     arrowsOf(list).forEach(ar=>ah+=arrow(ar,wins,0,false));
     if(pj2){const [jn,off]=Array.isArray(pj2)?pj2:[pj2,[0,0,0]];
-      const P0=V(v3((pi?PB:PA)[jn],off)), P1=V(v3((pi?PA:PB)[jn],off)), vx=P1[0]-P0[0], vy=P1[1]-P0[1], L=Math.hypot(vx,vy);
+      const P0=V(v3((pi?PB0:PA0)[jn],off)), P1=V(v3((pi?PA0:PB0)[jn],off)), vx=P1[0]-P0[0], vy=P1[1]-P0[1], L=Math.hypot(vx,vy);
       if(L>6){const ux=vx/L,uy=vy/L, sx=-uy*7, sy=ux*7*(vw==='top'?1:1), a0=[P0[0]+sx+ux*2,P0[1]+sy+uy*2], a1=[P1[0]+sx-ux*2,P1[1]+sy-uy*2], hx=a1[0]-ux*3.2, hy=a1[1]-uy*3.2;
         grow(a0,2);grow(a1,3);
-        ah+=`<g${frame?' opacity="0"':''}>${vis(wins)}<line x1="${r1(a0[0])}" y1="${r1(a0[1])}" x2="${r1(hx)}" y2="${r1(hy)}" stroke="var(--done)" stroke-width="1.4" stroke-dasharray="2.5 2" stroke-linecap="round"/><polygon points="${r1(a1[0])},${r1(a1[1])} ${r1(hx-uy*2.4)},${r1(hy+ux*2.4)} ${r1(hx+uy*2.4)},${r1(hy-ux*2.4)}" fill="var(--done)"/></g>`}}
+        ah+=`<g${still?' opacity="0"':''}>${vis(wins)}<line x1="${r1(a0[0])}" y1="${r1(a0[1])}" x2="${r1(hx)}" y2="${r1(hy)}" stroke="var(--done)" stroke-width="1.4" stroke-dasharray="2.5 2" stroke-linecap="round"/><polygon points="${r1(a1[0])},${r1(a1[1])} ${r1(hx-uy*2.4)},${r1(hy+ux*2.4)} ${r1(hx+uy*2.4)},${r1(hy-ux*2.4)}" fill="var(--done)"/></g>`}}
   });
   return {h:h+ah,bx};
 }
@@ -990,7 +1032,15 @@ function moveAnim(name,frame){
   const a=ANIM[key], red=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(red&&!frame)frame='A';
   const TL=animTimeline(a,name), id='an'+(++animUid), mode=(S.animMode==='anat')?'anat':'sch';
-  const views=(a.v||['side','front']).map(vw=>Object.assign({vw},animView(name,key,vw,TL,frame,mode)));
+  const K=6, anim3d=!frame;
+  const views=(a.v||['side','front']).map(vw=>{
+    if(!anim3d)return Object.assign({vw},animView(name,key,vw,TL,frame,mode));
+    // klatki 0, środek i koniec od razu (granice rysunku), pozostałe dopiero po pokazaniu opisu
+    const cache={}, sm=[], mk=k=>sm[k]||(sm[k]=animView(name,key,vw,TL,null,mode,{P:interpPose(key,k/K),f:k/K,k,cache}));
+    [0,K>>1,K].forEach(mk);
+    const bx=[0,K>>1,K].map(k=>sm[k]).reduce((b,r)=>[Math.min(b[0],r.bx[0]),Math.min(b[1],r.bx[1]),Math.max(b[2],r.bx[2]),Math.max(b[3],r.bx[3])],[1e9,1e9,-1e9,-1e9]);
+    return {vw,h:sm[0].h,bx,build:()=>{for(let k=0;k<=K;k++)mk(k);return animTracks(sm.map(r=>r.h))}};
+  });
   const ground=vw=>vw!=='top';
   views.forEach(v=>{const b=v.bx; if(ground(v.vw))b[3]=Math.max(b[3],97); v.w=b[2]-b[0]+10; v.hh=b[3]-b[1]+14});
   // obok siebie; gdy oba widoki są szerokie (postać leży) — jeden pod drugim, większe
@@ -1004,7 +1054,8 @@ function moveAnim(name,frame){
     y0=ground(v.vw)?Math.max(b[3],97)+3-H:(b[1]+b[3])/2-H/2+4;
     const floor=ground(v.vw)&&!a.nf?`<line x1="${r1(x0)}" y1="96" x2="${r1(x0+W)}" y2="96" stroke="var(--line)" stroke-width="1.5"/>`:'';
     const mat=v.vw==='top'&&a.fl?`<rect x="${r1(x0+3)}" y="${r1(y0+fs*1.6)}" width="${r1(W-6)}" height="${r1(H-fs*2)}" rx="4" fill="var(--line)" opacity=".35"/>`:'';
-    return `<svg x="${r1(xs)}" y="${r1(ys)}" width="${r1(W)}" height="${r1(H)}" viewBox="${r1(x0)} ${r1(y0)} ${r1(W)} ${r1(H)}"><rect x="${r1(x0)}" y="${r1(y0)}" width="${r1(W)}" height="${r1(H)}" rx="${r1(Math.min(W,H)*.06)}" fill="var(--field)"/>${mat}${floor}<text x="${r1(x0+4)}" y="${r1(y0+fs*1.25)}" font-size="${fs}" fill="var(--muted)">${VIEWS[v.vw].l}</text>${v.h}</svg>`}).join('');
+    return `<svg x="${r1(xs)}" y="${r1(ys)}" width="${r1(W)}" height="${r1(H)}" viewBox="${r1(x0)} ${r1(y0)} ${r1(W)} ${r1(H)}"><rect x="${r1(x0)}" y="${r1(y0)}" width="${r1(W)}" height="${r1(H)}" rx="${r1(Math.min(W,H)*.06)}" fill="var(--field)"/>${mat}${floor}<text x="${r1(x0+4)}" y="${r1(y0+fs*1.25)}" font-size="${fs}" fill="var(--muted)">${VIEWS[v.vw].l}</text><g class="mvg">${v.h}</g></svg>`}).join('');
+  if(anim3d)ANIMDATA[id]={T:TL.T,nodes:TL.nodes,K,build:()=>views.map(v=>v.build())};
   const TW=lay.TW, H=lay.TH;
   // opis kroków: podświetlenie bieżącego kroku zsynchronizowane z animacją
   const T=TL.T, pc=x=>r1(x/T*1000)/10;
@@ -1019,7 +1070,7 @@ function moveAnim(name,frame){
   const tabs=alts&&!frame?`<div class="row mvalt">${alts.map(([k,l])=>`<button class="chip" aria-pressed="${k===key}" data-animvar="${esc(name)}|${k}">${l}</button>`).join('')}</div>`:'';
   const modes=frame?'':`<div class="row mvalt"><button class="chip" aria-pressed="${mode==='sch'}" data-animmode="sch">Schemat</button><button class="chip" aria-pressed="${mode==='anat'}" data-animmode="anat">Anatomia</button></div>`;
   const leg=mode==='anat'?`<p class="mleg"><i style="background:var(--m-con)"></i>skraca się pod obciążeniem (koncentrycznie) <i style="background:var(--m-ecc)"></i>wydłuża się pod obciążeniem (ekscentrycznie) <i style="background:var(--m-iso)"></i>napięty, stała długość (izometrycznie) <i style="background:var(--m-rest)"></i>nie pracuje</p>`:'';
-  return `<div class="manim" id="${id}">${modes}${tabs}${css?`<style>${css}</style>`:''}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}${leg}<p class="mvh">Ustawienie, po kolei</p>${list}${mode==='anat'&&!frame?anatTable(name,key):''}</div>`;
+  return `<div class="manim" id="${id}"${anim3d?' data-a3="1"':''}>${modes}${tabs}${css?`<style>${css}</style>`:''}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}${leg}<p class="mvh">Ustawienie, po kolei</p>${list}${mode==='anat'&&!frame?anatTable(name,key):''}</div>`;
 }
 function animCtl(t){
   const id=t.dataset.animpause||t.dataset.animrestart, box=document.getElementById(id); if(!box)return;
@@ -1031,6 +1082,39 @@ function animCtl(t){
   if(paused){svg.unpauseAnimations();lis.forEach(li=>li.style.animationPlayState='');t.textContent='Pauza'}
   else{svg.pauseAnimations&&svg.pauseAnimations();lis.forEach(li=>li.style.animationPlayState='paused');t.textContent='Wznów'}
 }
+
+// ---------- odtwarzacz: klatki 3D policzone wcześniej, między nimi płynne przejście; zegar z SVG (pauza działa) ----------
+const ANIMDATA={};
+const GEOATTR=new Set(['x1','y1','x2','y2','cx','cy','points','d','x','y','width','height','transform']);
+const NUMRE=/-?\d+(?:\.\d+)?(?:e-?\d+)?/g;
+// z kodu SVG każdej klatki: numery elementów i atrybuty geometrii, które się zmieniają
+function animTracks(hs){
+  const parse=h=>{const out=[];let ei=-1;const tagRe=/<([a-zA-Z]+)((?:\s+[\w:-]+="[^"]*")*)\s*\/?>/g;let m;
+    while((m=tagRe.exec(h))){ei++;const attrRe=/([\w:-]+)="([^"]*)"/g;let a;while((a=attrRe.exec(m[2]))){if(GEOATTR.has(a[1]))out.push([ei,a[1],a[2]])}}return out};
+  const P=hs.map(parse), base=P[0], tr=[];
+  base.forEach((b,i)=>{const nums=P.map(p=>p[i]&&p[i][1]===b[1]&&p[i][0]===b[0]?(p[i][2].match(NUMRE)||[]).map(Number):null);
+    if(nums.some(n=>!n||n.length!==nums[0].length))return;
+    if(nums.every(n=>n.every((v,j)=>v===nums[0][j])))return;
+    tr.push({ei:b[0],at:b[1],parts:b[2].split(NUMRE),nums})});
+  return tr;
+}
+function animF(d,t){const n=d.nodes;t=t%d.T;for(let i=1;i<n.length;i++)if(t<=n[i][0]){const [t0,f0]=n[i-1],[t1,f1]=n[i];const x=t1>t0?(t-t0)/(t1-t0):1,e=x*x*(3-2*x);return f0+(f1-f0)*e}return n[n.length-1][1]}
+function animMount(box){
+  const d=ANIMDATA[box.id]; if(!d)return null; delete ANIMDATA[box.id];
+  const svg=box.querySelector('svg.moveanim'), gs=box.querySelectorAll('g.mvg'); d.tracks=d.build(); d.build=null;
+  d.list=[];d.tracks.forEach((tr,vi)=>{const els=gs[vi]?gs[vi].querySelectorAll('*'):[];tr.forEach(t=>{const el=els[t.ei];if(el)d.list.push({el,at:t.at,parts:t.parts,nums:t.nums})})});
+  d.svg=svg;d.last=-1;return d;
+}
+function animTick(){
+  document.querySelectorAll('.manim[data-a3]').forEach(box=>{
+    const d=box._a3||(box._a3=animMount(box)); if(!d||!d.svg.getCurrentTime)return;
+    const f=animF(d,d.svg.getCurrentTime()), kf=f*d.K, k=Math.min(d.K-1,Math.floor(kf)), w=kf-k;
+    if(Math.abs(kf-d.last)<.004)return; d.last=kf;
+    d.list.forEach(t=>{const a=t.nums[k],b=t.nums[k+1];let s=t.parts[0];for(let i=0;i<a.length;i++)s+=(Math.round((a[i]+(b[i]-a[i])*w)*10)/10)+t.parts[i+1];t.el.setAttribute(t.at,s)});
+  });
+  requestAnimationFrame(animTick);
+}
+if(typeof requestAnimationFrame==='function')requestAnimationFrame(animTick);
 // --- wskazówki ze strzałkami (wielokrotnego użytku) ---
 const C_LOP=[['shL',[-3.5,-3,0],[0,-4,0],'bm'],['shL',[0,0,-5],[0,-3,6],'bm']];
 const C_STOPY=[['anL',[0,-5,0],[2,7,0],'m']];
@@ -1433,7 +1517,8 @@ const BONES=[
   ['L',[['tib',.03,.5,0],['tib',.5,.4,-.2],['tib',.97,0,-.3]],2.2,1],
   ['L',[['tib',.06,-.6,1.9],['tib',1,-.4,1.6]],1.1,1],
   ['L',[['heel'],['fa',1]],0,1,'foot'],
-  ['C',[['fem',.97,2.5,0]],1.4,1]
+  ['C',[['KW',2.7,.62]],1.4,1],
+  ['L',[['KW',2.7,.62],['tib',.12,1.6,0]],.9,1,'tend']
 ];
 // mięśnie: [id, grupa (klucz opisu ćwiczenia), punkty, szerokość brzuśca, głęboki (tylko w tabeli)]
 const MUSC=[
@@ -1489,6 +1574,9 @@ const MUSC=[
   ['pronter',null,[['hum',.95,.3,-1.6],['rad',.45]],1.8,1],
   ['scm',null,[['H',-1,-1.2,2.8],['T',24.5,2.6,1.2]],2]
 ];
+// ścięgna: [część długości przy przyczepie początkowym, przy końcowym]
+const TEND={rectfem:[.08,.14],vlat:[0,.12],vmed:[0,.1],bflong:[.08,.12],bfshort:[0,.12],semit:[.08,.32],semim:[.08,.15],gastlat:[.05,.32],gastmed:[.05,.32],soleus:[0,.32],
+  tibant:[0,.32],biclong:[.18,.12],bicshort:[.1,.12],brach:[0,.08],trilat:[0,.12],trilong:[.1,.12],flex:[.06,.35],ext:[.06,.35],brrad:[0,.28],gracil:[0,.25],sartor:[0,.1],tfl:[0,.45]};
 const MNAME={rectfem:'Prosty uda (czworogłowy)',vlat:'Obszerny boczny (czworogłowy)',vmed:'Obszerny przyśrodkowy (czworogłowy)',vint:'Obszerny pośredni (czworogłowy)',
   bflong:'Dwugłowy uda, głowa długa',bfshort:'Dwugłowy uda, głowa krótka',semit:'Półścięgnisty',semim:'Półbłoniasty',glmed:'Pośladkowy średni',glmin:'Pośladkowy mały',
   tfl:'Napinacz powięzi szerokiej',sartor:'Krawiecki',iliops:'Biodrowo-lędźwiowy',addlong:'Przywodziciel długi',addmag:'Przywodziciel wielki',gracil:'Smukły',
@@ -1577,8 +1665,11 @@ function fanMesh(F,X,fan,NF=7,NT=6){
 }
 // ciało anatomiczne w jednym widoku
 function anatBody(c){
-  const {V,PA,PB,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick,name}=c;
-  const gr=gripOf(name), hang=/^(dead|hinge|squat|glute)$/.test(patOf(name)||''), FA=anatFrames(PA,a.sup,gr[0],hang), FB=anatFrames(PB,a.sup,gr[1],hang), r1x=r1;
+  const {V,PA,PB,TL,frame,vw,p,s,grow,a,KT,KS,lerp,pick,name,smp}=c, PA0=c.PA0||PA, PB0=c.PB0||PB, stl=smp?false:!!frame, cache=smp?smp.cache:{};
+  const gr=gripOf(name), hang=/^(dead|hinge|squat|glute)$/.test(patOf(name)||''), r1x=r1;
+  // geometria z bieżącej klatki 3D; rodzaj pracy mięśni z pozycji startowej i końcowej
+  const FA=smp?anatFrames(PA,a.sup,gr[0]+(gr[1]-gr[0])*smp.f,hang):anatFrames(PA,a.sup,gr[0],hang), FB=smp?FA:anatFrames(PB,a.sup,gr[1],hang);
+  const FA0=cache.FA0||(cache.FA0=anatFrames(PA0,a.sup,gr[0],hang)), FB0=cache.FB0||(cache.FB0=anatFrames(PB0,a.sup,gr[1],hang));
   const syn=new Set(MSYN[patOf(name)]||[]);
   const str=q=>q.map(x=>r1x(x[0])+','+r1x(x[1])).join(' ');
   const anim=(attr,va,vb,isStr)=>frame?'':`<animate attributeName="${attr}" values="${TL.nodes.map(n=>isStr?str(va.map((q,i)=>lerp(q,vb[i],n[1]))):r1x(va+(vb-va)*n[1])).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`;
@@ -1589,7 +1680,7 @@ function anatBody(c){
   const addB=(key,w,far,pa,pb)=>{const g=BG[key+'|'+w+'|'+far]=BG[key+'|'+w+'|'+far]||{w,far,a:[],b:[],d:0,n:0};g.a.push(pa);g.b.push(pb);pa.forEach(q=>{g.d+=q[2];g.n++;grow(q,w/2+.5)});pb.forEach(q=>grow(q,w/2+.5))};
   BONES.forEach(([k,pts,w,sided,tg])=>{
     (sided?sides:['L']).forEach(X=>{
-      const far=vw==='side'&&X==='R'&&sided?1:0, key=sided?X:'ax';
+      const far=vw==='side'&&X==='R'&&sided?1:0, key=(tg==='tend'?'t':'')+(sided?X:'ax');
       if(tg==='foot'){const S=[FA,FB].map(F=>{const q=F.side[X];return [q.heel,v3(v3(q.an,q.fd,1),q.up,-.5),q.ball,q.to].map(V)});addB(key,2.2,far,S[0],S[1]);return}
       const pa=pts.map(sp=>V(anatPt(FA,X,sp))), pb=pts.map(sp=>V(anatPt(FB,X,sp)));
       if(k==='C'){addB(key,w*2,far,[pa[0],pa[0]],[pb[0],pb[0]]);return}
@@ -1604,7 +1695,7 @@ function anatBody(c){
   {const ja=[V(FA.T(30.5,1.6,0)),V(FA.T(29.8,3.4,0)),V(FA.T(31.5,4.3,0))],jb=[V(FB.T(30.5,1.6,0)),V(FB.T(29.8,3.4,0)),V(FB.T(31.5,4.3,0))];addB('ax',1.6,0,ja,jb);
     const qa=V(FA.J.hd),qb=V(FB.J.hd);addB('ax',9.6,0,[qa,qa],[qb,qb])}
   const polyD=q=>q.map(l=>'M'+l.map(p=>r1x(p[0])+' '+r1x(p[1])).join('L')).join('');
-  Object.values(BG).forEach(g=>items.push({d:g.d/g.n-.3,html:`<path d="${polyD(pick(g.a,g.b))}" fill="none" stroke="${boneCol}" stroke-width="${g.w}" stroke-linecap="round" stroke-linejoin="round"${g.far?' opacity=".4"':''}>${frame?'':`<animate attributeName="d" values="${TL.nodes.map(n=>polyD(g.a.map((l,i)=>l.map((p,k)=>lerp(p,g.b[i][k],n[1]))))).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`}</path>`}));
+  Object.entries(BG).forEach(([gk,g])=>items.push({d:g.d/g.n-.3+(gk[0]==='t'?.6:0),html:`<path d="${polyD(pick(g.a,g.b))}" fill="none" stroke="${gk[0]==='t'?'var(--tendon)':boneCol}" stroke-width="${g.w}" stroke-linecap="round" stroke-linejoin="round"${g.far?' opacity=".4"':''}>${frame?'':`<animate attributeName="d" values="${TL.nodes.map(n=>polyD(g.a.map((l,i)=>l.map((p,k)=>lerp(p,g.b[i][k],n[1]))))).join(';')}" keyTimes="${KT}" calcMode="spline" keySplines="${KS}" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`}</path>`}));
   // mięśnie: kolor według rodzaju pracy w danej fazie
   const tag={};(a.su||[]).forEach(([t],i)=>stepMuscles(t).forEach(m=>{if(tag[m]==null)tag[m]=i}));
   const work=(m,id)=>p.includes(m)?1:s.includes(m)?2:syn.has(id)?3:0;
@@ -1615,10 +1706,10 @@ function anatBody(c){
     if(wk){TL.p1.forEach(([s1,e1],i)=>{seq.push([s1,st1],[e1,'iso'],[TL.p2[i][0],st2],[TL.p2[i][1],'iso'])})}
     else if(tag[m]!=null)seq.push([TL.setEnd,'rest']);
     const ks=[],vs=[];seq.sort((x,y)=>x[0]-y[0]).forEach(([t,k])=>{const kt=r1x(t/TL.T*1000)/1000;if(ks.length&&ks[ks.length-1]===kt){vs[vs.length-1]=cv(k)}else{ks.push(kt);vs.push(cv(k))}});
-    return {cls:frame?cv(wk?st1:'rest'):cv('rest'),an:frame?'':`<animate attributeName="class" values="${vs.join(';')}" keyTimes="${ks.join(';')}" calcMode="discrete" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`,op:wk===1?.92:.75}};
+    return {cls:stl?cv(wk?st1:'rest'):cv('rest'),an:stl?'':`<animate attributeName="class" values="${vs.join(';')}" keyTimes="${ks.join(';')}" calcMode="discrete" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`,op:wk===1?.92:.75}};
   const skA=[],skB=[];
   // strona mięśnia odwrócona od oglądającego jest prawie przezroczysta (np. plecy w widoku z przodu)
-  const VD={side:[0,0,1],front:[1,0,0],top:[0,1,0]}[vw], J=PA;
+  const VD={side:[0,0,1],front:[1,0,0],top:[0,1,0]}[vw], J=PA0;
   const axes=[[J.hp,J.sh],...['L','R'].flatMap(X=>[[J['hp'+X],J['kn'+X]],[J['kn'+X],J['an'+X]],[J['sh'+X],J['el'+X]],[J['el'+X],J['wr'+X]]])];
   const facing=pts=>{const c=pts.reduce((t,q)=>v3(t,q,1/pts.length),[0,0,0]);let best=1e9,out=[0,0,0];
     axes.forEach(([P,Q])=>{const d=sub3(Q,P),L2=dot3(d,d)||1,t=Math.max(0,Math.min(1,dot3(sub3(c,P),d)/L2)),cp=v3(P,d,t),o=sub3(c,cp),l=len3(o);if(l<best){best=l;out=o}});
@@ -1627,13 +1718,18 @@ function anatBody(c){
   MUSC.forEach(([id,m,pts,w,deep])=>sides.forEach(X=>{
     if(deep)return;
     const farS=vw==='side'&&X==='R';
-    const A3=pts.map(sp=>anatPt(FA,X,sp)), B3=pts.map(sp=>anatPt(FB,X,sp));
-    const len=q=>q.slice(1).reduce((t,x,i)=>t+len3(sub3(x,q[i])),0), LA=len(A3), LB=len(B3);
+    const A3=pts.map(sp=>anatPt(FA,X,sp)), B3=pts.map(sp=>anatPt(FB,X,sp)), A0=pts.map(sp=>anatPt(FA0,X,sp)), B0=pts.map(sp=>anatPt(FB0,X,sp));
+    const len=q=>q.slice(1).reduce((t,x,i)=>t+len3(sub3(x,q[i])),0), L0=len(A0), LA=len(A3), LB=len(B3), LA0=L0, LB0=len(B0);
     const ca=catmull(A3.map(V),3), cb=catmull(B3.map(V),3);
-    const pa=bandPoly(ca,w), pb=bandPoly(cb,w*Math.sqrt(LA/LB));
+    // ścięgno (nie rozciąga się) na końcach, brzusiec między nimi; stała objętość: krótszy brzusiec jest grubszy
+    const td=TEND[id]||[0,0], nC=ca.length, i0=Math.round(td[0]*(nC-1)), i1=nC-1-Math.round(td[1]*(nC-1));
+    const tendLine=(qa,qb)=>{const sa=qa.map(q=>r1x(q[0])+','+r1x(q[1])).join(' ');return `<polyline points="${str(pick(qa,qb))}" fill="none" stroke="var(--tendon)" stroke-width=".9" stroke-linecap="round"${farS?' opacity=".5"':''}>${anim('points',qa,qb,1)}</polyline>`};
+    if(i0>0)items.push({d:ca.reduce((t,q)=>t+q[2],0)/ca.length+.45,html:tendLine(ca.slice(0,i0+1),cb.slice(0,i0+1))});
+    if(i1<nC-1)items.push({d:ca.reduce((t,q)=>t+q[2],0)/ca.length+.45,html:tendLine(ca.slice(i1),cb.slice(i1))});
+    const pa=bandPoly(ca.slice(i0,i1+1),w*Math.sqrt(L0/LA)), pb=bandPoly(cb.slice(i0,i1+1),w*Math.sqrt(L0/LB));
     pa.forEach(q=>grow(q,.5));pb.forEach(q=>grow(q,.5));skA.push(...pa);skB.push(...pb);
     const cIso=/^(supra|infra|tmin|subsc)$/.test(id)&&!/^(rear|lat)$/.test(patOf(name)||'');
-    const C=colAnim(m,cIso?'iso':stOf((LB-LA)/LA),id), gh=farS?' opacity=".5"':ghost(facing(A3));
+    const C=colAnim(m,cIso?'iso':stOf((LB0-LA0)/LA0),id), gh=farS?' opacity=".5"':ghost(facing(A0));
     items.push({d:ca.reduce((t,q)=>t+q[2],0)/ca.length+.4,html:`<polygon${gh} class="${C.cls}" points="${str(pick(pa,pb))}" fill-opacity="${C.op}" stroke="var(--m-edge)" stroke-width=".35" stroke-linejoin="round">${anim('points',pa,pb,1)}${C.an}</polygon>`});
   }));
   // wachlarze: każde włókno ma własny rodzaj skurczu; czworokąty między włóknami łączone w ścieżki wg stanu
@@ -1642,13 +1738,13 @@ function anatBody(c){
   FANS.forEach(fan=>sides.forEach(X=>{
     const farS=vw==='side'&&X==='R';
     const m=fan[0], MA=fanMesh(FA,X,fan), MB=fanMesh(FB,X,fan), NF=MA.grid.length, NT=MA.grid[0].length;
-    const gA=MA.grid.map(r=>r.map(V)), gB=MB.grid.map(r=>r.map(V)), st=MA.lens.map((L,i)=>stOf((MB.lens[i]-L)/L));
+    const M0=fanMesh(FA0,X,fan), M1=fanMesh(FB0,X,fan), gA=MA.grid.map(r=>r.map(V)), gB=MB.grid.map(r=>r.map(V)), st=M0.lens.map((L,i)=>stOf((M1.lens[i]-L)/L));
     const groups={}; let dep=0;
     for(let i=0;i<NF-1;i++){const k=st[i]===st[i+1]?st[i]:(st[i]==='iso'?st[i+1]:st[i]);
       for(let j=0;j<NT-1;j++){const qa=[gA[i][j],gA[i][j+1],gA[i+1][j+1],gA[i+1][j]],qb=[gB[i][j],gB[i][j+1],gB[i+1][j+1],gB[i+1][j]];
         (groups[k]=groups[k]||{a:[],b:[]}).a.push(qa);groups[k].b.push(qb);qa.forEach(q=>{grow(q,.5);dep+=q[2]});qb.forEach(q=>grow(q,.5))}}
     dep=dep/((NF-1)*(NT-1)*4)+.5;
-    const gh=farS?' opacity=".5"':ghost(facing(MA.grid.flat()));
+    const gh=farS?' opacity=".5"':ghost(facing(M0.grid.flat()));
     gA.forEach(r=>skA.push(...r));gB.forEach(r=>skB.push(...r));
     Object.entries(groups).forEach(([k,g])=>{const C=colAnim(m,k,m);
       items.push({d:dep,html:`<path${gh} class="${C.cls}" d="${pathD(pick(g.a,g.b))}" fill-opacity="${C.op}" stroke="${'var(--m-edge)'}" stroke-width=".12">${animD(g.a,g.b)}${C.an}</path>`})});
@@ -1665,21 +1761,29 @@ function anatBody(c){
   // rzadziej: co drugi punkt z gęstych obrysów
   const idx=skA.map((_,i)=>i).filter(i=>i%2===0);
   const PA2=idx.map(i=>skA[i]), PB2=idx.map(i=>skB[i]);
+  let loops=cache.loops;
+  if(!loops){
   const tri=delaunay(PA2.map(q=>[q[0],q[1]])), ALPHA=4.3;
   const ok=(P,t,lim)=>[[0,1],[1,2],[2,0]].every(([x,y])=>Math.hypot(P[t[x]][0]-P[t[y]][0],P[t[x]][1]-P[t[y]][1])<lim);
   const keep=tri.filter(t=>ok(PA2,t,ALPHA)&&ok(PB2,t,ALPHA*1.9));
+  loops=[];
   if(keep.length){
     // brzeg kształtu alfa: krawędzie należące do jednego trójkąta, połączone w pętle
     const ec={};keep.forEach(t=>[[t[0],t[1]],[t[1],t[2]],[t[2],t[0]]].forEach(([x,y])=>{const k=x<y?x+','+y:y+','+x;ec[k]=(ec[k]||0)+1}));
     const nb={};Object.entries(ec).forEach(([k,c])=>{if(c!==1)return;const [x,y]=k.split(',').map(Number);(nb[x]=nb[x]||[]).push(y);(nb[y]=nb[y]||[]).push(x)});
-    const used=new Set(), loops=[];
+    const used=new Set();
     Object.keys(nb).map(Number).forEach(st=>{if(used.has(st))return;const loop=[st];used.add(st);let prev=-1,cur=st;
       for(let g=0;g<5000;g++){const nx=(nb[cur]||[]).find(v=>v!==prev&&!used.has(v));if(nx==null)break;loop.push(nx);used.add(nx);prev=cur;cur=nx}
       if(loop.length>2)loops.push(loop)});
+  }
+  cache.loops=loops;
+  }
+  if(loops.length){
     const la=loops.map(l=>l.map(i=>PA2[i])), lb=loops.map(l=>l.map(i=>PB2[i]));
     items.push({d:-1e9,html:`<path d="${pathD(pick(la,lb))}" fill="var(--skin)" fill-rule="evenodd" stroke="var(--skin)" stroke-width="1.6" stroke-linejoin="round" opacity=".6">${animD(la,lb)}</path>`})}
-  items.sort((x,y)=>x.d-y.d);
-  return items.map(i=>i.html).join('');
+  // kolejność rysowania z pozycji startowej — taka sama w każdej klatce
+  if(!cache.perm)cache.perm=items.map((it,i)=>[it.d,i]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
+  return cache.perm.map(i=>items[i].html).join('');
 }
 // tabela pracy mięśni: zmiana długości w każdej fazie (lewa strona ciała)
 const FANSUB={pecs:[['Piersiowy większy, część obojczykowa',0,1],['Piersiowy większy, część mostkowa',2,6]],lats:[['Najszerszy grzbietu, włókna dolne',0,3],['Najszerszy grzbietu, włókna górne',4,6]],
