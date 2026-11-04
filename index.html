@@ -315,7 +315,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-04';
+const VER='2026-11-04b';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2413,7 +2413,7 @@ function viewExercise(){
 }
 
 // ---------- widok: kopia ----------
-const KEEP=['sessions','bw','weak','extras','swaps','sylOff','shortRest','cycles','syl','cardio','waist','goal','userPlans','migs','profile','plan','week','day','cues'];
+const KEEP=['acts','sessions','bw','weak','extras','swaps','sylOff','shortRest','cycles','syl','cardio','waist','goal','userPlans','migs','profile','plan','week','day','cues'];
 async function saveFile(name,data,mime){
   const box=$('#exptxt'); if(box){box.hidden=false;box.value=data}
   let dl=null; try{dl=window.claude&&await window.claude.use('downloads')}catch(e){}
@@ -2581,6 +2581,17 @@ async function ghSync(manual){
   }catch(e){const m=e&&e.message&&!/fetch|network/i.test(e.message)?e.message:'Brak połączenia z GitHubem. Spróbuję ponownie później.';ghSet({dirty:1,err:m});if(manual)toast(m)}
   finally{ghBusy=false;if(S.tab==='kopia')render()}
 }
+// plany od Claude: plik plany.json w tym samym prywatnym repozytorium; wczytywany sam, gdy się zmieni
+async function ghPlans(manual){
+  const c=ghCfg(); if(!c.token||!c.repo||!navigator.onLine)return;
+  try{const r=await ghApi('/contents/plany.json');
+    if(r.status===404){if(manual)toast('Na GitHubie nie ma jeszcze pliku z planami');return}
+    if(!r.ok)throw new Error(ghErr(r.status));
+    const j=await r.json(); if(j.sha===c.planSha&&!manual)return;
+    const txt=new TextDecoder().decode(Uint8Array.from(atob(j.content.replace(/\s/g,'')),ch=>ch.charCodeAt(0)));
+    ghSet({planSha:j.sha}); loadPlan(txt,!manual);
+  }catch(e){if(manual)toast(e&&e.message&&!/fetch|network/i.test(e.message)?e.message:'Nie udało się pobrać planów. Sprawdź internet.')}
+}
 async function ghRestore(){
   const c=ghCfg(); if(!c.token||!c.repo)return toast('Najpierw połącz repozytorium');
   try{const r=await ghApi('/contents/dziennik.json',{headers:{Accept:'application/vnd.github.raw+json'}});
@@ -2600,9 +2611,9 @@ window.addEventListener('online',()=>{if(ghCfg().dirty)ghSync()});
 function ghCard(){
   const c=ghCfg(), on=!!(c.token&&c.repo);
   return `<div class="card"><h3>Kopia na GitHubie</h3>
-    <p class="note">Automatyczna kopia w twoim prywatnym repozytorium po każdym treningu, kardio, pomiarze i zmianie planu. Token jest zapisany tylko w tym telefonie i nie trafia do kopii ani eksportu.</p>
+    <p class="note">Automatyczna kopia w twoim prywatnym repozytorium po każdym treningu, kardio, pomiarze i zmianie planu. Nowe plany z pliku plany.json w tym repozytorium wczytują się same przy otwarciu aplikacji. Token jest zapisany tylko w tym telefonie i nie trafia do kopii ani eksportu.</p>
     ${on?`<p>Repozytorium: <b>${esc(c.repo)}</b><br><span class="meta">${c.last?'Ostatnia kopia: '+new Date(c.last).toLocaleString('pl-PL'):'Jeszcze nie wysłano kopii.'}${c.dirty?' Zmiany czekają na wysłanie.':''}</span>${c.err?`<br><b class="errtxt">${esc(c.err)}</b>`:''}</p>
-      <div class="row"><button class="ghost" id="ghsync">Wyślij kopię teraz</button><button class="ghost" id="ghrest">Przywróć z GitHuba</button></div>
+      <div class="row"><button class="ghost" id="ghsync">Wyślij kopię teraz</button><button class="ghost" id="ghrest">Przywróć z GitHuba</button><button class="ghost" id="ghplans">Pobierz plany</button></div>
       <p><button class="link" id="ghoff">Odłącz (usuń token z telefonu)</button></p>`
     :`<span class="flbl">Repozytorium</span><input class="txtin" id="ghrepo" placeholder="konto/dziennik-dane" autocapitalize="off" autocomplete="off" spellcheck="false">
       <span class="flbl">Token</span><input class="txtin" id="ghtok" type="password" placeholder="github_pat_…" autocapitalize="off" autocomplete="off" spellcheck="false">
@@ -2737,6 +2748,7 @@ $('#view').addEventListener('click',async e=>{
   if(t.id==='ghsave'){return ghConnect($('#ghrepo').value.trim(),$('#ghtok').value.trim())}
   if(t.id==='ghsync'){return ghSync(true)}
   if(t.id==='ghrest'){return ghRestore()}
+  if(t.id==='ghplans'){return ghPlans(true)}
   if(t.id==='ghoff'){if(!twoTap('ghoff',t,'Odłączyć? Dotknij ponownie'))return;armed=null;try{localStorage.removeItem(GHK)}catch(e){}render();return toast('Odłączono. Kopie na GitHubie zostają.')}
   if(t.id==='swupd'){save();try{if(window.__swr)await window.__swr.update()}catch(e){}toast('Sprawdzam nową wersję…');setTimeout(()=>location.reload(),1500);return}
   if(t.id==='beeptest'){audioInit();beep(1);setTimeout(()=>beep(3),700);return toast('Powinny być 1 + 3 piknięcia')}
@@ -2825,7 +2837,7 @@ function importData(o){
     save(); render(); ghMark(); toast(added?'Dodano treningów: '+added:'Wszystkie treningi z kopii już są w historii');
 }
 $('#view').addEventListener('change',e=>{
-  if(e.target.id==='planfile'&&e.target.files[0]){const rd=new FileReader();rd.onload=()=>importAny(rd.result);rd.onerror=()=>toast('Nie udało się odczytać pliku');rd.readAsText(e.target.files[0]);return}
+  if(e.target.id==='planfile'&&e.target.files[0]){const rd=new FileReader(),inp=e.target;rd.onload=()=>{importAny(rd.result);inp.value=''};rd.onerror=()=>toast('Nie udało się odczytać pliku');rd.readAsText(e.target.files[0]);return}
   if(e.target.id!=='impfile'||!e.target.files[0])return;
   const f=e.target.files[0], rd=new FileReader();
   rd.onload=()=>importAny(rd.result);
@@ -2873,7 +2885,7 @@ function validatePlan(o){
   const conf=o.days.map((d,i)=>({d:d.name,c:clashes([...d.ex,...(d.add||[]),...(ex[i]||[])].map(x=>x[0]))})).filter(x=>x.c.length);
   return {warn:[...names].filter(n=>!guide[n]),conf};
 }
-function loadPlan(txt){
+function loadPlan(txt,auto){
   let o;try{o=JSON.parse(String(txt).trim())}catch(e){return toast('To nie jest poprawny plik planu')}
   // pakiet: kilka planów naraz i opcjonalnie profil
   const list=o&&o.type==='dziennik-pakiet'?(o.plans||[]):[o];
@@ -2882,16 +2894,20 @@ function loadPlan(txt){
   let conf=0;
   for(const p of list){const v=validatePlan(p);if(v.err)return toast((p&&p.name?p.name+': ':'')+v.err);warn.push(...v.warn);conf+=v.conf.length}
   S.userPlans=S.userPlans||{};
+  const isNew=list.some(p=>!S.userPlans[p.id]);
   list.forEach(p=>S.userPlans[p.id]=p);
+  // activate: jednorazowy znacznik; ten sam znacznik nie przestawia planu drugi raz (np. po poprawce pliku w trakcie bloku)
+  if(o.pos&&o.activate&&!(S.acts||[]).includes(o.activate)){S.wantPos=o.pos;S.acts=[...(S.acts||[]),o.activate]}
   if(o.type==='dziennik-pakiet'&&o.profile&&!S.profile)S.profile=o.profile;
   if(o.type==='dziennik-pakiet'&&o.pos&&(BUILTIN_IDS.includes(S.plan)||!PLANS[S.plan]))S.wantPos=o.pos;
   const first=list[list.length-1];
   if(S.plan!==first.id&&!BUILTIN_IDS.includes(S.plan))S.prevPlan=S.plan;
   installAll();
   if(S.wantPos&&PLANS[S.wantPos.plan]){Object.assign(S,{plan:S.wantPos.plan,week:S.wantPos.week||1,day:S.wantPos.day||0});delete S.wantPos}
-  else if(!S.sessions.some(x=>x.plan===S.plan)||BUILTIN_IDS.includes(S.plan)){S.plan=first.id;S.day=0;S.week=1}
-  S.tab='trening'; save(); render(); window.scrollTo(0,0); ghMark();
-  toast('Wczytano: '+list.map(p=>p.name).join(', ')+(conf?`. Dni z dwoma ćwiczeniami na tę samą partię: ${conf} (szczegóły w Analizie)`:'')+(warn.length?'. Brak opisu dla: '+[...new Set(warn)].join(', '):''));
+  else if(isNew||(!auto&&!S.sessions.some(x=>x.plan===S.plan))||BUILTIN_IDS.includes(S.plan)){S.plan=first.id;S.day=0;S.week=1}
+  if(!auto||isNew)S.tab='trening'; save(); render(); if(!auto||isNew)window.scrollTo(0,0); ghMark();
+  if(auto&&!isNew)return;
+  toast((auto?'Nowy plan z GitHuba: ':'Wczytano: ')+list.map(p=>p.name).join(', ')+(conf?`. Dni z dwoma ćwiczeniami na tę samą partię: ${conf} (szczegóły w Analizie)`:'')+(warn.length?'. Brak opisu dla: '+[...new Set(warn)].join(', '):''));
 }
 function migrate(){
   S.migs=S.migs||[];
@@ -2911,7 +2927,8 @@ function hashImport(){
   importAny(txt);
 }
 setTimeout(hashImport,0);
-setTimeout(()=>{try{if(ghCfg().dirty)ghSync()}catch(e){}},2500);
+setTimeout(()=>{try{if(ghCfg().dirty)ghSync()}catch(e){}try{ghPlans()}catch(e){}},2500);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')try{ghPlans()}catch(e){}});
 installAll();
 migrate();
 render();
