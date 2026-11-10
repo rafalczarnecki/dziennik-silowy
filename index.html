@@ -315,7 +315,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-10';
+const VER='2026-11-10b';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -333,6 +333,10 @@ function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.is
 let S=load();
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Nie udało się zapisać danych w telefonie')}}
 
+// lżejszy tydzień (deload): w ćwiczeniach planu o jedną serię mniej i ok. 10% lżej; wyniki z takiego tygodnia nie liczą się do podpowiedzi ani do zastoju
+const isLight=(plan,week)=>!!(PLANS[plan]&&(PLANS[plan].light||[]).includes(week));
+const lightEx=ex=>ex[1]>=3?[ex[0],ex[1]-1,...ex.slice(2)]:ex;
+const wasLight=(s,e)=>{if(!isLight(s.plan,s.week))return false;const D=PLANS[s.plan].days[s.day];return !!(D&&D.ex.some(q=>q[0]===e.name||q[0]===e.from))};
 function setsFor(ex){const a=[];if(ex[5])a.push({t:ex[5],top:true});for(let i=0;i<ex[1];i++)a.push({t:ex[2]});return a}
 function rirFor(ex,w){const v=ex[4];if(v==null||v==='')return null;return Array.isArray(v)?v[w-1]:v}
 // planowane powtórzenia ćwiczenia w zapisanym treningu; gdy nie da się ustalić z planu, a wszystkie serie mają tyle samo powtórzeń, to ta liczba
@@ -342,7 +346,7 @@ function repsThen(s,e){
   const w=e.sets.filter(q=>!q.top&&q.r&&!(q.parts&&q.parts.length)).map(q=>q.r);
   return w.length>=2&&w.every(r=>r===w[0])?w[0]:null;
 }
-function lastFor(name){for(let i=S.sessions.length-1;i>=0;i--){const e=S.sessions[i].ex.find(x=>x.name===name);if(e&&e.sets.length)return{date:S.sessions[i].date,sets:e.sets,reps:repsThen(S.sessions[i],e),bad:!!(e.note&&(e.note.tags||[]).some(t=>t==='zle'||t==='bol'))}}return null}
+function lastFor(name){for(let i=S.sessions.length-1;i>=0;i--){const e=S.sessions[i].ex.find(x=>x.name===name);if(e&&e.sets.length&&!wasLight(S.sessions[i],e))return{date:S.sessions[i].date,sets:e.sets,reps:repsThen(S.sessions[i],e),bad:!!(e.note&&(e.note.tags||[]).some(t=>t==='zle'||t==='bol'))}}return null}
 // skok ciężaru zależny od sprzętu
 function incFor(n){
   if(/hantl|Wznosy bokiem|Powell|Trap Y|Biceps z supinacją|Uginanie ramion|Wejścia na skrzynię|Przysiad bułgarski|Split squat|Wykroki/i.test(n))return 2;
@@ -351,8 +355,9 @@ function incFor(n){
 }
 // sugerowany ciężar na każdą serię: podwójna progresja, przy rampie dokładamy tylko w ostatniej serii
 const repShift=(ex,last)=>!!(last&&Number.isInteger(ex[2])&&last.reps&&Math.abs(last.reps-ex[2])>=2&&ex[2]<=12&&last.reps<=12);
-function suggest(ex,last){
+function suggest(ex,last,light){
   if(!last||ex[2]==='max')return null;
+  if(light){const inc=incFor(ex[0]), lw=last.sets.filter(x=>!x.top);return setsFor(ex).map((st,i)=>{const p=st.top?last.sets.find(x=>x.top):lw[i-(ex[5]?1:0)]||lw[lw.length-1];return p&&p.w?{w:Math.max(inc,Math.floor(p.w*.9/inc+1e-6)*inc),up:false,inc}:null})}
   const sets=setsFor(ex), reps=ex[2], work=last.sets.filter(x=>!x.top);
   const ok=!last.bad&&work.length>=ex[1]-1&&work.every(x=>(x.r||0)>=reps&&!(x.parts&&x.parts.length)); // o jedną serię mniej też się liczy: plan mógł dostać dodatkową serię
   const inc=incFor(ex[0]), ramp=ex[3]==='rampa';
@@ -367,8 +372,9 @@ function suggest(ex,last){
 const dkey=()=>S.plan+'-'+S.week+'-'+S.day;
 function draft(){return S.drafts[dkey()]||(S.drafts[dkey()]={})}
 
-function hintFor(ex,last){
+function hintFor(ex,last,light){
   const reps=ex[2];
+  if(light)return {t:reps==='max'||!(last&&last.sets.some(x=>x.w))?'Lżejszy tydzień: o jedną serię mniej. Skończ każdą serię z wyraźnym zapasem, bez bicia wyniku.':'Lżejszy tydzień: o jedną serię mniej i ciężar ok. 10% niższy niż ostatnio (jest już w polach kg). Nie dokładaj. Od następnego tygodnia wracasz do pełnych ciężarów.'};
   if(!last) return {t:reps==='max'?(UNIT[ex[0]]==='s'?'Pierwszy raz: utrzymaj stałe, spokojne tempo przez cały czas serii.':'Pierwszy raz: zrób tyle powtórzeń, ile dasz radę czysto.'):'Pierwszy raz: dobierz ciężar tak, żeby zostały ci 2–3 powtórzenia w zapasie.'};
   if(reps==='max'){const tot=last.sets.reduce((a,s)=>a+(s.r||0),0);return {t:'Ostatnio łącznie '+tot+(UNIT[ex[0]]==='s'?' s':' powt.')+' Spróbuj pobić ten wynik.'}}
   const work=last.sets.filter(s=>!s.top);
@@ -417,7 +423,7 @@ function noteBox(key){
     <button class="link" data-noteclear="${esc(key)}">${n?'Usuń komentarz':'Zamknij'}</button></div>`;
 }
 function metricHistR(name){
-  return S.sessions.map(s=>{const e=s.ex.find(x=>x.name===name);if(!e||badDay(e))return null;let b=0,br=0;
+  return S.sessions.map(s=>{const e=s.ex.find(x=>x.name===name);if(!e||badDay(e)||wasLight(s,e))return null;let b=0,br=0;
     e.sets.forEach(x=>{if(x.w&&x.r&&x.r<=12){const v=e1rm(x.w,x.r);if(v>b){b=v;br=x.r}}});return b?{v:b,r:repsThen(s,e)||br}:null}).filter(v=>v!=null);
 }
 const metricHist=name=>metricHistR(name).map(x=>x.v);
@@ -437,8 +443,8 @@ function dayEx(plan=S.plan,day=S.day){
   const pk=plan+'-'+day, off=S.sylOff[pk]||[], xs=S.extras[pk]||[];
   const sw=S.swaps[pk]||{};
   const a=PLANS[plan].days[day].ex.map((ex,i)=>{
-    const w0=sw[i], w=w0&&(!w0.once||w0.dk===plan+'-'+S.week+'-'+day)?w0:null; const e=w?[w.name,...ex.slice(1)]:ex;
-    return {key:String(i)+(w?':'+w.name:''),ex:e,orig:w?ex[0]:null,since:w?w.since:null,once:!!(w&&w.once),idx:i,rest:i<3?180:(S.shortRest[pk]?90:120)};
+    const w0=sw[i], w=w0&&(!w0.once||w0.dk===plan+'-'+S.week+'-'+day)?w0:null, lt=plan===S.plan&&isLight(plan,S.week); const e0=w?[w.name,...ex.slice(1)]:ex, e=lt?lightEx(e0):e0;
+    return {key:String(i)+(w?':'+w.name:''),ex:e,light:lt,orig:w?ex[0]:null,since:w?w.since:null,once:!!(w&&w.once),idx:i,rest:i<3?180:(S.shortRest[pk]?90:120)};
   });
   (ADD[plan][day]||[]).forEach(x=>a.push({key:'a:'+x[0],ex:[x[0],x[1],x[2]],add:{lo:x[3]},rest:120}));
   let syl=S.syl!==false?(SYL[plan][day]||[]).filter(x=>!off.includes(x[0])):[];
@@ -2199,7 +2205,7 @@ function viewTrening(){
   const P=PLANS[S.plan], D=P.days[S.day], dr=draft();
   let h='<div class="pick"><p class="lbl">Blok</p><div class="row plans">'+
     Object.entries(PLANS).map(([k,p])=>`<button class="chip" data-plan="${k}" aria-pressed="${k===S.plan}">${p.name}<small>${p.sub}</small></button>`).join('')+'</div></div>';
-  h+=`<div class="pick"><p class="lbl">Tydzień, cykl ${S.cycles[S.plan]||1} (po ${P.weeks||4}. tygodniu plan zaczyna się od nowa)</p><div class="row">`+Array.from({length:P.weeks||4},(_,i)=>i+1).map(w=>`<button class="chip" data-week="${w}" aria-pressed="${w===S.week}">${w}</button>`).join('')+'</div></div>';
+  h+=`<div class="pick"><p class="lbl">Tydzień, cykl ${S.cycles[S.plan]||1} (po ${P.weeks||4}. tygodniu plan zaczyna się od nowa)</p><div class="row">`+Array.from({length:P.weeks||4},(_,i)=>i+1).map(w=>`<button class="chip" data-week="${w}" aria-pressed="${w===S.week}">${w}${(P.light||[]).includes(w)?" lżejszy":""}</button>`).join('')+'</div></div>';
   h+='<div class="pick"><p class="lbl">Trening</p><div class="row">'+P.days.map((d,i)=>`<button class="chip" data-day="${i}" aria-pressed="${i===S.day}">${P.dayPrefix||''}${d.name}</button>`).join('')+'</div></div>';
 
   if(S.post&&!S.post.running&&Date.now()-Date.parse(S.post.sid||0)>3*3600e3){S.post=null;save()}
@@ -2211,8 +2217,8 @@ function viewTrening(){
   h+=routineCard('w',S.plan,S.day);
   let kind='m';
   const DX=dayEx();
-  DX.forEach(({key,ex,extra,syl,add,ss,partner,orig,since,idx:pi},idx)=>{
-    const sets=setsFor(ex), rir=extra?null:rirFor(ex,S.week), last=lastFor(ex[0]), hint=hintFor(ex,last), sug=suggest(ex,last);
+  DX.forEach(({key,ex,extra,syl,add,ss,partner,orig,since,light,idx:pi},idx)=>{
+    const sets=setsFor(ex), rir=extra?null:rirFor(ex,S.week), last=lastFor(ex[0]), hint=hintFor(ex,last,light), sug=suggest(ex,last,light);
     const rows=dr[key]||[], ei=key;
     const tgt=add?`<b>${ex[1]}×${add.lo}–${ex[2]}</b>, przerwa 2 min, ostatnie powtórzenie czyste`:extra?`<b>3×8–10</b>, na słabość w: ${esc(extra.for)}`:syl?`<b>${ex[1]}×${ex[2]==='max'?(syl.lab||'max'):syl.lo+'–'+ex[2]}</b>${ex[2]==='max'?', spokojne tempo, przerwa 60 s':', RIR 1–2'}${ss?`, superseria z: ${esc(partner)}`:''}`:[ex[5]?`top set <b>1×${ex[5]}</b>, potem`:'', `<b>${ex[1]}×${ex[2]}</b>`, ex[3]?ex[3]:'', rir!=null?`RIR ${fmt(rir)}`:''].filter(Boolean).join(', ');
     const k=extra?'x':syl?'s':add?'a':'m'; let vNew=false;
@@ -2450,7 +2456,7 @@ async function saveFile(name,data,mime){
 }
 function targetFor(s,name){
   const D=PLANS[s.plan]&&PLANS[s.plan].days[s.day]; if(!D)return '';
-  const ex=D.ex.find(x=>x[0]===name);
+  const ex0=D.ex.find(x=>x[0]===name), ex=ex0&&isLight(s.plan,s.week)?lightEx(ex0):ex0;
   if(ex){const r=rirFor(ex,s.week);return (ex[5]?`top 1×${ex[5]} + `:'')+`${ex[1]}×${ex[2]}`+(ex[3]?`, ${ex[3]}`:'')+(r!=null?`, RIR ${fmt(r)}`:'')}
   const ad=((ADD[s.plan]||[])[s.day]||[]).find(x=>x[0]===name); if(ad)return `${ad[1]}×${ad[3]}–${ad[2]} (uzupełnienie)`;
   const sy=((SYL[s.plan]||[])[s.day]||[]).find(x=>x[0]===name); if(sy)return `${sy[1]}×${sy[2]==='max'?(sy[6]||'max'):sy[3]+'–'+sy[2]} (${GOAL().sec.toLowerCase()})`;
@@ -2874,7 +2880,7 @@ $('#view').addEventListener('change',e=>{
 
 // ---------- plany jako dane ----------
 function installPlan(p){
-  PLANS[p.id]={name:p.name,sub:p.sub||'',dayPrefix:p.dayPrefix||'',weeks:p.weeks||4,days:p.days.map(d=>({name:d.name,ex:d.ex}))};
+  PLANS[p.id]={name:p.name,sub:p.sub||'',dayPrefix:p.dayPrefix||'',weeks:p.weeks||4,light:(p.light&&p.light.weeks)||[],days:p.days.map(d=>({name:d.name,ex:d.ex}))};
   ADD[p.id]=p.days.map(d=>d.add||[]);
   ROUT[p.id]=p.days.map(d=>({w:d.warmup||DEF_ROUT.w,s:d.stretch||DEF_ROUT.s}));
   PLANSRC[p.id]=p;
