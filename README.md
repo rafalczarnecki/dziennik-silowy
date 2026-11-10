@@ -19,3 +19,11 @@ Aplikacja na telefon do prowadzenia treningu siłowego: serie i ciężary, przer
 Ćwiczenie: `[nazwa, serie, powtórzenia lub "max", uwaga, RIR (liczba lub lista na tygodnie), top set]`.
 Ćwiczenie dodatkowe celu (`extra`): `[nazwa, serie, górna granica, dolna granica, superseria, przerwa w s, opis celu]`.
 Kilka planów naraz: `{"type":"dziennik-pakiet","plans":[...],"profile":"..."}`.
+
+## Budowa i testy
+
+- `src/dziennik-silowy.html`: źródło aplikacji (jeden plik). `index.html` i `sw.js` powstają z niego przez `npm run build`.
+- `tests/app.test.js`: testy aplikacji w jsdom na sztucznych danych (trening, podpowiedzi, zastój, lżejszy tydzień, plany, kopia na GitHubie, import, migracja, budowanie wszystkich animacji).
+- `tests/collide.js`: test kolizji animacji (ciało ze sprzętem i części ciała ze sobą) względem wzorca `tests/collide-baseline.json`.
+- `npm test` uruchamia oba. Zmiany trafiają na gałąź `dev`; GitHub Actions uruchamia testy i dopiero po ich zaliczeniu przenosi zmianę na `main`, skąd publikuje się strona.
+- W repozytorium nie ma danych treningowych ani prywatnych planów: testy używają sztucznego planu.

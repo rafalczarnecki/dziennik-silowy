@@ -1,0 +1,12 @@
+{
+  "name": "dziennik-silowy",
+  "private": true,
+  "description": "Dziennik siłowy: aplikacja PWA do treningu siłowego",
+  "scripts": {
+    "test": "node tests/app.test.js && node tests/collide.js",
+    "test:app": "node tests/app.test.js",
+    "test:anim": "node tests/collide.js",
+    "build": "python3 tools/build.py src/dziennik-silowy.html ."
+  },
+  "devDependencies": { "jsdom": "^26.0.0" }
+}

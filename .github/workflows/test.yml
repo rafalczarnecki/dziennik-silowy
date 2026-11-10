@@ -1,0 +1,29 @@
+# Testy przy każdej zmianie. Gałąź dev: po zaliczeniu testów zmiana trafia na main, skąd publikuje się strona.
+name: Testy
+on:
+  push:
+    branches: [dev, main]
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Zbudowany plik zgodny ze źródłem
+        run: |
+          python3 tools/build.py src/dziennik-silowy.html .
+          git diff --exit-code -- index.html sw.js
+      - name: Testy aplikacji
+        run: node tests/app.test.js
+      - name: Test kolizji animacji
+        run: node tests/collide.js
+      - name: Publikacja (dev -> main)
+        if: github.ref == 'refs/heads/dev'
+        run: git push origin HEAD:main

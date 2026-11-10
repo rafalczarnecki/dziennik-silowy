@@ -315,7 +315,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-10b';
+const VER='2026-11-10c';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -523,10 +523,18 @@ function fitsWeek(name,sets=3,plan=S.plan){
   const v=volume(plan);
   return !Object.entries(musOf(name)).some(([m,w])=>w===1&&(v[m]||0)+sets>GOAL().vol[1]);
 }
+// ciężka praca dolnych pleców (martwy ciąg, skłony) w dwóch kolejnych dniach planu: lista [{a,b,names}]
+const backHeavy=n=>['dead','hinge'].includes(patOf(n));
+function seqWarn(dayNames){
+  const out=[];for(let i=0;i+1<dayNames.length;i++){const x=dayNames[i].list.filter(backHeavy),y=dayNames[i+1].list.filter(backHeavy);
+    if(x.length&&y.length)out.push({a:dayNames[i].n,b:dayNames[i+1].n,names:[...x,...y]})}
+  return out;
+}
+const planSeq=plan=>seqWarn(PLANS[plan].days.map((d,i)=>({n:(PLANS[plan].dayPrefix||'')+d.name,list:dayEx(plan,i).map(x=>x.ex[0])})));
 function rulesCard(plan=S.plan){
   const P=PLANS[plan], rows=P.days.map((d,i)=>({d,c:dayClashes(plan,i)}));
   const bad=rows.filter(r=>r.c.length);
-  return `<div class="card"><h3>Jedna partia, jedno ćwiczenie</h3>${bad.length?bad.map(r=>`<p><b>${esc((P.dayPrefix||'')+r.d.name)}:</b> ${esc(clashText(r.c))}</p>`).join('')+'<p class="meta">Te dni mają po dwa ćwiczenia bezpośrednie na tę samą partię.</p>':`<p>${esc(P.name)}: każdy dzień ma najwyżej jedno ćwiczenie bezpośrednie na daną partię.</p>`}<p class="meta">Praca pośrednia (np. triceps przy wyciskaniu) się nie liczy.</p></div>`;
+  return `<div class="card"><h3>Jedna partia, jedno ćwiczenie</h3>${bad.length?bad.map(r=>`<p><b>${esc((P.dayPrefix||'')+r.d.name)}:</b> ${esc(clashText(r.c))}</p>`).join('')+'<p class="meta">Te dni mają po dwa ćwiczenia bezpośrednie na tę samą partię.</p>':`<p>${esc(P.name)}: każdy dzień ma najwyżej jedno ćwiczenie bezpośrednie na daną partię.</p>`}<p class="meta">Praca pośrednia (np. triceps przy wyciskaniu) się nie liczy.</p>${planSeq(plan).map(w=>`<p><b>${esc(w.a)} → ${esc(w.b)}:</b> ${esc(w.names.join(' + '))}</p><p class="meta">Dolne plecy pracują ciężko w dwóch treningach z rzędu. Lepiej rozdzielić te ćwiczenia innym dniem.</p>`).join('')}</div>`;
 }
 function volumeCard(plan=S.plan){
   const v=volume(plan), dn=volumeDone(), r2=x=>Math.round((x||0)*2)/2;
@@ -2606,6 +2614,12 @@ async function ghSync(manual){
   if(!navigator.onLine){ghSet({dirty:1});if(manual)toast('Brak internetu. Kopia wyśle się, gdy wróci połączenie.');return}
   if(ghBusy)return; ghBusy=true;
   try{
+    // najpierw sprawdzenie, czy na GitHubie nie ma treningów, których brakuje w tym telefonie (np. z innego urządzenia): wtedy scalamy, nie nadpisujemy
+    const g=await ghApi('/contents/dziennik.json',{headers:{Accept:'application/vnd.github.raw+json'}});
+    if(g.ok){let rem=null;try{rem=JSON.parse(await g.text())}catch(e){}
+      if(rem&&Array.isArray(rem.sessions)){const have=new Set(S.sessions.map(x=>x.date));
+        if(rem.sessions.some(x=>x&&x.date&&!have.has(x.date))){ghBusy=false;importData(rem);return}}}
+    else if(g.status!==404)throw new Error(ghErr(g.status));
     const o={app:'dziennik-silowy',v:2};KEEP.forEach(k=>o[k]=S[k]);
     const stamp=new Date().toLocaleString('pl-PL');
     await ghPut('dziennik.json',JSON.stringify(o,null,1),'Kopia z telefonu '+stamp);
@@ -2916,7 +2930,8 @@ function validatePlan(o){
   const guide=Object.assign({},G,o.guide||{});
   const ex=(o.extra||{})[S.goal]||(o.extra||{}).sport||[];
   const conf=o.days.map((d,i)=>({d:d.name,c:clashes([...d.ex,...(d.add||[]),...(ex[i]||[])].map(x=>x[0]))})).filter(x=>x.c.length);
-  return {warn:[...names].filter(n=>!guide[n]),conf};
+  const seq=seqWarn(o.days.map(d=>({n:d.name,list:[...d.ex,...(d.add||[])].map(x=>x[0])})));
+  return {warn:[...names].filter(n=>!guide[n]),conf,seq};
 }
 function loadPlan(txt,auto){
   let o;try{o=JSON.parse(String(txt).trim())}catch(e){return toast('To nie jest poprawny plik planu')}
@@ -2924,8 +2939,8 @@ function loadPlan(txt,auto){
   const list=o&&o.type==='dziennik-pakiet'?(o.plans||[]):[o];
   if(!list.length)return toast('Plik nie zawiera planów');
   const warn=[];
-  let conf=0;
-  for(const p of list){const v=validatePlan(p);if(v.err)return toast((p&&p.name?p.name+': ':'')+v.err);warn.push(...v.warn);conf+=v.conf.length}
+  let conf=0,seqN=0;
+  for(const p of list){const v=validatePlan(p);if(v.err)return toast((p&&p.name?p.name+': ':'')+v.err);warn.push(...v.warn);conf+=v.conf.length;seqN+=v.seq.length}
   S.userPlans=S.userPlans||{};
   const isNew=list.some(p=>!S.userPlans[p.id]);
   list.forEach(p=>S.userPlans[p.id]=p);
@@ -2940,7 +2955,7 @@ function loadPlan(txt,auto){
   else if(isNew||(!auto&&!S.sessions.some(x=>x.plan===S.plan))||BUILTIN_IDS.includes(S.plan)){S.plan=first.id;S.day=0;S.week=1}
   if(!auto||isNew)S.tab='trening'; save(); render(); if(!auto||isNew)window.scrollTo(0,0); ghMark();
   if(auto&&!isNew)return;
-  toast((auto?'Nowy plan z GitHuba: ':'Wczytano: ')+list.map(p=>p.name).join(', ')+(conf?`. Dni z dwoma ćwiczeniami na tę samą partię: ${conf} (szczegóły w Analizie)`:'')+(()=>{try{const L=list.filter(p=>PLANS[p.id]).flatMap(p=>planEst(p.id).filter(x=>x.t>7200).map(x=>`${p.name} ${x.n} ok. ${fdur(x.t)}`));return L.length?'. Ponad 2 h: '+L.join(', '):''}catch(e){return ''}})()+(warn.length?'. Brak opisu dla: '+[...new Set(warn)].join(', '):''));
+  toast((auto?'Nowy plan z GitHuba: ':'Wczytano: ')+list.map(p=>p.name).join(', ')+(conf?`. Dni z dwoma ćwiczeniami na tę samą partię: ${conf} (szczegóły w Analizie)`:'')+(seqN?'. Martwy ciąg lub skłony w dwóch treningach z rzędu (szczegóły w Analizie)':'')+(()=>{try{const L=list.filter(p=>PLANS[p.id]).flatMap(p=>planEst(p.id).filter(x=>x.t>7200).map(x=>`${p.name} ${x.n} ok. ${fdur(x.t)}`));return L.length?'. Ponad 2 h: '+L.join(', '):''}catch(e){return ''}})()+(warn.length?'. Brak opisu dla: '+[...new Set(warn)].join(', '):''));
 }
 function migrate(){
   S.migs=S.migs||[];
