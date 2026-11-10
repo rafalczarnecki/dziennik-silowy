@@ -76,6 +76,13 @@ test('animacje: każde ćwiczenie z bazy buduje się w obu trybach, bez NaN',asy
     for(const name of Object.keys(A.T.G)){const k=A.T.animKeyOf(name);if(!k||seen.has(k))continue;seen.add(k);const h=A.T.moveAnim(name);ok(h.includes('<svg'),name);ok(!/NaN|undefined/.test(h),mode+' '+name+': NaN/undefined w rysunku');n++}}
   ok(n>=120,'za mało animacji: '+n);
 });
+test('wskazówki w animacji: zatrzymania, podpisy i częste błędy (przysiad, martwy ciąg, wyciskanie)',async()=>{
+  const A=app(base());await wait(50);
+  for(const name of ['Przysiad','Martwy ciąg klasyczny','Wyciskanie touch and go']){const h=A.T.moveAnim(name);
+    ok((h.match(/class="cue"/g)||[]).length>=3,name+': podpisy wskazówek');ok(/Częste błędy/.test(h)&&(h.match(/<figure>/g)||[]).length===2,name+': dwa błędy');
+    ok(/Na co zwrócić uwagę/.test(h),name+': lista');ok(!/NaN|undefined/.test(h),name+': NaN')}
+  ok(!/Częste błędy/.test(A.T.moveAnim('Wznosy bokiem')),'ćwiczenie bez wskazówek bez zmian');
+});
 test('zastój i wariant ćwiczenia',async()=>{
   const st=base({week:4});st.sessions=[1,2,3].map(i=>sesA(now-(22-7*i)*day,i,[[100,8],[100,8],[100,8],[100+i*2.5,8]],[[80,8],[80,8],[80,8],[80,8]]));
   const A=app(st);await wait(50);

@@ -13,7 +13,7 @@
 <style>
 :root{
   --bg:#E6EAEE; --surface:#FFFFFF; --ink:#15202B; --muted:#5B6875; --line:#CDD3DA;
-  --accent:#C8102E; --accent-ink:#FFFFFF; --done:#1F4FB8; --done-soft:#E3EAFB; --field:#F2F4F6; --bone:#D8CFC0; --m-con:#D4213D; --m-ecc:#F2892B; --m-iso:#7A1F3D; --m-rest:#E9D3CB; --m-edge:rgba(80,30,30,.35); --skin:#E9C9B8; --tendon:#F4EEE2; --eye-grid:rgba(60,70,80,.28); --eye-wall1:#DDE3E9; --eye-wall2:#C9D1D9; --eye-floor1:#B9B2A8; --eye-floor2:#8F877C;
+  --accent:#C8102E; --accent-ink:#FFFFFF; --done:#1F4FB8; --done-soft:#E3EAFB; --cue:#B85C00; --cue-soft:#FFE7C2; --cue-ink:#3A2000; --field:#F2F4F6; --bone:#D8CFC0; --m-con:#D4213D; --m-ecc:#F2892B; --m-iso:#7A1F3D; --m-rest:#E9D3CB; --m-edge:rgba(80,30,30,.35); --skin:#E9C9B8; --tendon:#F4EEE2; --eye-grid:rgba(60,70,80,.28); --eye-wall1:#DDE3E9; --eye-wall2:#C9D1D9; --eye-floor1:#B9B2A8; --eye-floor2:#8F877C;
   --musc2:#F0A0AA; --body2:#9AA3AD;
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -24,12 +24,12 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#1A2027; --surface:#232B34; --ink:#E8EDF2; --muted:#9AA6B2; --line:#36414D;
-    --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55; --tendon:#CFC6B4; --eye-grid:rgba(255,255,255,.14); --eye-wall1:#1E252D; --eye-wall2:#2A333D; --eye-floor1:#3A3530; --eye-floor2:#24211E;
+    --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --cue:#FFB648; --cue-soft:#4A3414; --cue-ink:#FFE9C7; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55; --tendon:#CFC6B4; --eye-grid:rgba(255,255,255,.14); --eye-wall1:#1E252D; --eye-wall2:#2A333D; --eye-floor1:#3A3530; --eye-floor2:#24211E;
    --musc2:#8A3A48; --body2:#6B7785;}
 }
 :root[data-theme="dark"]{
   --bg:#1A2027; --surface:#232B34; --ink:#E8EDF2; --muted:#9AA6B2; --line:#36414D;
-  --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55; --tendon:#CFC6B4; --eye-grid:rgba(255,255,255,.14); --eye-wall1:#1E252D; --eye-wall2:#2A333D; --eye-floor1:#3A3530; --eye-floor2:#24211E;
+  --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --cue:#FFB648; --cue-soft:#4A3414; --cue-ink:#FFE9C7; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55; --tendon:#CFC6B4; --eye-grid:rgba(255,255,255,.14); --eye-wall1:#1E252D; --eye-wall2:#2A333D; --eye-floor1:#3A3530; --eye-floor2:#24211E;
  --musc2:#8A3A48; --body2:#6B7785;}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -128,6 +128,8 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .mvcap p b{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:10px;background:var(--done);color:var(--bg);font-size:12px;margin-right:6px;padding:0 5px}
 .manim:fullscreen,.manim.mvfull{background:var(--bg);padding:12px;overflow:auto;display:flex;flex-direction:column}
 .manim.mvfull{position:fixed;inset:0;z-index:50}
+.mvcap p.cue{background:var(--cue-soft);color:var(--cue-ink);outline:2px solid var(--cue)}.mvcap p.cue b{background:var(--cue);color:var(--bg)}
+.mverr{display:grid;gap:8px;margin:4px 0 6px}.mverr figure{display:grid;grid-template-columns:34% 1fr;gap:10px;align-items:center;margin:0;padding:8px;border:1px solid var(--line);border-radius:12px}.mverr svg{width:100%;height:auto;display:block;border-radius:8px;background:var(--field)}.mverr figcaption{font-size:14px;line-height:1.35}.mverr figcaption b{display:block;color:var(--accent);margin-bottom:2px}.mverr figcaption i{font-style:normal;font-weight:600}
 .manim:fullscreen .mvcap,.manim.mvfull .mvcap{min-height:3.6em}.manim:fullscreen .mvcap p,.manim.mvfull .mvcap p{font-size:18px}
 .manim:fullscreen svg.moveanim,.manim.mvfull svg.moveanim{flex:1 1 auto;max-height:72vh;width:100%}
 @media (prefers-reduced-motion: reduce){.mvcap p:first-child{opacity:1}}
@@ -315,7 +317,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-10c';
+const VER='2026-11-10d';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1188,8 +1190,18 @@ function animTimeline(a,name){
   const setEnd=t0+su.length*step+.3;
   const nodes=[[0,0],[setEnd,0]], p1=[], p2=[];
   let t=setEnd;
+  // wskazówki (cue): w pierwszym powtórzeniu ruch zatrzymuje się w kluczowych momentach, drugie powtórzenie jest płynne
+  const CU=(a.cue||[]).map((c,i)=>Object.assign({i},c)), cues=[], HOLD=2.4;
+  const leg=(from,to,dur,list,wins)=>{let f0=from,ws=t;
+    list.forEach(c=>{const dt=Math.abs(c.f-f0)*dur;if(dt>0){t+=dt;nodes.push([t,c.f])}if(t>ws)wins.push([ws,t]);cues.push({i:c.i,s:t,e:t+HOLD});t+=HOLD;nodes.push([t,c.f]);f0=c.f;ws=t});
+    const dt=Math.abs(to-f0)*dur;if(dt>0){t+=dt;nodes.push([t,to])}if(t>ws)wins.push([ws,t])};
   for(let r=0;r<2;r++){
     const s1=t;
+    if(!r&&CU.length&&!ps.mid){
+      leg(0,1,ps.d||1.5,CU.filter(c=>c.ph!==2).sort((x,y)=>x.f-y.f),p1);
+      t+=ps.b??.35; nodes.push([t,1]);
+      leg(1,0,ps.u||1.3,CU.filter(c=>c.ph===2).sort((x,y)=>y.f-x.f),p2);
+      t+=.6; nodes.push([t,0]);continue}
     if(ps.mid){const [m,hold]=ps.mid;t+=(ps.d||1.5)*m;nodes.push([t,m]);t+=hold;nodes.push([t,m]);t+=(ps.d||1.5)*(1-m);nodes.push([t,1])}
     else{t+=ps.d||1.5;nodes.push([t,1])}
     p1.push([s1,t]);
@@ -1198,7 +1210,7 @@ function animTimeline(a,name){
     t+=.6; nodes.push([t,0]);
   }
   const retStart=t; t+=1.2; // powrót do pozycji wyjściowej
-  return {T:t,nodes,steps,setEnd,p1,p2,retStart};
+  return {T:t,nodes,steps,setEnd,p1,p2,retStart,cues};
 }
 let animUid=0;
 const r1=v=>Math.round(v*10)/10;
@@ -1330,6 +1342,24 @@ function animView(name,key,vw,TL,frame,mode,smp){
         grow(a0,2);grow(a1,3);
         ah+=`<g${still?' opacity="0"':''}>${vis(wins)}<line x1="${r1(a0[0])}" y1="${r1(a0[1])}" x2="${r1(hx)}" y2="${r1(hy)}" stroke="var(--done)" stroke-width="1.4" stroke-dasharray="2.5 2" stroke-linecap="round"/><polygon points="${r1(a1[0])},${r1(a1[1])} ${r1(hx-uy*2.4)},${r1(hy+ux*2.4)} ${r1(hx+uy*2.4)},${r1(hy-ux*2.4)}" fill="var(--done)"/></g>`}}
   });
+  // tor sztangi (widok z boku) i wskazówki: pierścień na stawie, podświetlony odcinek ciała, strzałka
+  if(smp&&smp.plain)return {h,bx};
+  if(!still&&a.cue){
+    const bar=(a.pr||[]).find(x=>x[0]==='bar');
+    if(bar&&vw==='side'){const pts=[];for(let i=0;i<=12;i++)pts.push(V(barAt(interpPose(key,i/12),bar[1],bar[2])));
+      const len=pts.slice(1).reduce((s,q,i)=>s+Math.hypot(q[0]-pts[i][0],q[1]-pts[i][1]),0);
+      if(len>6)ah+=`<g opacity="0">${vis([[TL.setEnd,TL.retStart]])}<polyline points="${pts.map(q=>r1(q[0])+','+r1(q[1])).join(' ')}" fill="none" stroke="var(--cue)" stroke-width="1.5" stroke-dasharray="1.5 2.4" stroke-linecap="round"/></g>`}
+    TL.cues.forEach(w=>{const c=a.cue[w.i]; if(c.v&&c.v!==vw)return;
+      const J=interpPose(key,c.f), sides=k=>/L$/.test(k)&&c.m!==0?[k,k.replace(/L$/,'R')]:[k]; let g='';
+      (c.hl||[]).forEach(([p1,p2])=>sides(p1).forEach((k,si)=>{const q1=V(J[k]),q2=V(J[si?p2.replace(/L$/,'R'):p2]);grow(q1,5);grow(q2,5);
+        g+=`<line x1="${r1(q1[0])}" y1="${r1(q1[1])}" x2="${r1(q2[0])}" y2="${r1(q2[1])}" stroke="var(--cue)" stroke-width="9" stroke-linecap="round" opacity=".5"/>`}));
+      (c.j?sides(c.j):[]).forEach((k,si)=>{const q=V(v3(J[k],c.o||[0,0,0]));grow(q,7);
+        g+=`<circle cx="${r1(q[0])}" cy="${r1(q[1])}" r="5.5" fill="none" stroke="var(--field)" stroke-width="3.6"/><circle cx="${r1(q[0])}" cy="${r1(q[1])}" r="5.5" fill="none" stroke="var(--cue)" stroke-width="2"/>`;
+        if(c.d){const dv=si?[c.d[0],c.d[1],-c.d[2]]:c.d, q1=V(v3(v3(J[k],c.o||[0,0,0]),dv)), vx=q1[0]-q[0], vy=q1[1]-q[1], L=Math.hypot(vx,vy);
+          if(L>4){const ux=vx/L,uy=vy/L,s0=[q[0]+ux*6.5,q[1]+uy*6.5],e=[q[0]+ux*(L+6.5),q[1]+uy*(L+6.5)],hx=e[0]-ux*4,hy=e[1]-uy*4;grow(e,3);
+            g+=`<line x1="${r1(s0[0])}" y1="${r1(s0[1])}" x2="${r1(hx)}" y2="${r1(hy)}" stroke="var(--cue)" stroke-width="2.4" stroke-linecap="round"/><polygon points="${r1(e[0])},${r1(e[1])} ${r1(hx-uy*3)},${r1(hy+ux*3)} ${r1(hx+uy*3)},${r1(hy-ux*3)}" fill="var(--cue)"/>`}}});
+      if(g)ah+=`<g opacity="0">${vis([[w.s,w.e]])}${g}</g>`});
+  }
   return {h:h+ah,bx};
 }
 const ANIMNAME={};
@@ -1398,14 +1428,32 @@ function moveAnim(name,frame){
   const vk=wins=>{const nm=id+'v'+(n++);let k=`@keyframes ${nm}{0%{opacity:0}`;
     wins.forEach(([s,e])=>{k+=`${Math.max(0,pc(s)-.05)}%{opacity:0}${pc(s)}%{opacity:1}${pc(e)}%{opacity:1}${Math.min(100,pc(e)+.05)}%{opacity:0}`});
     css+=k+`100%{opacity:0}}`;return ` style="animation:${nm} ${r1(T)}s linear infinite"`};
-  const cap=frame?'':`<div class="mvcap">${su.map(([t],i)=>`<p${vk([[TL.steps[i][0],i===su.length-1?TL.setEnd:TL.steps[i][1]]])}><b>${i+1}</b>${esc(t)}</p>`).join('')}${mv.map(([lab,t],i)=>`<p${vk(i?TL.p2:TL.p1)}><b class="ph">${esc(lab.replace(/:$/,''))}</b>${esc(t)}</p>`).join('')}</div>`;
+  const cap=frame?'':`<div class="mvcap">${su.map(([t],i)=>`<p${vk([[TL.steps[i][0],i===su.length-1?TL.setEnd:TL.steps[i][1]]])}><b>${i+1}</b>${esc(t)}</p>`).join('')}${mv.map(([lab,t],i)=>`<p${vk(i?TL.p2:TL.p1)}><b class="ph">${esc(lab.replace(/:$/,''))}</b>${esc(t)}</p>`).join('')}${TL.cues.map(w=>`<p class="cue"${vk([[w.s,w.e]])}><b class="ph">Sprawdź</b>${esc(a.cue[w.i].t)}</p>`).join('')}</div>`;
   const list=`<ol class="mvsteps">${su.map(([t],i)=>`<li${kf([TL.steps[i]])}><b>${i+1}</b>${esc(t)}</li>`).join('')}</ol>`
-    +(mv.length?`<p class="mvh">Ruch</p><ul class="mvphase">${mv.map(([lab,t],i)=>`<li${kf(i?TL.p2:TL.p1)}><b>${esc(lab)}</b> ${esc(t)}</li>`).join('')}</ul>`:'');
+    +(mv.length?`<p class="mvh">Ruch</p><ul class="mvphase">${mv.map(([lab,t],i)=>`<li${kf(i?TL.p2:TL.p1)}><b>${esc(lab)}</b> ${esc(t)}</li>`).join('')}</ul>`:'')
+    +(TL.cues.length?`<p class="mvh">Na co zwrócić uwagę</p><ul class="mvphase">${TL.cues.map(w=>`<li${kf([[w.s,w.e]])}>${esc(a.cue[w.i].t)}</li>`).join('')}</ul>`:'');
   const ctr=frame?'':`<div class="row mvctl"><button class="link" data-animfull="${id}">Pełny ekran</button><button class="link" data-animpause="${id}">Pauza</button><button class="link" data-animrestart="${id}">Od początku</button></div>`;
   const tabs=alts&&!frame?`<div class="row mvalt">${alts.map(([k,l])=>`<button class="chip" aria-pressed="${k===key}" data-animvar="${esc(name)}|${k}">${l}</button>`).join('')}</div>`:'';
   const modes=frame?'':`<div class="row mvalt"><button class="chip" aria-pressed="${mode==='sch'}" data-animmode="sch">Schemat</button><button class="chip" aria-pressed="${mode==='anat'}" data-animmode="anat">Anatomia</button></div>`;
   const leg=mode==='anat'?`<p class="mleg"><i style="background:var(--m-con)"></i>skraca się pod obciążeniem (koncentrycznie) <i style="background:var(--m-ecc)"></i>wydłuża się pod obciążeniem (ekscentrycznie) <i style="background:var(--m-iso)"></i>napięty, stała długość (izometrycznie) <i style="background:var(--m-rest)"></i>nie pracuje</p>`:'';
-  return `<div class="manim" id="${id}"${anim3d?' data-a3="1"':''}>${modes}${tabs}${css?`<style>${css}</style>`:''}${cap}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}${leg}<p class="mvh">Ustawienie, po kolei</p>${list}${mode==='anat'&&!frame?anatTable(name,key):''}</div>`;
+  return `<div class="manim" id="${id}"${anim3d?' data-a3="1"':''}>${modes}${tabs}${css?`<style>${css}</style>`:''}${cap}<svg class="moveanim" viewBox="0 0 ${r1(TW)} ${r1(H)}" role="img" aria-label="Schemat ustawienia i ruchu: ${esc(name)}">${inner}</svg>${ctr}${leg}<p class="mvh">Ustawienie, po kolei</p>${list}${frame?'':errFigs(name,key,TL)}${mode==='anat'&&!frame?anatTable(name,key):''}</div>`;
+}
+// częste błędy: mała nieruchoma postać w błędnej pozycji, z zaznaczonym miejscem błędu
+function errFigs(name,key,TL){
+  const a=ANIM[key]; if(!a.err)return '';
+  animPoses(key);
+  const sc=(a.su||[]).some(x=>/łopatk/i.test(x[0]))?1:0;
+  return `<p class="mvh">Częste błędy</p><div class="mverr">`+a.err.map(e=>{
+    const f=e.f??1, base=animPoses(key)[f?1:0], a2=e.keep?Object.assign({},a,{an:[e.keep,[base[e.keep][0],base[e.keep][1]]]}):a, P=pose3(Object.assign({scR:sc},f?a.B:a.A,e.P||{}),a2);
+    if(!P.td)P.td=nrm3(sub3(P.sh,P.hp));
+    const vw=e.v||'side', r=animView(name,key,vw,TL,null,'sch',{P,f,k:0,cache:{},plain:1}), V=VIEWS[vw].p, b=r.bx.slice();
+    let mark='';
+    (e.j?[e.j,...(/L$/.test(e.j)&&e.m!==0?[e.j.replace(/L$/,'R')]:[])]:[]).forEach(k=>{const q=V(v3(P[k],e.o||[0,0,0]));
+      b[0]=Math.min(b[0],q[0]-9);b[1]=Math.min(b[1],q[1]-9);b[2]=Math.max(b[2],q[0]+9);b[3]=Math.max(b[3],q[1]+9);
+      mark+=`<circle cx="${r1(q[0])}" cy="${r1(q[1])}" r="7" fill="none" stroke="var(--field)" stroke-width="4"/><circle cx="${r1(q[0])}" cy="${r1(q[1])}" r="7" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-dasharray="3 2"/>`});
+    if(vw!=='top')b[3]=Math.max(b[3],97);
+    const w=b[2]-b[0]+10, hh=b[3]-b[1]+10, x0=b[0]-5, y0=b[1]-5;
+    return `<figure><svg viewBox="${r1(x0)} ${r1(y0)} ${r1(w)} ${r1(hh)}" role="img" aria-label="Błąd: ${esc(e.t)}">${vw!=='top'&&!a.nf?`<line x1="${r1(x0)}" y1="96" x2="${r1(x0+w)}" y2="96" stroke="var(--line)" stroke-width="1.5"/>`:''}${r.h}${mark}</svg><figcaption><b>✕ ${esc(e.t)}</b>${esc(e.how)} <i>Poprawka:</i> ${esc(e.fix)}</figcaption></figure>`}).join('')+'</div>';
 }
 function animCtl(t){
   const id=t.dataset.animpause||t.dataset.animrestart||t.dataset.animfull, box=document.getElementById(id); if(!box)return;
@@ -1477,8 +1525,13 @@ const DL_SU=[['Stopy na szerokość bioder, sztanga nad środkiem stopy (linia p
   ['Ściągnij łopatki i "schowaj" pachy: plecy proste i napięte',C_LOP],
   ['Wdech w brzuch, napnij go i wypchnij podłogę nogami',C_BRZ]];
 const ANIM={
-  squat:{A:AN({thb:8,shb:9,ftb:25,hold:{j:'sh',o:[-3,2],w:20,pole:[-1,-1,1]}}),B:AN({t:42,th:95,thb:28,sh:207,shb:-10,ftb:25,hold:{j:'sh',o:[-3,2],w:20,pole:[-1,-1,1]}}),
+  squat:{A:AN({t:3,th:183,sh:183,thb:8,shb:9,ftb:25,hold:{j:'sh',o:[-3,2],w:20,pole:[-1,-1,1]}}),B:AN({t:42,th:95,thb:28,sh:207,shb:-10,ftb:25,hold:{j:'sh',o:[-3,2],w:20,pole:[-1,-1,1]}}),
     an:['an',[50,0]],pr:[['bar','sh',[-3,2]]],gd:'mf',su:SQ_SU,
+    cue:[{f:.55,t:'Kolana idą na zewnątrz, w linii palców stóp. Nie do środka.',j:'knL',d:[0,0,7],v:'front'},
+         {f:1,t:'Na dole: pięty na podłodze, sztanga nad środkiem stopy.',j:'anL',o:[-2,-3,0],v:'side',m:0},
+         {ph:2,f:.6,t:'Biodra i barki wstają razem. Klatka wysoko, plecy proste.',hl:[['hp','s1'],['s1','s2'],['s2','sh']],v:'side'}],
+    err:[{t:'Kolana uciekają do środka',how:'Przy wstawaniu kolana schodzą się do siebie.',fix:'rozpychaj podłogę stopami na boki i prowadź kolana nad palce stóp.',v:'front',P:{thb:7,shb:12},j:'knL'},
+         {t:'Biodra wstają pierwsze',how:'Tułów opada do przodu, a sztanga ucieka przed środek stopy.',fix:'napnij brzuch przed zejściem i od samego dołu pchaj barkami w sztangę.',v:'side',P:{t:66,th:122,sh:198},j:'hp'}],
     mv:[['W dół:','biodra w tył i w dół, kolana idą na zewnątrz w linii palców, sztanga nad środkiem stopy',[...C_KOL,...C_BIOT],'sh'],
         ['W górę:','wypychaj podłogę całą stopą, klatka wysoko, biodra i barki wstają razem',C_STOPY,'sh']]},
   fsquat:{A:AN({thb:8,shb:9,ftb:25,hold:{j:'sh',o:[5,1],w:12,pole:[1,.25,.35]}}),B:AN({t:22,th:95,thb:26,sh:212,shb:-9,ftb:25,hold:{j:'sh',o:[5,1],w:12,pole:[1,.25,.35]}}),
@@ -1526,6 +1579,12 @@ const ANIM={
     mv:[['W górę:','pchaj piętą nogi na skrzyni, nie odbijaj się dolną nogą',[['anL',[0,-5,0],[0,7,0]]],'hp'],['W dół:','zejdź powoli, kontrolując kolano nad stopą',[],'hp']]},
   dead:{A:AN({t:65,th:105,thb:11,sh:200,shb:-6,ftb:10,hold:{abs:[54,9],w:11,pole:[0,0,1]}}),B:AN({thb:3,shb:2,ftb:10,uab:4}),
     an:['an',[50,0]],pr:[['bar','wr',[0,0]]],gd:'mf',su:DL_SU,
+    cue:[{f:0,t:'Przed startem: plecy proste, barki tuż przed sztangą, sztanga przy goleniach.',hl:[['hp','s1'],['s1','s2'],['s2','sh']],v:'side'},
+         {f:.45,t:'Przy kolanach: sztanga sunie po nogach, kolana są już cofnięte.',j:'knL',v:'side',m:0},
+         {f:1,t:'Na górze: biodra dopchnięte, stoisz prosto. Nie odchylaj się w tył.',j:'hp',v:'side'},
+         {ph:2,f:.55,t:'W dół: najpierw biodra w tył. Kolana zginasz, gdy sztanga je minie.',j:'hp',d:[-8,0,0],v:'side'}],
+    err:[{t:'Zaokrąglone plecy',how:'Lędźwie i góra pleców wyginają się w łuk już przy oderwaniu sztangi.',fix:'przed startem wypchnij klatkę, napnij brzuch i wybierz luz ze sztangi. Jeśli plecy i tak się wyginają, zmniejsz ciężar.',f:0,P:{lf:22,tf:30},j:'s2'},
+         {t:'Odchylanie się w tył na górze',how:'Na końcu ruchu barki wędrują za biodra, a lędźwie się przeprostowują.',fix:'zakończ ruch napięciem pośladków, w pozycji prostej, bez dociągania w tył.',f:1,P:{t:-14,lf:-8},j:'s1'}],
     lift:{bx:54.5,y0:9,w:13.5,base:{thb:6,shb:-3,ftb:10},s0:15,lead:[[0,2.5],[.4,2],[.7,.5],[1,-1.5]],tB:-3,legB:1.5},
     mv:[['W górę:','pchaj podłogę, sztanga sunie po nogach, biodra i barki wstają razem',[...C_STOPY,['wrL',[-3,0,0],[3,0,9],'m']],'wr'],
         ['W dół:','biodra w tył, sztanga po udach, za kolanami ugnij nogi',C_BIOT,'wr']]},
@@ -1559,6 +1618,12 @@ const ANIM={
     mv:[['Do środka:','ściskaj nogi, zatrzymaj na chwilę',[['knL',[0,0,-5],[0,0,7],'m']],'knL'],['Powrót:','wolno, aż poczujesz rozciąganie',[],'knL']]},
   bench:{sup:1,v:['side','top'],A:AN({t:90,pt:-12,lf:12,tf:12,ft:90,ftb:30,feet:BFEET,hold:{j:'sh',o:[-2,29],w:19,pole:[0,0,1]}}),B:AN({t:90,pt:-12,lf:12,tf:12,ft:90,ftb:30,feet:BFEET,hold:{j:'sh',o:[-7,5],w:19,pole:[-.7,-1,1.1]}}),
     an:['hp',[40,24]],pr:[['bar','wr',[0,0]]],st:BENCH,su:BENCH_SU,
+    cue:[{f:0,t:'Łopatki ściągnięte, pośladki na ławce, stopy wbite w podłogę.',j:'hp',v:'side'},
+         {f:1,t:'Na dole: sztanga na dolnej części klatki, przedramiona pionowo.',hl:[['elL','wrL']],v:'side'},
+         {f:1,t:'Łokcie ok. 45–70° od tułowia, nie w linii barków.',j:'elL',v:'top'},
+         {ph:2,f:.5,t:'W górę i lekko w stronę głowy. Pośladki zostają na ławce.',j:'wrL',d:[3,8,0],v:'side',m:0}],
+    err:[{t:'Pośladki odrywają się od ławki',how:'Przy ciężkiej serii biodra idą w górę, żeby skrócić drogę sztangi.',fix:'cofnij stopy bliżej bioder i pchaj nimi w podłogę w stronę głowy, nie w górę. Zmniejsz ciężar o 2,5–5 kg.',f:1,v:'side',keep:'sh',P:{t:78,pt:-6},j:'hp'},
+         {t:'Łokcie rozłożone na boki',how:'Ramiona są pod kątem 90° do tułowia, sztanga ląduje wysoko, przy obojczykach.',fix:'opuszczaj sztangę na dolną część klatki i trzymaj łokcie ok. 45–70° od tułowia.',f:1,v:'top',P:{hold:{j:'sh',o:[-1,6],w:19,pole:[0,-1,.15]}},j:'elL'}],
     mv:[['W dół:','sztanga na dolną część klatki, łokcie ok. 45–70° od tułowia',[['elL',[-3,0,-2],[0,0,0],'m']],'wr'],
         ['W górę:','wypchnij w górę i lekko w stronę głowy, stopy dalej wbite',[...C_STOPY],'wr']]},
   larsen:{sup:1,v:['side','top'],A:AN({t:90,th:262,sh:270,thb:10,shb:-4,ft:180,ftb:20,hold:{j:'sh',o:[-2,29],w:19,pole:[0,0,1]}}),B:AN({t:90,th:262,sh:270,thb:10,shb:-4,ft:180,ftb:20,hold:{j:'sh',o:[-7,5],w:19,pole:[-.7,-1,1.1]}}),
