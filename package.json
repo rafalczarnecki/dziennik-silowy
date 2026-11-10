@@ -8,5 +8,5 @@
     "test:anim": "node tests/collide.js",
     "build": "python3 tools/build.py src/dziennik-silowy.html ."
   },
-  "devDependencies": { "jsdom": "^26.0.0" }
+  "devDependencies": { "jsdom": "29.1.1" }
 }
