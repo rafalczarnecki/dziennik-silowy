@@ -315,7 +315,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-04b';
+const VER='2026-11-10';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -335,19 +335,31 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('
 
 function setsFor(ex){const a=[];if(ex[5])a.push({t:ex[5],top:true});for(let i=0;i<ex[1];i++)a.push({t:ex[2]});return a}
 function rirFor(ex,w){const v=ex[4];if(v==null||v==='')return null;return Array.isArray(v)?v[w-1]:v}
-function lastFor(name){for(let i=S.sessions.length-1;i>=0;i--){const e=S.sessions[i].ex.find(x=>x.name===name);if(e&&e.sets.length)return{date:S.sessions[i].date,sets:e.sets,bad:!!(e.note&&(e.note.tags||[]).some(t=>t==='zle'||t==='bol'))}}return null}
+// planowane powtórzenia ćwiczenia w zapisanym treningu; gdy nie da się ustalić z planu, a wszystkie serie mają tyle samo powtórzeń, to ta liczba
+function repsThen(s,e){
+  const D=PLANS[s.plan]&&PLANS[s.plan].days[s.day], x=D&&D.ex.find(q=>q[0]===e.name||q[0]===e.from);
+  if(x&&Number.isInteger(x[2]))return x[2];
+  const w=e.sets.filter(q=>!q.top&&q.r&&!(q.parts&&q.parts.length)).map(q=>q.r);
+  return w.length>=2&&w.every(r=>r===w[0])?w[0]:null;
+}
+function lastFor(name){for(let i=S.sessions.length-1;i>=0;i--){const e=S.sessions[i].ex.find(x=>x.name===name);if(e&&e.sets.length)return{date:S.sessions[i].date,sets:e.sets,reps:repsThen(S.sessions[i],e),bad:!!(e.note&&(e.note.tags||[]).some(t=>t==='zle'||t==='bol'))}}return null}
 // skok ciężaru zależny od sprzętu
 function incFor(n){
-  if(/hantl/i.test(n))return 2;
+  if(/hantl|Wznosy bokiem|Powell|Trap Y|Biceps z supinacją|Uginanie ramion|Wejścia na skrzynię|Przysiad bułgarski|Split squat|Wykroki/i.test(n))return 2;
   if(/Podciąganie|Pompki|Nordic/i.test(n))return 1.25;
   return 2.5;
 }
 // sugerowany ciężar na każdą serię: podwójna progresja, przy rampie dokładamy tylko w ostatniej serii
+const repShift=(ex,last)=>!!(last&&Number.isInteger(ex[2])&&last.reps&&Math.abs(last.reps-ex[2])>=2&&ex[2]<=12&&last.reps<=12);
 function suggest(ex,last){
   if(!last||ex[2]==='max')return null;
   const sets=setsFor(ex), reps=ex[2], work=last.sets.filter(x=>!x.top);
-  const ok=!last.bad&&work.length>=ex[1]&&work.every(x=>(x.r||0)>=reps&&!(x.parts&&x.parts.length));
+  const ok=!last.bad&&work.length>=ex[1]-1&&work.every(x=>(x.r||0)>=reps&&!(x.parts&&x.parts.length)); // o jedną serię mniej też się liczy: plan mógł dostać dodatkową serię
   const inc=incFor(ex[0]), ramp=ex[3]==='rampa';
+  // nowy blok z innym zakresem powtórzeń: ciężar przeliczony z ostatniego treningu (ten sam szacowany 1RM), zaokrąglony w dół
+  if(repShift(ex,last)){const lw=last.sets.filter(x=>!x.top);
+    return sets.map((st,i)=>{if(st.top)return null;const j=i-(sets[0].top?1:0), p=lw[j]||lw[lw.length-1];if(!p||!p.w||!p.r)return null;
+      const w=p.w*(1+Math.min(p.r,last.reps,12)/30)/(1+Math.min(reps,12)/30);return {w:Math.max(inc,Math.floor(w/inc+1e-6)*inc),up:false,inc,conv:true}})}
   return sets.map((st,i)=>{const p=last.sets[i]||last.sets[last.sets.length-1];if(!p||!p.w)return null;
     const up=st.top?(!last.bad&&(p.r||0)>=st.t&&!(p.parts&&p.parts.length)):(ok&&(!ramp||i===sets.length-1));
     return {w:Math.round((p.w+(up?inc:0))*100)/100,up,inc}});
@@ -360,7 +372,9 @@ function hintFor(ex,last){
   if(!last) return {t:reps==='max'?(UNIT[ex[0]]==='s'?'Pierwszy raz: utrzymaj stałe, spokojne tempo przez cały czas serii.':'Pierwszy raz: zrób tyle powtórzeń, ile dasz radę czysto.'):'Pierwszy raz: dobierz ciężar tak, żeby zostały ci 2–3 powtórzenia w zapasie.'};
   if(reps==='max'){const tot=last.sets.reduce((a,s)=>a+(s.r||0),0);return {t:'Ostatnio łącznie '+tot+(UNIT[ex[0]]==='s'?' s':' powt.')+' Spróbuj pobić ten wynik.'}}
   const work=last.sets.filter(s=>!s.top);
-  const all=work.length>=ex[1]&&work.every(s=>(s.r||0)>=reps);
+  if(repShift(ex,last)&&work.some(s=>s.w))return {t:`Nowy zakres: ${reps} powtórzeń zamiast ${last.reps}. Ciężary w polach kg są przeliczone z ostatniego treningu. Jeśli zostaje więcej zapasu, niż mówi plan, dołóż ${fmt(incFor(ex[0]))} kg.`};
+  const all=work.length>=ex[1]-1&&work.length>0&&work.every(s=>(s.r||0)>=reps);
+  if(all&&!last.bad&&work.every(s=>!s.w))return {up:true,t:`Wszystkie serie zaliczone. Następnym razem zrób o 1 powtórzenie więcej w każdej serii. Ciężar dołóż dopiero po ${reps+2} powtórzeniach w każdej serii.`};
   if(!all&&work.some(s=>s.parts&&s.parts.length))return {t:'Ostatnio część serii wymagała przerwy w środku. Zostań przy ciężarze lub zejdź o 2,5 kg, aż zrobisz każdą serię w całości.'};
   if(last.bad) return {t:'Ostatnio trening był oznaczony jako gorszy dzień. Zostań przy tych samych ciężarach.'};
   if(all){const inc=fmt(incFor(ex[0]));return {up:true,t:(ex[3]==='rampa'?`Wszystkie serie zaliczone. Dołóż ${inc} kg do ostatniej serii rampy (podpowiedź jest już w polach kg).`:`Wszystkie serie zaliczone. Dołóż ${inc} kg (podpowiedź jest już w polach kg).`)}}
@@ -402,15 +416,18 @@ function noteBox(key){
     ${tags.includes('koniec')?'<button class="primary" data-finishnow="1">Zapisz trening teraz</button>':''}
     <button class="link" data-noteclear="${esc(key)}">${n?'Usuń komentarz':'Zamknij'}</button></div>`;
 }
-function metricHist(name){
-  return S.sessions.map(s=>{const e=s.ex.find(x=>x.name===name);if(!e||badDay(e))return null;let b=0;
-    e.sets.forEach(x=>{if(x.w&&x.r&&x.r<=12)b=Math.max(b,e1rm(x.w,x.r))});return b||null}).filter(v=>v!=null);
+function metricHistR(name){
+  return S.sessions.map(s=>{const e=s.ex.find(x=>x.name===name);if(!e||badDay(e))return null;let b=0,br=0;
+    e.sets.forEach(x=>{if(x.w&&x.r&&x.r<=12){const v=e1rm(x.w,x.r);if(v>b){b=v;br=x.r}}});return b?{v:b,r:repsThen(s,e)||br}:null}).filter(v=>v!=null);
 }
+const metricHist=name=>metricHistR(name).map(x=>x.v);
 // zastój: dwa ostatnie treningi (tygodnie) nie przebiły wyniku sprzed nich
 function stallInfo(name){
   if(!liftOf(name))return null;
-  const all=metricHist(name), h=all.slice((S.weak[name]||{}).from||0); if(h.length<3)return null;
-  const [a,b,c]=h.slice(-3);
+  const all=metricHistR(name), h=all.slice((S.weak[name]||{}).from||0); if(h.length<3)return null;
+  const [A,B,C]=h.slice(-3), a=A.v, b=B.v, c=C.v;
+  // szacowane 1RM z serii po 6 i po 12 powtórzeń nie jest porównywalne: po zmianie zakresu czekamy na 3 treningi w nowym
+  if(Math.abs(A.r-C.r)>=2||Math.abs(B.r-C.r)>=2)return null;
   return Math.max(b,c)<=a*1.005?{n:all.length,ref:a,last:c}:null;
 }
 const pkey=()=>S.plan+'-'+S.day;
@@ -479,6 +496,15 @@ function clashesWith(name,plan=S.plan,day=S.day,skip){const others=dayEx(plan,da
 const musOf=n=>{const p=patOf(n);return p?MP[p]:{}};
 function weekItems(plan=S.plan){return PLANS[plan].days.flatMap((_,d)=>dayEx(plan,d))}
 function volume(plan=S.plan){const v={};weekItems(plan).forEach(it=>{const n=setsFor(it.ex).length;Object.entries(musOf(it.ex[0])).forEach(([m,w])=>v[m]=(v[m]||0)+n*w)});return v}
+// szacowany czas dnia: średni czas serii z twojej historii, a dla nowych ćwiczeń typowy czas z przerwą; plus rozgrzewka i rozciąganie
+function dayEst(plan,day){
+  const D=PLANS[plan].days[day]; let t=0;
+  dayEx(plan,day).forEach((it,i)=>{const n=setsFor(it.ex).length, h=S.sessions.flatMap(s=>s.ex.filter(e=>e.name===it.ex[0]&&e.sec&&e.sets.length).map(e=>e.sec/e.sets.length));
+    t+=n*(h.length?h.reduce((a,b)=>a+b,0)/h.length:it.ex[2]==='max'?140:it.ex[3]==='rampa'||i<3&&it.idx!=null?330:it.idx!=null?240:150)});
+  [...(D.warmup||[]),...(D.stretch||[])].forEach(r=>t+=(r[1]||0)*1.25);
+  return Math.round(t/300)*300;
+}
+const planEst=plan=>PLANS[plan].days.map((d,i)=>({n:(PLANS[plan].dayPrefix||'')+d.name,t:dayEst(plan,i)}));
 const VMAX=20;
 function weekStart(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()}
 const weekSessions=()=>S.sessions.filter(x=>Date.parse(x.date)>=weekStart());
@@ -2372,6 +2398,7 @@ function summary(){
   const byDay={};S.sessions.filter(s=>s.dur).forEach(s=>{const k=s.plan+'-'+s.day;(byDay[k]=byDay[k]||[]).push(s.dur)});
   const exT=names.map(n=>{const t=S.sessions.flatMap(s=>s.ex.filter(e=>e.name===n&&e.sec).map(e=>e.sec));return t.length?{n,avg:t.reduce((a,b)=>a+b,0)/t.length}:null}).filter(Boolean).sort((a,b)=>b.avg-a.avg).slice(0,5);
   h+=`<div class="card"><h3>Czas</h3>${Object.keys(byDay).length?Object.entries(byDay).map(([k,v])=>`<p>${esc(dayLabel(k))}: średnio <b>${fdur(v.reduce((a,b)=>a+b,0)/v.length)}</b>, najdłużej ${fdur(Math.max(...v))}</p>`).join(''):'<p class="note">Pojawi się po treningach z włączonym pomiarem czasu.</p>'}
+    <p class="meta">Szacunek dla planu ${esc(PLANS[S.plan].name)} (z rozgrzewką i rozciąganiem):</p>${planEst(S.plan).map(x=>`<p>${esc(x.n)}: ok. <b>${fdur(x.t)}</b>${x.t>7200?' <em class="hi">ponad 2 h</em>':''}</p>`).join('')}
     ${exT.length?'<p class="meta">Najdłuższe ćwiczenia (średnio, z przerwami):</p>'+exT.map(x=>`<p>${esc(x.n)}: ${fdur(x.avg)}</p>`).join(''):''}</div>`;
   const cm=[];S.sessions.slice().reverse().forEach(s=>s.ex.forEach(e=>{if(e.note&&cm.length<10)cm.push({d:s.date,n:e.name,no:e.note})}));
   if(cm.length)h+=`<div class="card"><h3>Ostatnie komentarze</h3>${cm.map(c=>`<p><span class="meta">${fdate(c.d)}</span> <b>${esc(c.n)}</b>${c.no.tags&&c.no.tags.length?`<br><span class="tagline">${c.no.tags.map(tagName).join(', ')}</span>`:''}${c.no.txt?`<br>${esc(c.no.txt)}`:''}</p>`).join('')}
@@ -2907,7 +2934,7 @@ function loadPlan(txt,auto){
   else if(isNew||(!auto&&!S.sessions.some(x=>x.plan===S.plan))||BUILTIN_IDS.includes(S.plan)){S.plan=first.id;S.day=0;S.week=1}
   if(!auto||isNew)S.tab='trening'; save(); render(); if(!auto||isNew)window.scrollTo(0,0); ghMark();
   if(auto&&!isNew)return;
-  toast((auto?'Nowy plan z GitHuba: ':'Wczytano: ')+list.map(p=>p.name).join(', ')+(conf?`. Dni z dwoma ćwiczeniami na tę samą partię: ${conf} (szczegóły w Analizie)`:'')+(warn.length?'. Brak opisu dla: '+[...new Set(warn)].join(', '):''));
+  toast((auto?'Nowy plan z GitHuba: ':'Wczytano: ')+list.map(p=>p.name).join(', ')+(conf?`. Dni z dwoma ćwiczeniami na tę samą partię: ${conf} (szczegóły w Analizie)`:'')+(()=>{try{const L=list.filter(p=>PLANS[p.id]).flatMap(p=>planEst(p.id).filter(x=>x.t>7200).map(x=>`${p.name} ${x.n} ok. ${fdur(x.t)}`));return L.length?'. Ponad 2 h: '+L.join(', '):''}catch(e){return ''}})()+(warn.length?'. Brak opisu dla: '+[...new Set(warn)].join(', '):''));
 }
 function migrate(){
   S.migs=S.migs||[];
