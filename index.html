@@ -317,7 +317,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-10d';
+const VER='2026-11-10e';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1462,7 +1462,9 @@ function animCtl(t){
     if(box.requestFullscreen)box.requestFullscreen().catch(()=>box.classList.toggle('mvfull'));else box.classList.toggle('mvfull');
     return}
   const svg=box.querySelector('svg.moveanim'), lis=box.querySelectorAll('li');
-  if(t.dataset.animrestart){svg.setCurrentTime&&svg.setCurrentTime(0);svg.unpauseAnimations&&svg.unpauseAnimations();
+  if(t.dataset.animrestart){
+    const d=box._a3||(box._a3=animMount(box)), nsvg=svg.cloneNode(true);svg.replaceWith(nsvg);
+    if(d&&d.tracks){const gs=nsvg.querySelectorAll('g.mvg');d.list=[];d.tracks.forEach((tr,vi)=>{const els=gs[vi]?gs[vi].querySelectorAll('*'):[];tr.forEach(q=>{const el=els[q.ei];if(el)d.list.push({el,at:q.at,parts:q.parts,nums:q.nums})})});d.svg=nsvg;d.last=-1}
     [...lis,...box.querySelectorAll('.mvcap p')].forEach(li=>{const a=li.style.animation;li.style.animation='none';void li.offsetWidth;li.style.animation=a;li.style.animationPlayState=''});
     const pb=box.querySelector('[data-animpause]');if(pb)pb.textContent='Pauza';return}
   const paused=svg.animationsPaused&&svg.animationsPaused();
@@ -2121,7 +2123,7 @@ function anatBody(c){
   const stOf=dl=>Math.abs(dl)<.03?'iso':dl<0?'con':'ecc', inv=x=>x==='iso'?'iso':x==='con'?'ecc':'con';
   const colAnim=(m,st1,id)=>{const wk=work(m,id),st2=inv(st1),seq=[[0,'rest']];
     if(tag[m]!=null)seq.push([TL.steps[tag[m]][0],'iso']);
-    if(wk){TL.p1.forEach(([s1,e1],i)=>{seq.push([s1,st1],[e1,'iso'],[TL.p2[i][0],st2],[TL.p2[i][1],'iso'])})}
+    if(wk){TL.p1.forEach(([s1,e1])=>seq.push([s1,st1],[e1,'iso']));TL.p2.forEach(([s2,e2])=>seq.push([s2,st2],[e2,'iso']))}
     else if(tag[m]!=null)seq.push([TL.setEnd,'rest']);
     const ks=[],vs=[];seq.sort((x,y)=>x[0]-y[0]).forEach(([t,k])=>{const kt=r1x(t/TL.T*1000)/1000;if(ks.length&&ks[ks.length-1]===kt){vs[vs.length-1]=cv(k)}else{ks.push(kt);vs.push(cv(k))}});
     return {cls:stl?cv(wk?st1:'rest'):cv('rest'),an:stl?'':`<animate attributeName="class" values="${vs.join(';')}" keyTimes="${ks.join(';')}" calcMode="discrete" dur="${r1x(TL.T)}s" repeatCount="indefinite"/>`,op:wk===1?.92:.75}};
