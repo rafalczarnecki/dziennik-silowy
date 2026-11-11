@@ -24,12 +24,12 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#1A2027; --surface:#232B34; --ink:#E8EDF2; --muted:#9AA6B2; --line:#36414D;
-    --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --cue:#FFB648; --cue-soft:#4A3414; --cue-ink:#FFE9C7; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55; --tendon:#CFC6B4; --eye-grid:rgba(255,255,255,.14); --eye-wall1:#1E252D; --eye-wall2:#2A333D; --eye-floor1:#3A3530; --eye-floor2:#24211E;
+    --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --cue:#FFB648; --cue-soft:#4A3414; --cue-ink:#FFE9C7; --field:#2C3540; --bone:#E2DACB; --m-con:#F0364F; --m-ecc:#FF9A3D; --m-iso:#9C2A52; --m-rest:#E3C9C0; --m-edge:rgba(70,25,25,.45); --skin:#D9B8A8; --tendon:#F4EEE2; --eye-grid:rgba(255,255,255,.14); --eye-wall1:#1E252D; --eye-wall2:#2A333D; --eye-floor1:#3A3530; --eye-floor2:#24211E;
    --musc2:#8A3A48; --body2:#6B7785;}
 }
 :root[data-theme="dark"]{
   --bg:#1A2027; --surface:#232B34; --ink:#E8EDF2; --muted:#9AA6B2; --line:#36414D;
-  --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --cue:#FFB648; --cue-soft:#4A3414; --cue-ink:#FFE9C7; --field:#2C3540; --bone:#8E8678; --m-con:#FF4D63; --m-ecc:#FFA048; --m-iso:#B0476A; --m-rest:#7D6662; --m-edge:rgba(0,0,0,.4); --skin:#6E5A55; --tendon:#CFC6B4; --eye-grid:rgba(255,255,255,.14); --eye-wall1:#1E252D; --eye-wall2:#2A333D; --eye-floor1:#3A3530; --eye-floor2:#24211E;
+  --accent:#FF4058; --accent-ink:#1A2027; --done:#7FA2FF; --done-soft:#26324A; --cue:#FFB648; --cue-soft:#4A3414; --cue-ink:#FFE9C7; --field:#2C3540; --bone:#E2DACB; --m-con:#F0364F; --m-ecc:#FF9A3D; --m-iso:#9C2A52; --m-rest:#E3C9C0; --m-edge:rgba(70,25,25,.45); --skin:#D9B8A8; --tendon:#F4EEE2; --eye-grid:rgba(255,255,255,.14); --eye-wall1:#1E252D; --eye-wall2:#2A333D; --eye-floor1:#3A3530; --eye-floor2:#24211E;
  --musc2:#8A3A48; --body2:#6B7785;}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -317,7 +317,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-11';
+const VER='2026-11-11b';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
