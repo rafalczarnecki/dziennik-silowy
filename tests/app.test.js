@@ -79,9 +79,12 @@ test('animacje: każde ćwiczenie z bazy buduje się w obu trybach, bez NaN',asy
 test('wskazówki w animacji: zatrzymania, podpisy i częste błędy (przysiad, martwy ciąg, wyciskanie)',async()=>{
   const A=app(base());await wait(50);
   for(const name of ['Przysiad','Martwy ciąg klasyczny','Wyciskanie touch and go']){const h=A.T.moveAnim(name);
-    ok((h.match(/class="cue"/g)||[]).length>=3,name+': podpisy wskazówek');ok(/Częste błędy/.test(h)&&(h.match(/<figure>/g)||[]).length===2,name+': dwa błędy');
+    ok((h.match(/class="cue"/g)||[]).length>=3,name+': podpisy wskazówek');ok(/Częste błędy/.test(h)&&(h.match(/<figure/g)||[]).length===2,name+': dwa błędy');
     ok(/Na co zwrócić uwagę/.test(h),name+': lista');ok(!/NaN|undefined/.test(h),name+': NaN')}
-  ok(!/Częste błędy/.test(A.T.moveAnim('Wznosy bokiem')),'ćwiczenie bez wskazówek bez zmian');
+  for(const name of ['Podciąganie nachwytem','Wznosy bokiem','OHP','Wejścia na skrzynię','Wyciskanie leżąc wąsko','Hollow body','Wood chopper']){const h=A.T.moveAnim(name);
+    ok((h.match(/class="cue"/g)||[]).length>=2,name+': podpisy wskazówek');ok(!/NaN|undefined/.test(h),name+': NaN')}
+  ok(/Ciężar|ciężar/.test(A.T.moveAnim('Wyciskanie hantli'))&&!/sztang/i.test((A.T.moveAnim('Wyciskanie hantli').match(/class="cue"[^<]*<b[^<]*<\/b>[^<]*/g)||[]).join(' ')),'hantle: wskazówki bez słowa sztanga');
+  ok(!/Częste błędy/.test(A.T.moveAnim('JM press'))&&!/class="cue"/.test(A.T.moveAnim('JM press')),'JM press bez odziedziczonych wskazówek');
 });
 test('zastój i wariant ćwiczenia',async()=>{
   const st=base({week:4});st.sessions=[1,2,3].map(i=>sesA(now-(22-7*i)*day,i,[[100,8],[100,8],[100,8],[100+i*2.5,8]],[[80,8],[80,8],[80,8],[80,8]]));

@@ -126,7 +126,7 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .manim:fullscreen,.manim.mvfull{background:var(--bg);padding:12px;overflow:auto;display:flex;flex-direction:column}
 .manim.mvfull{position:fixed;inset:0;z-index:50}
 .mvcap p.cue{background:var(--cue-soft);color:var(--cue-ink);outline:2px solid var(--cue)}.mvcap p.cue b{background:var(--cue);color:var(--bg)}
-.mverr{display:grid;gap:8px;margin:4px 0 6px}.mverr figure{display:grid;grid-template-columns:34% 1fr;gap:10px;align-items:center;margin:0;padding:8px;border:1px solid var(--line);border-radius:12px}.mverr svg{width:100%;height:auto;display:block;border-radius:8px;background:var(--field)}.mverr figcaption{font-size:14px;line-height:1.35}.mverr figcaption b{display:block;color:var(--accent);margin-bottom:2px}.mverr figcaption i{font-style:normal;font-weight:600}
+.mverr{display:grid;gap:8px;margin:4px 0 6px}.mverr figure{display:grid;grid-template-columns:34% 1fr;gap:10px;align-items:center;margin:0;padding:8px;border:1px solid var(--line);border-radius:12px}.mverr figure.wide{grid-template-columns:1fr;gap:6px}.mverr figure.wide svg{max-height:150px}.mverr svg{width:100%;height:auto;display:block;border-radius:8px;background:var(--field)}.mverr figcaption{font-size:14px;line-height:1.35}.mverr figcaption b{display:block;color:var(--accent);margin-bottom:2px}.mverr figcaption i{font-style:normal;font-weight:600}
 .manim:fullscreen .mvcap,.manim.mvfull .mvcap{min-height:3.6em}.manim:fullscreen .mvcap p,.manim.mvfull .mvcap p{font-size:18px}
 .manim:fullscreen svg.moveanim,.manim.mvfull svg.moveanim{flex:1 1 auto;max-height:72vh;width:100%}
 @media (prefers-reduced-motion: reduce){.mvcap p:first-child{opacity:1}}
@@ -314,7 +314,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-10e';
+const VER='2026-11-11';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1425,10 +1425,10 @@ function moveAnim(name,frame){
   const vk=wins=>{const nm=id+'v'+(n++);let k=`@keyframes ${nm}{0%{opacity:0}`;
     wins.forEach(([s,e])=>{k+=`${Math.max(0,pc(s)-.05)}%{opacity:0}${pc(s)}%{opacity:1}${pc(e)}%{opacity:1}${Math.min(100,pc(e)+.05)}%{opacity:0}`});
     css+=k+`100%{opacity:0}}`;return ` style="animation:${nm} ${r1(T)}s linear infinite"`};
-  const cap=frame?'':`<div class="mvcap">${su.map(([t],i)=>`<p${vk([[TL.steps[i][0],i===su.length-1?TL.setEnd:TL.steps[i][1]]])}><b>${i+1}</b>${esc(t)}</p>`).join('')}${mv.map(([lab,t],i)=>`<p${vk(i?TL.p2:TL.p1)}><b class="ph">${esc(lab.replace(/:$/,''))}</b>${esc(t)}</p>`).join('')}${TL.cues.map(w=>`<p class="cue"${vk([[w.s,w.e]])}><b class="ph">Sprawdź</b>${esc(a.cue[w.i].t)}</p>`).join('')}</div>`;
+  const cap=frame?'':`<div class="mvcap">${su.map(([t],i)=>`<p${vk([[TL.steps[i][0],i===su.length-1?TL.setEnd:TL.steps[i][1]]])}><b>${i+1}</b>${esc(t)}</p>`).join('')}${mv.map(([lab,t],i)=>`<p${vk(i?TL.p2:TL.p1)}><b class="ph">${esc(lab.replace(/:$/,''))}</b>${esc(t)}</p>`).join('')}${TL.cues.map(w=>`<p class="cue"${vk([[w.s,w.e]])}><b class="ph">Sprawdź</b>${esc(cueTxt(a.cue[w.i].t,name))}</p>`).join('')}</div>`;
   const list=`<ol class="mvsteps">${su.map(([t],i)=>`<li${kf([TL.steps[i]])}><b>${i+1}</b>${esc(t)}</li>`).join('')}</ol>`
     +(mv.length?`<p class="mvh">Ruch</p><ul class="mvphase">${mv.map(([lab,t],i)=>`<li${kf(i?TL.p2:TL.p1)}><b>${esc(lab)}</b> ${esc(t)}</li>`).join('')}</ul>`:'')
-    +(TL.cues.length?`<p class="mvh">Na co zwrócić uwagę</p><ul class="mvphase">${TL.cues.map(w=>`<li${kf([[w.s,w.e]])}>${esc(a.cue[w.i].t)}</li>`).join('')}</ul>`:'');
+    +(TL.cues.length?`<p class="mvh">Na co zwrócić uwagę</p><ul class="mvphase">${TL.cues.map(w=>`<li${kf([[w.s,w.e]])}>${esc(cueTxt(a.cue[w.i].t,name))}</li>`).join('')}</ul>`:'');
   const ctr=frame?'':`<div class="row mvctl"><button class="link" data-animfull="${id}">Pełny ekran</button><button class="link" data-animpause="${id}">Pauza</button><button class="link" data-animrestart="${id}">Od początku</button></div>`;
   const tabs=alts&&!frame?`<div class="row mvalt">${alts.map(([k,l])=>`<button class="chip" aria-pressed="${k===key}" data-animvar="${esc(name)}|${k}">${l}</button>`).join('')}</div>`:'';
   const modes=frame?'':`<div class="row mvalt"><button class="chip" aria-pressed="${mode==='sch'}" data-animmode="sch">Schemat</button><button class="chip" aria-pressed="${mode==='anat'}" data-animmode="anat">Anatomia</button></div>`;
@@ -1450,7 +1450,7 @@ function errFigs(name,key,TL){
       mark+=`<circle cx="${r1(q[0])}" cy="${r1(q[1])}" r="7" fill="none" stroke="var(--field)" stroke-width="4"/><circle cx="${r1(q[0])}" cy="${r1(q[1])}" r="7" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-dasharray="3 2"/>`});
     if(vw!=='top')b[3]=Math.max(b[3],97);
     const w=b[2]-b[0]+10, hh=b[3]-b[1]+10, x0=b[0]-5, y0=b[1]-5;
-    return `<figure><svg viewBox="${r1(x0)} ${r1(y0)} ${r1(w)} ${r1(hh)}" role="img" aria-label="Błąd: ${esc(e.t)}">${vw!=='top'&&!a.nf?`<line x1="${r1(x0)}" y1="96" x2="${r1(x0+w)}" y2="96" stroke="var(--line)" stroke-width="1.5"/>`:''}${r.h}${mark}</svg><figcaption><b>✕ ${esc(e.t)}</b>${esc(e.how)} <i>Poprawka:</i> ${esc(e.fix)}</figcaption></figure>`}).join('')+'</div>';
+    return `<figure${w/hh>1.2?' class="wide"':''}><svg viewBox="${r1(x0)} ${r1(y0)} ${r1(w)} ${r1(hh)}" role="img" aria-label="Błąd: ${esc(e.t)}">${vw!=='top'&&!a.nf?`<line x1="${r1(x0)}" y1="96" x2="${r1(x0+w)}" y2="96" stroke="var(--line)" stroke-width="1.5"/>`:''}${r.h}${mark}</svg><figcaption><b>✕ ${esc(e.t)}</b>${esc(cueTxt(e.how,name))} <i>Poprawka:</i> ${esc(cueTxt(e.fix,name))}</figcaption></figure>`}).join('')+'</div>';
 }
 function animCtl(t){
   const id=t.dataset.animpause||t.dataset.animrestart||t.dataset.animfull, box=document.getElementById(id); if(!box)return;
@@ -1815,6 +1815,84 @@ ANIM.deadP=VAR('dead',{tm:{mid:[.3,2]},mv:[['W górę:','zatrzymaj sztangę 2 s 
 // nogi sprzętu stoją na podłodze (linia podłogi na wysokości -3)
 {const seen=new Set();Object.values(ANIM).forEach(a=>(a.st||[]).forEach(e=>{if(seen.has(e))return;seen.add(e);if(e[0]==='box'&&e[3]===0)e[3]=-3;if(e[0]==='line'&&e[1][1]===0)e[1][1]=-3}))}
 const PATANIM={squat:'squat',squatM:'hack',uni:'split',dead:'dead',hinge:'hinge',glute:'thrust',addu:'addu',bench:'bench',close:'cbench',ohp:'ohp',lat:'lat',rear:'revfly',vpull:'pullup',hpull:'row',curl:'curl',ext:'ext',ham:'legcurl',core:'deadbug',rot:'chop',cond:'rope'};
+// ---------- wskazówki (cue) i częste błędy (err) dla kolejnych ćwiczeń; przysiad, martwy ciąg i wyciskanie mają je przy definicji ----------
+const HL_SPINE=[['hp','s1'],['s1','s2'],['s2','sh']], HL_ARM=[['shL','elL'],['elL','wrL']];
+const CUES={
+  pullup:{cue:[{f:0,t:'Start z pełnego zwisu: najpierw łopatki w dół, dopiero potem zginasz łokcie.',j:'shL',d:[0,-6,0],v:'front'},
+      {f:1,t:'Na górze: broda nad drążkiem, klatka do drążka, łokcie przy żebrach.',j:'elL',v:'front'},
+      {ph:2,f:.5,t:'W dół powoli, 2–3 sekundy, aż do prostych rąk. Bez opadania.',hl:HL_ARM,v:'front'}],
+    err:[{t:'Bujanie i wymachy nogami',how:'Nogi idą w przód i w tył, a ciało rozpędza się przed każdym powtórzeniem.',fix:'napnij brzuch i pośladki, nogi trzymaj lekko przed sobą. Lepiej mniej powtórzeń, ale bez rozpędu.',f:0,P:{th:128,sh:215,t:-14},j:'knL'},
+      {t:'Niepełny ruch',how:'Broda nie mija drążka albo zatrzymujesz się przed pełnym zwisem.',fix:'każde powtórzenie od prostych rąk do brody nad drążkiem. Lepiej 4 pełne niż 6 połówek.',f:1,P:{at:[59,64],t:-6,tf:0,nf:0},j:'hd'}]},
+  legcurl:{cue:[{f:0,t:'Biodra wciśnięte w ławkę, kolana tuż za jej krawędzią.',j:'hp',v:'side'},
+      {f:1,t:'Pięty do pośladków i zatrzymaj 1 sekundę. Biodra się nie odrywają.',j:'anL',v:'side',m:0},
+      {ph:2,f:.5,t:'W dół powoli, 3 sekundy. Ciężar nie opada na stos.',hl:[['knL','anL']],v:'side'}],
+    err:[{t:'Biodra odrywają się od ławki',how:'Przy zginaniu pośladki idą w górę, a lędźwie mocno się wyginają.',fix:'napnij pośladki i brzuch, dociśnij biodra do ławki. Jeśli nie da się ich utrzymać, zmniejsz ciężar.',f:1,keep:'sh',P:{t:-70,th:112,lf:-12},j:'hp'}]},
+  powell:{cue:[{f:0,t:'Łokieć lekko ugięty i taki zostaje przez cały ruch.',j:'elL',v:'front',m:0},
+      {f:1,t:'Do pionu, nie dalej. Bark nie unosi się do ucha.',j:'wrL',v:'front',m:0},
+      {ph:2,f:.5,t:'Opuszczaj wolno, 2–3 sekundy, bez rozpędu tułowiem.',hl:HL_ARM,v:'front',m:0}]},
+  abwheel:{cue:[{f:0,t:'Start: brzuch i pośladki napięte, plecy lekko zaokrąglone.',hl:HL_SPINE,v:'side'},
+      {f:1,t:'Tocz tylko tak daleko, jak utrzymasz lędźwie. Biodra nie opadają.',j:'s1',v:'side'},
+      {ph:2,f:.5,t:'Wracaj brzuchem, nie cofaniem bioder. Ręce zostają proste.',j:'hp',v:'side'}],
+    err:[{t:'Zapadnięte lędźwie',how:'W wyproście brzuch puszcza, biodra opadają, a w lędźwiach robi się łuk.',fix:'skróć zasięg i zatrzymaj się, zanim lędźwie się wygną. Pośladki napięte przez cały ruch.',f:1,P:{t:84,th:264,lf:-30,tf:-4},j:'s1'}]},
+  lat:{cue:[{f:0,t:'Barki w dół, z dala od uszu. Łokcie lekko ugięte.',j:'shL',d:[0,-5,0],v:'front'},
+      {f:1,t:'Do linii barków, nie wyżej. Łokieć na wysokości dłoni albo wyżej.',j:'elL',v:'front'},
+      {ph:2,f:.5,t:'W dół wolno. Tułów stoi nieruchomo, bez bujania.',hl:HL_SPINE,v:'side'}],
+    err:[{t:'Rozpęd i odchylanie tułowia',how:'Hantle ruszają z bioder, a tułów odchyla się w tył.',fix:'weź lżejsze hantle. Tułów nieruchomo, ruch zaczynają barki, a łokcie idą na boki.',f:1,P:{t:-13,lf:-8},j:'s1'}]},
+  ohp:{cue:[{f:0,t:'Start: przedramiona pionowo, pośladki i brzuch napięte.',hl:[['elL','wrL']],v:'side'},
+      {f:.4,t:'Sztanga mija twarz blisko. Cofasz głowę, nie odchylasz tułowia.',j:'hd',d:[-5,0,0],v:'side'},
+      {f:1,t:'Na górze: sztanga nad środkiem stopy, głowa wraca pod sztangę.',j:'wrL',v:'side',m:0},
+      {ph:2,f:.5,t:'W dół tą samą drogą na przednie barki. Żebra w dół.',j:'s2',v:'side'}],
+    err:[{t:'Odchylanie się w tył',how:'Lędźwie się wyginają i wyciskasz jak na ławce skośnej.',fix:'napnij pośladki i brzuch przed każdym powtórzeniem. Jeśli i tak się odchylasz, zmniejsz ciężar.',f:1,P:{t:-15,lf:-12},j:'s1'}]},
+  crow:{cue:[{f:0,t:'Start: plecy proste, barki nie uciekają do przodu razem z uchwytem.',hl:HL_SPINE,v:'side'},
+      {f:1,t:'Uchwyt do brzucha, łokcie w tył przy tułowiu. Ściśnij łopatki na sekundę.',j:'elL',d:[-6,0,0],v:'side',m:0},
+      {ph:2,f:.5,t:'Powrót wolno. Tułów prawie nieruchomy, bez kładzenia się do przodu.',j:'sh',v:'side'}],
+    err:[{t:'Bujanie tułowiem',how:'Tułów kładzie się do przodu i mocno odchyla w tył, a ciężar ciągnie rozpęd.',fix:'tułów prawie pionowo przez cały ruch, pracują łopatki i łokcie. Zmniejsz ciężar.',f:1,P:{t:-30},j:'sh'}]},
+  incline:{cue:[{f:0,t:'Łopatki ściągnięte i wciśnięte w oparcie, stopy wbite w podłogę.',j:'sh',v:'side'},
+      {f:1,t:'Na dole: łokcie pod nadgarstkami, ok. 45–60° od tułowia. Ciężar przy górnej części klatki.',hl:[['elL','wrL']],v:'front'},
+      {ph:2,f:.5,t:'W górę nad barki. Barki nie wyjeżdżają do przodu, łopatki zostają ściągnięte.',j:'shL',v:'side',m:0}],
+    err:[{t:'Łokcie rozłożone na boki',how:'Ramiona są w linii barków, a ciężar ląduje przy obojczykach.',fix:'prowadź łokcie ok. 45–60° od tułowia i opuszczaj ciężar na górną część klatki.',f:1,v:'front',P:{hold:{j:'sh',o:[2,6],w:24,pole:[0,-.2,1]}},j:'elL'}]},
+  hollow:{cue:[{f:1,t:'Lędźwie dociśnięte do podłogi przez cały czas. To najważniejsze.',j:'s1',d:[0,-5,0],v:'side'},
+      {f:1,t:'Barki i nogi tylko kilka centymetrów nad podłogą. Oddychaj spokojnie nosem.',j:'anL',v:'side',m:0}],
+    err:[{t:'Lędźwie odrywają się od podłogi',how:'Pod plecami robi się szczelina, a pracę przejmują zginacze bioder.',fix:'unieś nogi wyżej albo ugnij kolana, aż lędźwie znów leżą płasko. Dopiero potem obniżaj nogi.',f:1,P:{lf:-24,pt:14,tf:6},j:'s1'}]},
+  facepull:{cue:[{f:0,t:'Stoisz prosto, brzuch napięty. Ciągną ręce, nie tułów.',hl:HL_SPINE,v:'side'},
+      {f:1,t:'Końce liny obok uszu, łokcie wysoko i szeroko, na wysokości barków.',j:'elL',v:'front'},
+      {ph:2,f:.5,t:'Ręce wracają wolno. Barki nie unoszą się do uszu.',j:'shL',d:[0,-5,0],v:'front'}],
+    err:[{t:'Odchylanie tułowia',how:'Ciężar jest za duży, więc ciągniesz całym ciałem w tył.',fix:'zmniejsz ciężar i ustaw jedną stopę z tyłu. Tułów zostaje pionowo.',f:1,P:{t:-18},j:'s1'}]},
+  pulldownN:{cue:[{f:0,t:'Najpierw łopatki w dół, potem łokcie. Uda zablokowane pod wałkami.',j:'shL',d:[0,-5,0],v:'front'},
+      {f:1,t:'Drążek do górnej części klatki, łokcie w dół i lekko w tył. Klatka wysoko.',j:'elL',v:'side',m:0},
+      {ph:2,f:.5,t:'W górę powoli, do prostych rąk. Ciężar nie szarpie barków.',hl:HL_ARM,v:'front'}],
+    err:[{t:'Odchylanie się i szarpanie',how:'Tułów kładzie się w tył, a drążek ląduje na brzuchu.',fix:'odchyl się tylko lekko i tak zostań. Jeśli nie dociągasz do klatki bez rozpędu, zmniejsz ciężar.',f:1,P:{t:-40},j:'sh'}]},
+  stepup:{cue:[{f:0,t:'Cała stopa na skrzyni, kolano nie wyżej niż biodro.',j:'knL',v:'side',m:0},
+      {f:.5,t:'Pchasz piętą nogi na skrzyni. Dolna noga się nie odbija.',j:'anL',o:[-2,-2,0],v:'side',m:0},
+      {f:.5,t:'Kolano nad stopą, nie ucieka do środka.',j:'knL',v:'front',m:0},
+      {ph:2,f:.5,t:'W dół powoli, 2 sekundy. Dotknij podłogi lekko, bez opadania.',hl:[['hpL','knL']],v:'side',m:0}],
+    err:[{t:'Pochylanie tułowia i odbicie z dołu',how:'Tułów kładzie się na udo, a start robi wyskok z dolnej nogi.',fix:'tułów tylko lekko pochylony, palce dolnej stopy uniesione. Jeśli się nie da, weź niższą skrzynię lub lżejsze hantle.',f:0,P:{t:44,lf:12},j:'s1'}]},
+  dbrow:{cue:[{f:0,t:'Plecy płasko jak stół, barki równo. Hantel wisi pod barkiem.',hl:HL_SPINE,v:'side'},
+      {f:1,t:'Hantel do biodra, nie do klatki. Łokieć idzie w tył blisko tułowia.',j:'elL',v:'side',m:0},
+      {ph:2,f:.5,t:'Opuszczaj wolno do prostej ręki. Tułów się nie skręca.',j:'shL',v:'front',m:0}],
+    err:[{t:'Podrywanie tułowia',how:'Przy każdym powtórzeniu tułów unosi się, a hantel leci z rozpędu.',fix:'plecy równolegle do podłogi przez całą serię. Jeśli tułów się podrywa lub skręca, hantel jest za ciężki.',f:1,P:{t:58},j:'sh'}]},
+  legcurlS:{cue:[{f:0,t:'Plecy w oparciu, wałek mocno dociśnięty tuż nad kolanami.',j:'knL',o:[0,5,0],v:'side',m:0},
+      {f:1,t:'Pięty pod siedzisko i zatrzymaj 1 sekundę. Uda się nie unoszą.',j:'anL',v:'side',m:0},
+      {ph:2,f:.5,t:'Powrót powoli, 3 sekundy, do prawie prostych nóg.',hl:[['knL','anL']],v:'side'}],
+    err:[{t:'Odrywanie pleców od oparcia',how:'Pochylasz się do przodu i dociągasz ciężar tułowiem.',fix:'dociśnij plecy i biodra do oparcia, trzymaj uchwyty. Zmniejsz ciężar.',f:1,P:{t:20,lf:10},j:'sh'}]},
+  chop:{cue:[{f:0,t:'Ręce prawie proste i takie zostają. Napnij brzuch, zanim ruszysz.',hl:HL_ARM,v:'front'},
+      {f:.5,t:'Biodra i tułów obracają się razem. Ręce jadą z tułowiem.',j:'hp',v:'front'},
+      {f:1,t:'Koniec przy przeciwnym biodrze. Plecy proste, bez garbienia.',hl:HL_SPINE,v:'side'},
+      {ph:2,f:.5,t:'Powrót wolno tą samą drogą. Ciężar nie szarpie.',j:'wrL',v:'front',m:0}]},
+  rope:{cue:[{f:0,t:'Plecy proste, kolana lekko ugięte. Ciągnie całe ciało, nie same ręce.',hl:HL_SPINE,v:'side'},
+      {f:1,t:'Spokojne, równe tempo. Oddech nosem przez cały czas.',j:'hd',v:'side'}]}
+};
+Object.keys(CUES).forEach(k=>{if(ANIM[k])Object.assign(ANIM[k],CUES[k])});
+// warianty: wskazówki dopasowane do odmiany albo wyłączone, gdy ruch jest inny
+{const B=ANIM.bench.cue, E=ANIM.bench.err;
+  ANIM.cbench.cue=[B[0],Object.assign({},B[1],{t:'Na dole: sztanga na dolnej części mostka, przedramiona pionowo.'}),{f:1,t:'Łokcie blisko tułowia, ok. 30–45°. Nadgarstki nad łokciami.',j:'elL',v:'top'},B[3]];
+  ANIM.cbench.err=[E[0],{t:'Chwyt za wąski',how:'Dłonie prawie się stykają, a nadgarstki wyginają się na boki.',fix:'chwyt na szerokość barków: patrząc od strony głowy, przedramiona są pionowo.',f:1,v:'top',P:{hold:{j:'sh',o:[-8,7.3],w:3.5,pole:[-1,-1,.5]}},j:'wrL'}];
+  ANIM.spoto.cue=[B[0],{f:1,t:'Zatrzymaj sztangę 2–3 cm nad klatką, bez dotykania. Całe ciało napięte.',j:'wrL',v:'side',m:0},B[3]];ANIM.spoto.err=[E[0]];
+  ANIM.jm.cue=null;ANIM.jm.err=null;
+  const D=ANIM.dead.cue;ANIM.blocks.cue=[Object.assign({},D[0],{t:'Start z bloków: plecy proste, barki tuż przed sztangą, wybierz luz.'}),D[2],{ph:2,f:.5,t:'W dół: biodra w tył, odłóż sztangę na bloki pod kontrolą.',j:'hp',d:[-8,0,0],v:'side'}];
+  if(ANIM.pulldown){ANIM.pulldown.cue=CUES.pulldownN.cue;ANIM.pulldown.err=CUES.pulldownN.err}}
+// w ćwiczeniach z hantlami te same wskazówki mówią o ciężarze, nie o sztandze
+const cueTxt=(t,name)=>/hantl/i.test(name)?t.replace(/Sztanga/g,'Ciężar').replace(/sztanga/g,'ciężar').replace(/sztangę/g,'ciężar').replace(/sztangi/g,'ciężaru').replace(/sztangą/g,'ciężarem'):t;
 const NAMEANIM={'Front squat':'fsquat','Przysiad z pauzą':'squatP','Przysiad goblet':'goblet','Hack squat':'hack','Wypychanie nóg na suwnicy':'legpress',
   'Split squat':'split','Przysiad bułgarski':'bulg','Wykroki chodzone':'walk','Wejścia na skrzynię':'stepup',
   'Martwy ciąg sumo':'sumo','Martwy ciąg z trap bar':'trap','Martwy ciąg z deficytu':'deficit','Martwy ciąg z pauzą pod kolanem':'deadP','Martwy ciąg z bloków':'blocks',
