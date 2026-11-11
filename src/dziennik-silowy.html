@@ -314,7 +314,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-11b';
+const VER='2026-11-11c';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -365,12 +365,21 @@ function suggest(ex,last,light){
     return sets.map((st,i)=>{if(st.top)return null;const j=i-(sets[0].top?1:0), p=lw[j]||lw[lw.length-1];if(!p||!p.w||!p.r)return null;
       const w=p.w*(1+Math.min(p.r,last.reps,12)/30)/(1+Math.min(reps,12)/30);return {w:Math.max(inc,Math.floor(w/inc+1e-6)*inc),up:false,inc,conv:true}})}
   return sets.map((st,i)=>{const p=last.sets[i]||last.sets[last.sets.length-1];if(!p||!p.w)return null;
-    const up=st.top?(!last.bad&&(p.r||0)>=st.t&&!(p.parts&&p.parts.length)):(ok&&(!ramp||i===sets.length-1));
+    const up=st.top?(!last.bad&&(p.r||0)>=st.t&&!(p.parts&&p.parts.length)):ok; // rampa rośnie w całości: gdyby rosła tylko ostatnia seria, pierwsze stawałyby się rozgrzewką
     return {w:Math.round((p.w+(up?inc:0))*100)/100,up,inc}});
 }
 const dkey=()=>S.plan+'-'+S.week+'-'+S.day;
 function draft(){return S.drafts[dkey()]||(S.drafts[dkey()]={})}
 
+// rampa: za duży krok między kolejnymi seriami (ponad 5 kg i ponad 6% ostatniej) sprawia, że wcześniejsze serie są za lekkie
+function rampGap(ex,last,add){
+  if(ex[3]!=='rampa'||!last)return '';
+  const w=last.sets.filter(s=>!s.top&&s.w).map(s=>s.w+add), n=w.length; if(n<3)return '';
+  const top=w[n-1], lim=Math.max(5,top*.06), inc=incFor(ex[0]);
+  if(!w.slice(1).some((x,i)=>x-w[i]>lim+1e-9))return '';
+  const st=Math.max(inc,Math.round(top*.04/inc)*inc), prop=w.map((_,i)=>fmt(top-st*(n-1-i))).join(' / ');
+  return ` Kroki między seriami są za duże, przez co pierwsze serie są za lekkie. Lepiej: ${prop} kg.`;
+}
 function hintFor(ex,last,light){
   const reps=ex[2];
   if(light)return {t:reps==='max'||!(last&&last.sets.some(x=>x.w))?'Lżejszy tydzień: o jedną serię mniej. Skończ każdą serię z wyraźnym zapasem, bez bicia wyniku.':'Lżejszy tydzień: o jedną serię mniej i ciężar ok. 10% niższy niż ostatnio (jest już w polach kg). Nie dokładaj. Od następnego tygodnia wracasz do pełnych ciężarów.'};
@@ -382,8 +391,8 @@ function hintFor(ex,last,light){
   if(all&&!last.bad&&work.every(s=>!s.w))return {up:true,t:`Wszystkie serie zaliczone. Następnym razem zrób o 1 powtórzenie więcej w każdej serii. Ciężar dołóż dopiero po ${reps+2} powtórzeniach w każdej serii.`};
   if(!all&&work.some(s=>s.parts&&s.parts.length))return {t:'Ostatnio część serii wymagała przerwy w środku. Zostań przy ciężarze lub zejdź o 2,5 kg, aż zrobisz każdą serię w całości.'};
   if(last.bad) return {t:'Ostatnio trening był oznaczony jako gorszy dzień. Zostań przy tych samych ciężarach.'};
-  if(all){const inc=fmt(incFor(ex[0]));return {up:true,t:(ex[3]==='rampa'?`Wszystkie serie zaliczone. Dołóż ${inc} kg do ostatniej serii rampy (podpowiedź jest już w polach kg).`:`Wszystkie serie zaliczone. Dołóż ${inc} kg (podpowiedź jest już w polach kg).`)}}
-  return {t:'Zostań przy tym ciężarze i dobij do '+reps+' powtórzeń w każdej serii.'};
+  if(all){const inc=fmt(incFor(ex[0]));return {up:true,t:(ex[3]==='rampa'?`Wszystkie serie zaliczone. Dołóż ${inc} kg w każdej serii rampy (podpowiedź jest już w polach kg).`+rampGap(ex,last,incFor(ex[0])):`Wszystkie serie zaliczone. Dołóż ${inc} kg (podpowiedź jest już w polach kg).`)}}
+  return {t:'Zostań przy tym ciężarze i dobij do '+reps+' powtórzeń w każdej serii.'+rampGap(ex,last,0)};
 }
 
 // ---------- zastój i słabe ogniwa ----------

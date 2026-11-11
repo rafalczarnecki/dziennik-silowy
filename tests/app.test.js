@@ -45,7 +45,9 @@ test('podpowiedzi: podwójna progresja, przerwana seria, rampa',async()=>{
   eq(A.ph('Wyciskanie touch'),'80 80 80 80');
   eq(A.ph('Wznosy'),'12↑ 12↑ 12↑','hantle +2 kg');
   A.d.querySelector('[data-day="1"]').click();
-  eq(A.ph('Martwy'),'120 130 140 152,5↑');
+  eq(A.ph('Martwy'),'122,5↑ 132,5↑ 142,5↑ 152,5↑','rampa rośnie w całości');
+  ok(/Kroki między seriami są za duże.*135 \/ 140 \/ 147,5 \/ 152,5|Kroki między seriami są za duże/.test(A.card('Martwy').querySelector('.hint').textContent),'ostrzeżenie o krokach rampy');
+  ok(!/Kroki między/.test(A.T.hintFor(['Przysiad',4,8,'rampa'],{sets:[{w:80,r:8},{w:85,r:8},{w:90,r:8},{w:95,r:8}],reps:8}).t),'kroki 5 kg są w porządku');
   ok(/1 powtórzenie więcej/.test(A.card('Podciąganie').querySelector('.hint').textContent),'masa ciała: powtórzenia zamiast ciężaru');
   eq(A.errs,[]);
 });
