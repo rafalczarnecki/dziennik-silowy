@@ -45,8 +45,10 @@ test('podpowiedzi: podwójna progresja, przerwana seria, rampa',async()=>{
   eq(A.ph('Wyciskanie touch'),'80 80 80 80');
   eq(A.ph('Wznosy'),'12↑ 12↑ 12↑','hantle +2 kg');
   A.d.querySelector('[data-day="1"]').click();
-  eq(A.ph('Martwy'),'122,5↑ 132,5↑ 142,5↑ 152,5↑','rampa rośnie w całości');
-  ok(/Kroki między seriami są za duże.*135 \/ 140 \/ 147,5 \/ 152,5|Kroki między seriami są za duże/.test(A.card('Martwy').querySelector('.hint').textContent),'ostrzeżenie o krokach rampy');
+  eq(A.ph('Martwy'),'137,5↑ 142,5↑ 147,5↑ 152,5↑','rampa rośnie, a za duże kroki (10 kg) są wyrównane w polach');
+  ok(/Kroki między seriami były za duże.*137,5 \/ 142,5 \/ 147,5 \/ 152,5/.test(A.card('Martwy').querySelector('.hint').textContent),'informacja o wyrównaniu rampy');
+  eq(A.T.suggest(['Przysiad',4,8,'rampa'],{sets:[{w:80,r:8},{w:85,r:8},{w:90,r:8},{w:95,r:8}],reps:8}).map(q=>q.w),[82.5,87.5,92.5,97.5],'równa rampa rośnie w całości bez zmian kroków');
+  eq(A.T.suggest(['Przysiad',4,8,'rampa'],{sets:[{w:80,r:8},{w:90,r:8},{w:100,r:7},{w:110,r:5}],reps:8}).map(q=>q.w),[80,90,100,110],'niezaliczona rampa zostaje bez zmian');
   ok(!/Kroki między/.test(A.T.hintFor(['Przysiad',4,8,'rampa'],{sets:[{w:80,r:8},{w:85,r:8},{w:90,r:8},{w:95,r:8}],reps:8}).t),'kroki 5 kg są w porządku');
   ok(/1 powtórzenie więcej/.test(A.card('Podciąganie').querySelector('.hint').textContent),'masa ciała: powtórzenia zamiast ciężaru');
   eq(A.errs,[]);
