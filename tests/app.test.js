@@ -311,6 +311,33 @@ test('cykl: 3 bloki (akumulacja, siła, szczyt z testem), cel, tydzień testu, p
   eq(A.errs,[]);
 });
 
+test('zapas w ostatniej serii (RIR): pytanie po ✓, zapis, wpływ na podpowiedź ciężaru',async()=>{
+  const st=base();const a=st.sessions[0];a.ex[0].sets[3].rir=0;a.ex[2].sets[2].rir=3; // przysiad: plan RIR 2, zapas 0; wznosy: plan RIR 1, zapas 3+
+  const A=app(st);await wait(50);
+  eq(A.ph('Przysiad'),'100 100 100 100','bez zapasu: ciężar zostaje');ok(/zapasem 0, a plan zakładał 2/.test(A.card('Przysiad').querySelector('.hint').textContent));
+  eq(A.ph('Wznosy'),'14↑ 14↑ 14↑','duży zapas: podwójny krok');ok(/duży zapas/.test(A.card('Wznosy').querySelector('.hint').textContent));
+  ok(/100×8 \(RIR 0\)/.test(A.card('Przysiad').querySelector('.last').textContent),'zapas w „Ostatnio”');
+  const c=A.card('Przysiad'),q=c.querySelector('[data-rirq]');ok(q&&q.hidden,'pytanie ukryte przed ostatnią serią');
+  c.querySelectorAll('.set [data-ok]').forEach(b=>b.click());ok(!q.hidden,'pytanie po ✓ ostatniej serii');
+  q.querySelector('[data-rir$="|2"]').click();eq(q.querySelector('[data-rir$="|2"]').getAttribute('aria-pressed'),'true');
+  A.d.querySelector('#finish').click();A.d.querySelector('#finish').click();
+  const sq=A.S().sessions.at(-1).ex.find(e=>e.name==='Przysiad');eq(sq.sets.map(x=>x.rir??null),[null,null,null,2],'zapas zapisany przy ostatniej serii');
+  ok(/RIR 2\)/.test(A.T.mdExport()),'zapas w eksporcie');eq(A.errs,[]);
+});
+test('serie rozgrzewkowe i talerze przy ćwiczeniach ze sztangą',async()=>{
+  const A=app(base());await wait(50);
+  const w=A.card('Przysiad').querySelector('details.warm');ok(w&&w.open,'rozgrzewka przy pierwszym ćwiczeniu ze sztangą, rozwinięta');
+  const rows=[...w.querySelectorAll('.wrow')].map(r=>r.textContent.replace(/\s+/g,' ').trim());
+  eq(rows.slice(0,5),['20 kg × 10pusty gryf','40 kg × 510','62,5 kg × 320 + 1,25','77,5 kg × 225 + 2,5 + 1,25','87,5 kg × 125 + 5 + 2,5 + 1,25'],'drabinka 40/60/75/85% ciężaru 1. serii (102,5 kg) z talerzami na stronę');
+  ok(rows.some(r=>/^102,5 kg ?25 \+ 15 \+ 1,25$/.test(r)),'talerze na serie z planu: '+rows.join(' | '));
+  const b=A.card('Wyciskanie touch').querySelector('details.warm');ok(b&&!b.open&&b.querySelectorAll('.wrow').length>=2,'drugie ćwiczenie: krótsza rozgrzewka');
+  ok(!A.card('Wznosy').querySelector('details.warm'),'bez rozgrzewki przy hantlach');
+  A.d.querySelector('[data-day="1"]').click();const dl=[...A.card('Martwy').querySelectorAll('details.warm .wrow')].map(r=>r.textContent);ok(/^60 kg × 5/.test(dl[0]),'martwy ciąg od 60 kg: '+dl[0]);
+  A.d.querySelector('[data-tab=kopia]').click();A.d.querySelector('#barin').value='15';A.d.querySelector('#platesin').value='20 10 5 2,5 1,25';A.d.querySelector('#barsave').click();
+  A.d.querySelector('[data-tab=trening]').click();A.d.querySelector('[data-day="0"]').click();
+  ok(/^15 kg × 10/.test(A.card('Przysiad').querySelector('.wrow').textContent),'gryf 15 kg');eq(A.S().plates,'20 10 5 2,5 1,25');eq(A.errs,[]);
+});
+
 (async()=>{
   const only=process.argv[2];
   for(const [n,f] of tests){if(only&&!n.includes(only))continue;

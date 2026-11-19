@@ -6,6 +6,9 @@ Aplikacja na telefon do prowadzenia treningu siłowego: serie i ciężary, przer
 - Wszystkie dane treningowe zapisują się wyłącznie w pamięci telefonu. Repozytorium zawiera tylko kod.
 - Plany treningowe wczytuje się z plików JSON (Ustawienia → Plany treningowe). W kodzie jest tylko ogólny plan startowy.
 - Następny blok można ułożyć w telefonie (Ustawienia → Następny blok z historii, albo baner w ostatnim tygodniu bloku). Szczegóły niżej.
+- Przy ćwiczeniach ze sztangą: serie rozgrzewkowe (pusty gryf ×10, potem ok. 40/60/75/85% ciężaru 1. serii; martwy ciąg od ok. 60 kg) i talerze na stronę dla rozgrzewki i serii z planu. Gryf i talerze ustawia się w Ustawieniach.
+- Po ✓ ostatniej serii ćwiczenia pytanie o zapas (RIR 0, 1, 2, 3+). Zapas o 2 mniejszy niż w planie zatrzymuje dokładanie ciężaru, o 2 większy daje podwójny krok. Zapis w historii i eksporcie.
+- Aplikacja sprawdza nową wersję przy każdym powrocie do niej; w trakcie treningu nowa wersja wczytuje się dopiero po zapisaniu treningu.
 - Blok wybiera się z listy rozwijanej w Treningu: bieżący, nowe, potem wg ostatniego treningu. Nowy blok zaczyna się od tygodnia 1, do robionego wcześniej wracasz za ostatnim zapisanym treningiem.
 
 ## Format pliku planu
@@ -49,7 +52,7 @@ Bloki układają się w cykle po 3 (ok. 12 tygodni, tyle co przegląd z Claude):
 ## Budowa i testy
 
 - `src/dziennik-silowy.html`: źródło aplikacji (jeden plik). `index.html` i `sw.js` powstają z niego przez `npm run build`.
-- `tests/app.test.js`: testy aplikacji w jsdom na sztucznych danych (trening, podpowiedzi, zastój, lżejszy tydzień, plany, kopia na GitHubie, import, migracja, budowanie wszystkich animacji, generator bloku i ocena planu, model czasu, ekran podglądu bloku, cykl z tygodniem testu, lista bloków).
+- `tests/app.test.js`: testy aplikacji w jsdom na sztucznych danych (trening, podpowiedzi, zastój, lżejszy tydzień, plany, kopia na GitHubie, import, migracja, budowanie wszystkich animacji, generator bloku i ocena planu, model czasu, ekran podglądu bloku, cykl z tygodniem testu, lista bloków, zapas w ostatniej serii, serie rozgrzewkowe i talerze).
 - `tests/collide.js`: test kolizji animacji (ciało ze sprzętem i części ciała ze sobą) względem wzorca `tests/collide-baseline.json`.
 - `npm test` uruchamia oba. Zmiany trafiają na gałąź `dev`; GitHub Actions uruchamia testy i dopiero po ich zaliczeniu przenosi zmianę na `main`, skąd publikuje się strona.
 - W repozytorium nie ma danych treningowych ani prywatnych planów: testy używają sztucznego planu.

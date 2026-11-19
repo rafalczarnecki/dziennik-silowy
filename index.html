@@ -102,6 +102,9 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .note-box textarea{min-height:70px;font:400 15px/1.4 var(--body)}
 .tagline{font-size:13px;color:var(--done);font-weight:600}
 .vrow{display:grid;grid-template-columns:1fr 80px 34px 34px;gap:8px;align-items:center;font-size:14px;margin:6px 0}
+.warm{margin:6px 0 8px;font-size:14px}.warm summary{font-weight:600;color:var(--done);padding:4px 0}.warm p{margin:3px 0}
+.wrow{display:flex;justify-content:space-between;gap:10px}.wrow span{color:var(--muted);text-align:right}
+.rirq{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 0 2px;font-size:14px;color:var(--muted)}.rirq[hidden]{display:none}.rirq span{flex-basis:100%}
 .genl{margin:6px 0 2px;padding-left:24px}.genl li{margin:6px 0;line-height:1.35}
 .genv{display:grid;grid-template-columns:1fr 40px 52px;gap:8px;align-items:center;font-size:14px;margin:4px 0}.genv b{text-align:right}.genv .meta{text-align:right}
 .genv.mrow{grid-template-columns:1fr auto auto}.genv.mrow .chip{padding:4px 10px;font-size:15px;min-width:34px}
@@ -321,7 +324,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-19c';
+const VER='2026-11-19d';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -362,7 +365,11 @@ function repsThen(s,e){
   const w=e.sets.filter(q=>!q.top&&q.r&&!(q.parts&&q.parts.length)).map(q=>q.r);
   return w.length>=2&&w.every(r=>r===w[0])?w[0]:null;
 }
-function lastFor(name){for(let i=S.sessions.length-1;i>=0;i--){const e=S.sessions[i].ex.find(x=>x.name===name);if(e&&e.sets.length&&!wasLight(S.sessions[i],e))return{date:S.sessions[i].date,sets:e.sets,reps:repsThen(S.sessions[i],e),bad:!!(e.note&&(e.note.tags||[]).some(t=>t==='zle'||t==='bol'))}}return null}
+function lastFor(name){for(let i=S.sessions.length-1;i>=0;i--){const s=S.sessions[i],e=s.ex.find(x=>x.name===name);if(e&&e.sets.length&&!wasLight(s,e)){
+  const la=e.sets.filter(x=>!x.top&&x.rir!=null).pop(), D=PLANS[s.plan]&&PLANS[s.plan].days[s.day], px=D&&D.ex.find(q=>q[0]===name||q[0]===e.from), sy=!px&&((SYL[s.plan]||[])[s.day]||[]).some(q=>q[0]===name);
+  return{date:s.date,sets:e.sets,reps:repsThen(s,e),bad:!!(e.note&&(e.note.tags||[]).some(t=>t==='zle'||t==='bol')),rirA:la?la.rir:null,rirT:px?rirFor(px,s.week):sy?1.5:null}}}return null}
+// zapas w ostatniej serii względem planu: −1 = bez zapasu (zostań przy ciężarze), +1 = duży zapas (podwójny krok), 0 = zgodnie z planem albo brak wpisu
+const rirAdj=last=>!last||last.rirA==null||last.rirT==null?0:last.rirA<last.rirT-1?-1:last.rirA>=last.rirT+2?1:0;
 // skok ciężaru zależny od sprzętu
 function incFor(n){
   if(/hantl|Wznosy bokiem|Powell|Trap Y|Biceps z supinacją|Uginanie ramion|Wejścia na skrzynię|Przysiad bułgarski|Split squat|Wykroki/i.test(n))return 2;
@@ -375,19 +382,41 @@ function suggest(ex,last,light){
   if(!last||ex[2]==='max')return null;
   if(light){const inc=incFor(ex[0]), lw=last.sets.filter(x=>!x.top);return setsFor(ex).map((st,i)=>{const p=st.top?last.sets.find(x=>x.top):lw[i-(ex[5]?1:0)]||lw[lw.length-1];return p&&p.w?{w:Math.max(inc,Math.floor(p.w*.9/inc+1e-6)*inc),up:false,inc}:null})}
   const sets=setsFor(ex), reps=ex[2], work=last.sets.filter(x=>!x.top);
-  const ok=!last.bad&&work.length>=ex[1]-1&&work.every(x=>(x.r||0)>=reps&&!(x.parts&&x.parts.length)); // o jedną serię mniej też się liczy: plan mógł dostać dodatkową serię
-  const inc=incFor(ex[0]), ramp=ex[3]==='rampa';
+  const rx=rirAdj(last), ok=!last.bad&&rx>=0&&work.length>=ex[1]-1&&work.every(x=>(x.r||0)>=reps&&!(x.parts&&x.parts.length)); // o jedną serię mniej też się liczy: plan mógł dostać dodatkową serię
+  const inc0=incFor(ex[0]), inc=inc0*(rx>0?2:1), ramp=ex[3]==='rampa';
   // nowy blok z innym zakresem powtórzeń: ciężar przeliczony z ostatniego treningu (ten sam szacowany 1RM), zaokrąglony w dół
   // mniej serii niż ostatnio: odpowiednikami są ostatnie (najcięższe) serie, a nie pierwsze
   const off=Math.max(0,work.length-sets.filter(x=>!x.top).length);
   if(repShift(ex,last)){const lw=work;
     return sets.map((st,i)=>{if(st.top)return null;const j=i-(sets[0].top?1:0), p=lw[j+off]||lw[lw.length-1];if(!p||!p.w||!p.r)return null;
-      const w=p.w*(1+Math.min(p.r,last.reps,12)/30)/(1+Math.min(reps,12)/30);return {w:Math.max(inc,Math.floor(w/inc+1e-6)*inc),up:false,inc,conv:true}})}
+      const w=p.w*(1+Math.min(p.r,last.reps,12)/30)/(1+Math.min(reps,12)/30);return {w:Math.max(inc0,Math.floor(w/inc0+1e-6)*inc0),up:false,inc:inc0,conv:true}})}
   return sets.map((st,i)=>{const j=i-(sets[0].top?1:0), p=st.top?(last.sets.find(x=>x.top)||last.sets[0]):(work[j+off]||work[work.length-1]||last.sets[last.sets.length-1]);if(!p||!p.w)return null;
     const up=st.top?(!last.bad&&(p.r||0)>=st.t&&!(p.parts&&p.parts.length)):ok; // rampa rośnie w całości: gdyby rosła tylko ostatnia seria, pierwsze stawałyby się rozgrzewką
     const ev=!st.top&&ok?rampEven(ex,last,inc):null; // za duże kroki rampy: pola dostają wyrównane ciężary
-    if(ev&&ev[j+off]!=null)return {w:ev[j+off],up:ev[j+off]>p.w,inc};
-    return {w:Math.round((p.w+(up?inc:0))*100)/100,up,inc}});
+    if(ev&&ev[j+off]!=null)return {w:ev[j+off],up:ev[j+off]>p.w,inc:inc0};
+    return {w:Math.round((p.w+(up?inc:0))*100)/100,up,inc:inc0}});
+}
+// ---------- serie rozgrzewkowe i talerze (ćwiczenia ze sztangą) ----------
+// Przed pierwszym ćwiczeniem ze sztangą w dniu: pusty gryf ×10, potem ok. 40/60/75/85% ciężaru 1. serii (×5/3/2/1);
+// przed kolejnymi wystarczą 2 serie (50% ×5, 75% ×3). Martwy ciąg od ok. 60 kg (talerze 20 kg dają właściwą wysokość).
+const barW=()=>num(S.bar)||20;
+const plateList=()=>{const a=String(S.plates||'25 20 15 10 5 2,5 1,25').split(/[;\s]+/).map(x=>num(x)).filter(x=>x>0).sort((a,b)=>b-a);return a.length?a:[25,20,15,10,5,2.5,1.25]};
+const isBar=n=>patOf(n)&&eqOf(n)==='s'&&!isBW(n)&&!['core','rot','cond','lat','rear','curl','ext','ham','addu'].includes(patOf(n));
+function platesTxt(w){const b=barW();if(!(w>b+1e-9))return Math.abs(w-b)<1e-9?'pusty gryf':'lżej niż gryf';let r=(w-b)/2;const out=[];
+  plateList().forEach(p=>{while(r>=p-1e-9){out.push(p);r-=p}});return out.map(fmt).join(' + ')+(r>0.01?` (brakuje ${fmt(Math.round(r*2*100)/100)} kg)`:'')}
+function warmSets(n,w1,first,test){
+  if(!w1||!isBar(n))return [];const b=barW(),dl=patOf(n)==='dead',st=[],L=first?[[.4,5],[.6,3],[.75,2],[.85,1]]:[[.5,5],[.75,3]];if(test)L.push([.92,1]);
+  if(first&&!dl)st.push({w:b,r:10});
+  L.forEach(([p,r])=>{let w=Math.round(w1*p/2.5)*2.5;if(dl)w=Math.max(w,Math.min(60,Math.round(w1*.6/2.5)*2.5));w=Math.max(b,w);
+    if(w<w1-2.4&&(!st.length||w>st[st.length-1].w))st.push({w,r})});
+  return st}
+function warmBox(n,w1,first,test,work){
+  const st=warmSets(n,w1,first,test);if(!st.length)return '';
+  const ws=[...new Set(work.filter(Boolean))];
+  return `<details class="warm"${first?' open':''}><summary>Rozgrzewka i talerze</summary>
+    <p class="meta">Serie rozgrzewkowe przed 1. serią (${fmt(w1)} kg), przerwa ok. 1–2 min. Talerze na jedną stronę gryfu ${fmt(barW())} kg.</p>
+    ${st.map(x=>`<p class="wrow"><b>${fmt(x.w)} kg × ${x.r}</b><span>${esc(platesTxt(x.w))}</span></p>`).join('')}
+    ${ws.length?`<p class="meta">Serie z planu:</p>`+ws.map(w=>`<p class="wrow"><b>${fmt(w)} kg</b><span>${esc(platesTxt(w))}</span></p>`).join(''):''}</details>`;
 }
 const dkey=()=>S.plan+'-'+S.week+'-'+S.day;
 function draft(){return S.drafts[dkey()]||(S.drafts[dkey()]={})}
@@ -414,10 +443,13 @@ function hintFor(ex,last,light){
   const work=last.sets.filter(s=>!s.top);
   if(repShift(ex,last)&&work.some(s=>s.w))return {t:`Nowy zakres: ${reps} powtórzeń zamiast ${last.reps}. Ciężary w polach kg są przeliczone z ostatniego treningu. Jeśli zostaje więcej zapasu, niż mówi plan, dołóż ${fmt(incFor(ex[0]))} kg.`};
   const all=work.length>=ex[1]-1&&work.length>0&&work.every(s=>(s.r||0)>=reps);
+  const rx=rirAdj(last), rt=x=>x>=3?'3+':fmt(x);
+  if(all&&!last.bad&&rx<0)return {t:`Ostatnia seria z zapasem ${rt(last.rirA)}, a plan zakładał ${rt(last.rirT)}. Zostań przy tym ${work.some(s=>s.w)?'ciężarze':'wyniku'}, aż ostatnia seria zostawi zapas z planu.`};
   if(all&&!last.bad&&work.every(s=>!s.w))return {up:true,t:`Wszystkie serie zaliczone. Następnym razem zrób o 1 powtórzenie więcej w każdej serii. Ciężar dołóż dopiero po ${reps+2} powtórzeniach w każdej serii.`};
   if(!all&&work.some(s=>s.parts&&s.parts.length))return {t:'Ostatnio część serii wymagała przerwy w środku. Zostań przy ciężarze lub zejdź o 2,5 kg, aż zrobisz każdą serię w całości.'};
   if(last.bad) return {t:'Ostatnio trening był oznaczony jako gorszy dzień. Zostań przy tych samych ciężarach.'};
-  if(all){const inc=fmt(incFor(ex[0]));return {up:true,t:(ex[3]==='rampa'?`Wszystkie serie zaliczone. Dołóż ${inc} kg w każdej serii rampy (podpowiedź jest już w polach kg).`+rampGap(ex,last,incFor(ex[0])):`Wszystkie serie zaliczone. Dołóż ${inc} kg (podpowiedź jest już w polach kg).`)}}
+  if(all){const k=incFor(ex[0])*(rx>0?2:1),inc=fmt(k),big=rx>0?`Ostatnio został duży zapas (${rt(last.rirA)} przy planie ${rt(last.rirT)}), więc podwójny krok. `:'';
+    return {up:true,t:big+(ex[3]==='rampa'?`Wszystkie serie zaliczone. Dołóż ${inc} kg w każdej serii rampy (podpowiedź jest już w polach kg).`+rampGap(ex,last,k):`Wszystkie serie zaliczone. Dołóż ${inc} kg (podpowiedź jest już w polach kg).`)}}
   return {t:'Zostań przy tym ciężarze i dobij do '+reps+' powtórzeń w każdej serii.'};
 }
 
@@ -2416,7 +2448,7 @@ function partRows(ei,si,r,bw){
     <label class="field"><input inputmode="numeric" data-k="r" value="${p.r??''}" placeholder="0" aria-label="Powtórzenia po przerwie"><span>pow</span></label>
     <button class="ok rm" data-rmpart="${esc(ei)}|${si}|${pi}" aria-label="Usuń">✕</button></div>`).join('');
 }
-const fmtSet=x=>(x.top?'T ':'')+(x.w?fmt(x.w)+'×':'')+(x.r??'–')+(x.parts||[]).map(p=>' + '+(p.w?fmt(p.w)+'×':'')+p.r).join('');
+const fmtSet=x=>(x.top?'T ':'')+(x.w?fmt(x.w)+'×':'')+(x.r??'–')+(x.parts||[]).map(p=>' + '+(p.w?fmt(p.w)+'×':'')+p.r).join('')+(x.rir!=null?` (RIR ${x.rir>=3?'3+':x.rir})`:'');
 // ---------- widok: trening ----------
 function viewTrening(){
   const P=PLANS[S.plan], D=P.days[S.day], dr=draft();
@@ -2437,7 +2469,7 @@ function viewTrening(){
   {const c=dayClashes();if(c.length)h+=`<div class="stall"><p><b>Ten dzień ma dwa ćwiczenia na tę samą partię:</b> ${esc(clashText(c))}.</p><p class="meta">Zasada: najwyżej jedno ćwiczenie bezpośrednie na partię w ciągu dnia. Zamień jedno z nich („Zamień ćwiczenie”) albo usuń dodatek.</p></div>`}
   h+=routineCard('w',S.plan,S.day);
   let kind='m';
-  const DX=dayEx();
+  const DX=dayEx(), firstBar=(DX.find(x=>isBar(x.ex[0])&&x.ex[2]!=='max')||{}).key;
   DX.forEach(({key,ex,extra,syl,add,ss,partner,orig,since,light,test,idx:pi},idx)=>{
     const sets=setsFor(ex), rir=extra||test?null:rirFor(ex,S.week), last=lastFor(ex[0]), hint=test?testHint(ex):hintFor(ex,last,light), sug=test?testSug(ex):suggest(ex,last,light);
     const rows=dr[key]||[], ei=key;
@@ -2478,6 +2510,7 @@ function viewTrening(){
     h+=stallBox(ex[0],pi,orig,idx);
     if(last) h+=`<p class="last"><span class="meta">Ostatnio ${fdate(last.date)}:</span> ${last.sets.map(fmtSet).join(', ')}</p>`;
     if(!vNew)h+=`<p class="hint${hint.up?' up':''}">${hint.t}</p>`;
+    if(isBar(ex[0])&&ex[2]!=='max'){const s0=sug&&sug.find(x=>x&&x.w),l0=last&&last.sets.find(x=>x.w);h+=warmBox(ex[0],s0?s0.w:l0?l0.w:null,key===firstBar,!!test,(sug||[]).map(x=>x&&x.w))}
     let wi=0;
     sets.forEach((s,si)=>{
       const r=rows[si]||{}, prev=last&&last.sets[si];
@@ -2496,6 +2529,8 @@ function viewTrening(){
         <span class="x">×</span>
         <label class="field"><input inputmode="numeric" data-k="r" value="${r.r??''}" placeholder="${s.t==='max'?'max':s.t}" aria-label="Powtórzenia, seria ${lbl}"><span>pow</span></label>
         <button class="ok" data-ok aria-label="Seria zrobiona">✓</button></div>`+partRows(ei,si,r,false);
+      // zapas w ostatniej serii (RIR): jedno dotknięcie po ✓, poprawia podpowiedź ciężaru na następny raz
+      if(si===sets.length-1)h+=`<div class="rirq"${r.done?'':' hidden'} data-rirq="${esc(ei)}"><span>Ile powtórzeń zostało w zapasie?</span>${[0,1,2,3].map(v=>`<button class="chip sm" data-rir="${esc(ei)}|${si}|${v}" aria-pressed="${r.rir===v}">${v===3?'3+':v}</button>`).join('')}</div>`;
     });
     h+=`<p class="meta partinfo">Przerwa albo zmiana ciężaru w trakcie serii? Dotknij numeru serii (+).</p>`;
     h+=noteBox(key);
@@ -2667,7 +2702,7 @@ function viewExercise(){
 }
 
 // ---------- widok: kopia ----------
-const KEEP=['acts','sessions','bw','weak','extras','swaps','sylOff','shortRest','cycles','syl','cardio','waist','goal','userPlans','migs','profile','plan','week','day','cues','macros'];
+const KEEP=['acts','sessions','bw','weak','extras','swaps','sylOff','shortRest','cycles','syl','cardio','waist','goal','userPlans','migs','profile','plan','week','day','cues','macros','bar','plates'];
 async function saveFile(name,data,mime){
   const box=$('#exptxt'); if(box){box.hidden=false;box.value=data}
   let dl=null; try{dl=window.claude&&await window.claude.use('downloads')}catch(e){}
@@ -2795,6 +2830,11 @@ function viewKopia(){
     <p class="note">Informacje o tobie dla Claude: wzrost, staż, preferencje, zdrowie. Trafiają tylko do eksportu, zapisują się w telefonie.</p>
     <textarea id="profile" placeholder="Np. wzrost, staż treningowy, preferencje, kontuzje" aria-label="Profil">${esc(S.profile||'')}</textarea></div>
     <p class="meta">Wersja aplikacji: ${VER} <button class="link" id="swupd">Sprawdź aktualizację</button></p>
+    <div class="card"><h3>Sztanga i talerze</h3>
+    <p class="note">Do serii rozgrzewkowych i podpowiedzi talerzy przy ćwiczeniach ze sztangą. Talerze wpisz po spacji, np. 25 20 15 10 5 2,5 1,25.</p>
+    <div class="row"><label class="field" style="flex:1"><input id="barin" inputmode="decimal" value="${fmt(barW())}" aria-label="Waga gryfu"><span>kg gryf</span></label>
+    <label class="field" style="flex:2"><input id="platesin" value="${esc(plateList().map(fmt).join(' '))}" aria-label="Dostępne talerze"><span>kg</span></label></div>
+    <p><button class="ghost" id="barsave">Zapisz</button></p></div>
     <div class="card"><h3>Dźwięk i ekran</h3>
     <p class="note">Piknięcia używają głośności multimediów (tej od muzyki i filmów), a nie dzwonka. Jeśli nic nie słychać, podgłośnij multimedia.</p>
     <button class="ghost" id="beeptest">Test dźwięku</button>
@@ -2982,11 +3022,17 @@ $('#view').addEventListener('click',async e=>{
       if(it.ss&&it.first){stopTimer();toast('Od razu: '+it.partner)} else startTimer(it.rest);
     } else {cur.done=false; delete cur.t;}
     (d[ei]=d[ei]||[])[si]=cur; save(); wIn.value=cur.w??''; rIn.value=cur.r??''; row.classList.toggle('done',!!cur.done);
+    if(si===setsFor(ex).length-1){const q=[...document.querySelectorAll('[data-rirq]')].find(x=>x.dataset.rirq===ei);if(q)q.hidden=!cur.done}
+    return;
+  }
+  if(t.dataset.rir){const a=t.dataset.rir.split('|'),v=+a.pop(),si=+a.pop(),ei=a.join('|'),d=draft(),rows=(d[ei]=d[ei]||[]),cur=rows[si]=Object.assign({},rows[si]);
+    if(cur.rir===v)delete cur.rir;else cur.rir=v;save();
+    t.parentElement.querySelectorAll('[data-rir]').forEach(b=>b.setAttribute('aria-pressed',String(cur.rir!=null&&b===t)));
     return;
   }
   if(t.id==='finish'||t.dataset.finishnow){
     const P=PLANS[S.plan], D=P.days[S.day], d=draft();
-    const ex=dayEx().map(({key,ex:x,orig})=>{const tops=setsFor(x);return{name:x[0],from:orig||undefined,sets:(d[key]||[]).map((r,si)=>r&&r.done?{w:num(r.w),r:num(r.r),top:tops[si]&&tops[si].top||undefined,t:r.t||undefined,parts:(r.parts||[]).filter(p=>num(p.r)).map(p=>({w:num(p.w)??num(r.w),r:num(p.r)})).filter((p,_,a)=>a.length)||undefined}:null).filter(Boolean),note:(()=>{const n=notes()[key];return n&&((n.tags&&n.tags.length)||n.txt)?{tags:n.tags||[],txt:(n.txt||'').trim()}:undefined})()}}).filter(x=>x.sets.length||x.note);
+    const ex=dayEx().map(({key,ex:x,orig})=>{const tops=setsFor(x);return{name:x[0],from:orig||undefined,sets:(d[key]||[]).map((r,si)=>r&&r.done?{w:num(r.w),r:num(r.r),top:tops[si]&&tops[si].top||undefined,t:r.t||undefined,rir:r.rir!=null?r.rir:undefined,parts:(r.parts||[]).filter(p=>num(p.r)).map(p=>({w:num(p.w)??num(r.w),r:num(p.r)})).filter((p,_,a)=>a.length)||undefined}:null).filter(Boolean),note:(()=>{const n=notes()[key];return n&&((n.tags&&n.tags.length)||n.txt)?{tags:n.tags||[],txt:(n.txt||'').trim()}:undefined})()}}).filter(x=>x.sets.length||x.note);
     if(!ex.length) return toast('Odhacz ✓ przynajmniej jedną serię albo dodaj komentarz');
     if(!twoTap('finish',t,'Dotknij ponownie, aby zapisać'))return;
     armed=null;
@@ -3001,6 +3047,7 @@ $('#view').addEventListener('click',async e=>{
     const stalls=ex.map(x=>x.name).filter(n=>stallInfo(n));
     if(S.day<P.days.length-1)S.day++; else {S.day=0; if(S.week<(P.weeks||4))S.week++; else {S.week=1; S.cycles[S.plan]=(S.cycles[S.plan]||1)+1;}}
     stopTimer(); save(); render(); window.scrollTo(0,0); ghMark(1500);
+    if(window.__upd)setTimeout(()=>location.reload(),3000);
     toast((prs.length?'Rekord! '+prs.map(prText).join('; ')+'. ':'')+(stalls.length?'Brak progresu: '+stalls.join(', ')+'. Propozycja pojawi się przy tym ćwiczeniu.':prs.length?'':'Trening zapisany'));
     return;
   }
@@ -3046,6 +3093,9 @@ $('#view').addEventListener('click',async e=>{
   if(t.id==='ghplans'){return ghPlans(true)}
   if(t.id==='ghoff'){if(!twoTap('ghoff',t,'Odłączyć? Dotknij ponownie'))return;armed=null;try{localStorage.removeItem(GHK)}catch(e){}render();return toast('Odłączono. Kopie na GitHubie zostają.')}
   if(t.id==='swupd'){save();try{if(window.__swr)await window.__swr.update()}catch(e){}toast('Sprawdzam nową wersję…');setTimeout(()=>location.reload(),1500);return}
+  if(t.id==='barsave'){const b=num($('#barin').value),pl=String($('#platesin').value).split(/[;\s]+/).map(x=>num(x)).filter(x=>x>0);
+    if(!b||b<5||b>40)return toast('Wpisz wagę gryfu w kg');if(!pl.length)return toast('Wpisz talerze, np. 25 20 10 5 2,5');
+    S.bar=b;S.plates=pl.map(fmt).join(' ');save();render();ghMark();return toast('Zapisano gryf i talerze')}
   if(t.id==='beeptest'){audioInit();beep(1);setTimeout(()=>beep(3),700);return toast('Powinny być 1 + 3 piknięcia')}
   if(t.dataset.animpause||t.dataset.animrestart||t.dataset.animfull)return animCtl(t);
   if(t.dataset.animmode){S.animMode=t.dataset.animmode;save();return render()}
@@ -3589,7 +3639,8 @@ migrate();
 render();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(r=>{window.__swr=r;r.update().catch(()=>{})}).catch(()=>{});
   let hadCtl=!!navigator.serviceWorker.controller,rl=false;
-  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||rl)return;rl=true;save();if(typeof rt!=='undefined'&&rt&&!rt.done)return toast('Pobrano nową wersję. Zamknij i otwórz aplikację po rozgrzewce.');location.reload()})}
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||rl)return;rl=true;save();if(typeof rt!=='undefined'&&rt&&!rt.done)return toast('Pobrano nową wersję. Zamknij i otwórz aplikację po rozgrzewce.');if(Object.values(S.starts||{}).some(t=>Date.now()-t<5*3600e3)){window.__upd=true;return toast('Pobrano nową wersję. Wczyta się po zapisaniu treningu.')}location.reload()});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&window.__swr)window.__swr.update().catch(()=>{})})}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 </script>
 </body>
