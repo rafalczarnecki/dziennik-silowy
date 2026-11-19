@@ -4,7 +4,7 @@ const {JSDOM}=require('jsdom');const fs=require('fs'),path=require('path');
 const HTML=fs.readFileSync(path.join(__dirname,'..','src','dziennik-silowy.html'),'utf8');
 const TAIL='\ninstallAll();\nmigrate();\nrender();\n</script>';
 if(HTML.split(TAIL).length!==2)throw new Error('Nie znaleziono końca skryptu aplikacji');
-const EXPOSE='loadPlan,validatePlan,importAny,importData,ghSync,ghPlans,ghSet,ghCfg,dayEx,volume,suggest,hintFor,lastFor,stallInfo,planEst,planSeq,clashes,targetFor,moveAnim,animKeyOf,G,MX,mdExport,render,save,genPlan,evalPlan,tModel,dayEst,calendar,patOf,musOf,regOf,isFD';
+const EXPOSE='loadPlan,validatePlan,importAny,importData,ghSync,ghPlans,ghSet,ghCfg,dayEx,volume,suggest,hintFor,lastFor,stallInfo,planEst,planSeq,clashes,targetFor,moveAnim,animKeyOf,G,MX,mdExport,render,save,genPlan,evalPlan,tModel,dayEst,calendar,patOf,musOf,regOf,isFD,macroRows,macroPos';
 const SRC=HTML.replace(TAIL,`\nwindow.__t={${EXPOSE},get S(){return S},set S(v){S=v},PLANS:()=>PLANS};`+TAIL);
 const day=864e5, now=Date.now(), iso=t=>new Date(t).toISOString();
 const PLAN={type:'dziennik-plan',v:1,id:'tst',name:'Plan testowy',sub:'',dayPrefix:'',weeks:4,light:{weeks:[4]},days:[
@@ -276,6 +276,39 @@ test('blok z listy rozwijanej: kolejność, nowy plan od tygodnia 1, powrót za 
   eq([A.S().plan,A.S().week,A.S().day],['n1',4,0],'powrót: za ostatnim treningiem (tydz. 3, B → tydz. 4, A)');
   sel().value='tst';sel().dispatchEvent(new A.w.Event('change',{bubbles:true}));
   eq([A.S().plan,A.S().week,A.S().day],['tst',2,0],'bieżący blok: tydz. 1 B → tydz. 2 A');eq(A.errs,[]);
+});
+
+test('cykl: 3 bloki (akumulacja, siła, szczyt z testem), cel, tydzień testu, podsumowanie, nowy cykl',async()=>{
+  const A=app(gstate());await wait(50);const T=A.T,v=()=>A.d.querySelector('#view').textContent;
+  const go=()=>{A.d.querySelector('[data-tab=kopia]').click();A.d.querySelector('[data-gen]').click()};
+  go();ok(/Cykl 1, blok 1 z 3/.test(v())&&/Cel cyklu/.test(v()),'karta cyklu w podglądzie');
+  const g0=JSON.parse(JSON.stringify(A.d.querySelector('[data-goalpm]')?1:0));ok(g0,'cel do zmiany');
+  A.d.querySelector('[data-goalpm="Przysiad|+"]').click();A.d.querySelector('[data-genok]').click();
+  let st=A.S();eq(st.macros.length,1);eq(st.macros[0].plans,['g32']);const G=st.macros[0].goals.Przysiad;
+  ok(G.base>100&&G.goal>=G.base*1.03+2.5-0.01,'cel przysiadu: start '+G.base+', cel '+G.goal+' (+2,5 kg ręcznie)');
+  go();ok(/Cykl 1, blok 2 z 3/.test(v()),'drugi blok tego samego cyklu');A.d.querySelector('[data-genok]').click();
+  st=A.S();eq(st.macros[0].plans,['g32','g33']);eq(st.userPlans.g33.gen.phase,'int');
+  go();ok(/blok 3 z 3/.test(v())&&/tydzień testu|W 4\. tygodniu tego bloku test/.test(v()),'trzeci blok z testem');A.d.querySelector('[data-genok]').click();
+  st=A.S();const P3=st.userPlans.g34;eq([P3.gen.phase,P3.test],['real',{weeks:[4]}]);
+  eq(P3.days.flatMap(d=>d.ex).find(x=>x[0]==='Przysiad').slice(1,3),[4,5],'szczyt: przysiad po 5');
+  // tydzień testu: ciężka trójka i 2×5 lżej w bojach, reszta lżej
+  A.d.querySelector('[data-tab=trening]').click();A.d.querySelector('[data-week="4"]').click();
+  ok(/test/.test(A.d.querySelector('[data-week="4"]').textContent),'tydzień 4 oznaczony jako test');
+  const sq=A.card('Przysiad');ok(/test: 1×3/.test(sq.querySelector('.target').textContent)&&/Tydzień testu/.test(sq.querySelector('.hint').textContent),'opis testu');
+  const ph=A.ph('Przysiad').split(' ');eq(ph.length,3);ok(+ph[0].replace(',','.')>+ph[1].replace(',','.'),'trójka cięższa niż serie po 5: '+ph.join(' '));
+  const e1=Math.max(...T.S.sessions.flatMap(x=>x.ex.filter(e=>e.name==='Przysiad').flatMap(e=>e.sets.map(z=>z.w*(1+z.r/30)))));
+  ok(Math.abs(+ph[0].replace(',','.')-e1/(1+5/30))<=2.5,'ciężar trójki z szacowanego 1RM ('+e1.toFixed(1)+')');
+  // zapis testu i podsumowanie cyklu
+  T.S.sessions.push({date:new Date(Date.now()-2*864e5).toISOString(),plan:'g34',week:4,day:0,label:'test',ex:[{name:'Przysiad',sets:[{w:115,r:3,top:true},{w:100,r:5},{w:100,r:5}]}]},
+    {date:new Date().toISOString(),plan:'g34',week:4,day:2,label:'C',ex:[{name:'Wyciskanie leżąc wąsko',sets:[{w:60,r:6},{w:60,r:6}]}]});
+  Object.assign(T.S,{plan:'g34',week:1,day:0});T.render();
+  ok(/Cykl 1 zakończony/.test(v())&&/w teście/.test(v()),'baner z wynikiem cyklu');
+  const r=T.macroRows(T.S.macros[0]).find(x=>x.n==='Przysiad');eq(r.test,126.5,'test: 115×3 → 126,5 kg');
+  ok(T.lastFor('Przysiad').sets[0].w!==115,'tydzień testu nie zmienia podpowiedzi');
+  A.d.querySelector('[data-tab=postepy]').click();ok(/Cykle \(kilka miesięcy\)/.test(v())&&/Cykl 1/.test(v()),'karta cykli w Analizie');
+  ok(/## Cykle \(kilka miesięcy\)[\s\S]*Przysiad: start/.test(T.mdExport()),'cykle w eksporcie');
+  eq(T.macroPos().idx,0,'po bloku z testem nowy cykl');go();ok(/Cykl 2, blok 1 z 3/.test(v()));A.d.querySelector('[data-gensave]').click();eq(A.S().macros.length,2);
+  eq(A.errs,[]);
 });
 
 (async()=>{

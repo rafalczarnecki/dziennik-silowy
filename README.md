@@ -37,10 +37,19 @@ Generator (`genPlan`) bierze bieżący plan, historię treningów, zamienniki, k
 - ćwiczenia z masą ciała: najpierw powtórzenia (cel = ostatni wynik + 2 w akumulacji), potem ciężar;
 - powody każdej zmiany, czas dni i wynik oceny zapisują się w planie (`gen`) i trafiają do eksportu dla Claude.
 
+## Cykl kilku bloków
+
+Bloki układają się w cykle po 3 (ok. 12 tygodni, tyle co przegląd z Claude): akumulacja → siła → szczyt z tygodniem testu (`"test":{"weeks":[4]}` w pliku planu).
+
+- Cel cyklu: szacowane 1RM bojów (start z ostatnich 4 tygodni, cel ok. +3%, do zmiany o 2,5 kg w podglądzie pierwszego bloku).
+- Serie na partie priorytetowe rosną o 1 w każdym bloku (11, 12, 13 dla celu sportowego), jeśli zmieszczą się w czasie; w blokach 2–3 dzień może mieć do ok. 1 h 55 min.
+- Tydzień testu: w bojach jedna ciężka trójka z 1–2 powtórzeniami w zapasie (ciężar z szacowanego 1RM) i 2 serie po 5 ok. 10% lżej, reszta jak w lżejszym tygodniu. Wyniki testu nie zmieniają podpowiedzi ani zastoju; trafiają do podsumowania cyklu.
+- Cykle (`macros` w kopii) widać w Analizie i w eksporcie dla Claude: start, cel, najlepszy wynik w cyklu, test, serie na priorytety i średni czas treningu w każdym bloku.
+
 ## Budowa i testy
 
 - `src/dziennik-silowy.html`: źródło aplikacji (jeden plik). `index.html` i `sw.js` powstają z niego przez `npm run build`.
-- `tests/app.test.js`: testy aplikacji w jsdom na sztucznych danych (trening, podpowiedzi, zastój, lżejszy tydzień, plany, kopia na GitHubie, import, migracja, budowanie wszystkich animacji, generator bloku i ocena planu, model czasu, ekran podglądu bloku).
+- `tests/app.test.js`: testy aplikacji w jsdom na sztucznych danych (trening, podpowiedzi, zastój, lżejszy tydzień, plany, kopia na GitHubie, import, migracja, budowanie wszystkich animacji, generator bloku i ocena planu, model czasu, ekran podglądu bloku, cykl z tygodniem testu, lista bloków).
 - `tests/collide.js`: test kolizji animacji (ciało ze sprzętem i części ciała ze sobą) względem wzorca `tests/collide-baseline.json`.
 - `npm test` uruchamia oba. Zmiany trafiają na gałąź `dev`; GitHub Actions uruchamia testy i dopiero po ich zaliczeniu przenosi zmianę na `main`, skąd publikuje się strona.
 - W repozytorium nie ma danych treningowych ani prywatnych planów: testy używają sztucznego planu.
