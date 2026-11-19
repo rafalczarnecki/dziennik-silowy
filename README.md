@@ -6,6 +6,7 @@ Aplikacja na telefon do prowadzenia treningu siłowego: serie i ciężary, przer
 - Wszystkie dane treningowe zapisują się wyłącznie w pamięci telefonu. Repozytorium zawiera tylko kod.
 - Plany treningowe wczytuje się z plików JSON (Ustawienia → Plany treningowe). W kodzie jest tylko ogólny plan startowy.
 - Następny blok można ułożyć w telefonie (Ustawienia → Następny blok z historii, albo baner w ostatnim tygodniu bloku). Szczegóły niżej.
+- Blok wybiera się z listy rozwijanej w Treningu: bieżący, nowe, potem wg ostatniego treningu. Nowy blok zaczyna się od tygodnia 1, do robionego wcześniej wracasz za ostatnim zapisanym treningiem.
 
 ## Format pliku planu
 

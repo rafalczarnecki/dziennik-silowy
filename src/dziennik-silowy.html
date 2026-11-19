@@ -53,7 +53,6 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 14px;font:600 17px/1 var(--display);min-width:48px}
 .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .chip small{display:block;font:500 12px/1.2 var(--body);opacity:.85;margin-top:3px}
-.plans .chip{flex:1 1 auto;max-width:100%;text-align:left;padding:10px 12px}
 
 .ex{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 12px 10px;margin:12px 0}
 .ex h2{font:700 23px/1.1 var(--display);margin:0 0 4px;display:flex;gap:10px;align-items:baseline}
@@ -201,7 +200,9 @@ details summary::-webkit-details-marker{display:none}
 .hist-ex{margin:8px 0 0;font-size:15px}
 .hist-ex b{font-weight:600}
 .empty{color:var(--muted);text-align:center;padding:40px 10px}
-select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:600}
+select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:600}
+.plansel{padding:12px;font:600 17px/1.25 var(--display)}
+label.lbl{display:block}
 .chart{width:100%;overflow-x:auto}
 .chart svg{display:block;width:100%;height:auto}
 .stats{display:flex;gap:10px;margin:10px 0}
@@ -316,7 +317,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-19a';
+const VER='2026-11-19b';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2399,8 +2400,11 @@ const fmtSet=x=>(x.top?'T ':'')+(x.w?fmt(x.w)+'×':'')+(x.r??'–')+(x.parts||[]
 // ---------- widok: trening ----------
 function viewTrening(){
   const P=PLANS[S.plan], D=P.days[S.day], dr=draft();
-  let h='<div class="pick"><p class="lbl">Blok</p><div class="row plans">'+
-    Object.entries(PLANS).map(([k,p])=>`<button class="chip" data-plan="${k}" aria-pressed="${k===S.plan}">${p.name}<small>${p.sub}</small></button>`).join('')+'</div></div>';
+  // blok z listy rozwijanej: bieżący, potem nowe (jeszcze nierobione), potem wg ostatniego treningu, plan startowy na końcu
+  const lu=planLastUse(), ord=k=>k===S.plan?0:BUILTIN_IDS.includes(k)?3:lu[k]?2:1;
+  const ids=Object.keys(PLANS).sort((a,b)=>ord(a)-ord(b)||(lu[b]||0)-(lu[a]||0));
+  let h=`<div class="pick"><label class="lbl" for="plansel">Blok</label><select id="plansel" class="plansel">${ids.map(k=>{const p=PLANS[k];
+    return `<option value="${esc(k)}"${k===S.plan?' selected':''}>${esc(p.name)}${p.sub?' · '+esc(p.sub):''}${k===S.plan?'':lu[k]?' · ostatnio '+fdate(lu[k]):BUILTIN_IDS.includes(k)?'':' · nowy'}</option>`}).join('')}</select></div>`;
   h+=`<div class="pick"><p class="lbl">Tydzień, cykl ${S.cycles[S.plan]||1} (po ${P.weeks||4}. tygodniu plan zaczyna się od nowa)</p><div class="row">`+Array.from({length:P.weeks||4},(_,i)=>i+1).map(w=>`<button class="chip" data-week="${w}" aria-pressed="${w===S.week}">${w}${(P.light||[]).includes(w)?" lżejszy":""}</button>`).join('')+'</div></div>';
   h+='<div class="pick"><p class="lbl">Trening</p><div class="row">'+P.days.map((d,i)=>`<button class="chip" data-day="${i}" aria-pressed="${i===S.day}">${P.dayPrefix||''}${d.name}</button>`).join('')+'</div></div>';
 
@@ -2913,11 +2917,19 @@ $('#view').addEventListener('input',e=>{
   const row=inp.closest('.set'), ei=row.dataset.ex, si=+row.dataset.set, d=draft();
   (d[ei]=d[ei]||[])[si]=Object.assign(d[ei][si]||{},{[inp.dataset.k]:inp.value}); save();
 });
-$('#view').addEventListener('change',e=>{if(e.target.id==='prog'){S.prog=e.target.value;save();render()}});
+$('#view').addEventListener('change',e=>{if(e.target.id==='prog'){S.prog=e.target.value;save();render()}
+  if(e.target.id==='plansel'&&PLANS[e.target.value])switchPlan(e.target.value)});
+// zmiana bloku: nowy plan od tygodnia 1, a do robionego wcześniej wracasz za ostatnim zapisanym treningiem
+function planLastUse(){const o={};S.sessions.forEach(s=>{const t=Date.parse(s.date);if(t>(o[s.plan]||0))o[s.plan]=t});return o}
+function switchPlan(k){const P=PLANS[k],last=[...S.sessions].reverse().find(s=>s.plan===k);
+  if(k!==S.plan&&!BUILTIN_IDS.includes(S.plan))S.prevPlan=S.plan;S.plan=k;
+  if(last){let w=last.week||1,d=(last.day||0)+1;if(d>=P.days.length){d=0;w++;if(w>(P.weeks||4)){w=1;S.cycles[k]=(last.cycle||S.cycles[k]||1)+1}}S.week=w;S.day=d}
+  else{S.week=1;S.day=0}
+  save();render();toast('Blok: '+P.name+', tydzień '+S.week+', trening '+(P.dayPrefix||'')+P.days[S.day].name)}
 
 $('#view').addEventListener('click',async e=>{
   const t=e.target.closest('button'); if(!t)return;
-  if(t.dataset.plan){S.plan=t.dataset.plan;S.day=0;save();return render()}
+  if(t.dataset.plan&&PLANS[t.dataset.plan])return switchPlan(t.dataset.plan);
   if(t.dataset.gen){return genOpen()}
   if(t.dataset.gendrop){GENV=null;render();return toast('Plan odrzucony')}
   if((t.dataset.genok||t.dataset.gensave)&&GENV){const p=GENV.plan,go=!!t.dataset.genok;S.userPlans=S.userPlans||{};S.userPlans[p.id]=p;

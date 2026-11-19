@@ -263,6 +263,21 @@ test('ułożenie bloku w aplikacji: baner, podgląd, zapis, eksport',async()=>{
   eq(A.errs,[]);eq(B.errs,[]);
 });
 
+test('blok z listy rozwijanej: kolejność, nowy plan od tygodnia 1, powrót za ostatnim treningiem',async()=>{
+  const st=base({week:2,day:1});['n1','n2','n3'].forEach((id,i)=>{const P=JSON.parse(JSON.stringify(PLAN));P.id=id;P.name='Blok '+(i+2);st.userPlans[id]=P});
+  st.sessions.push(Object.assign(sesB(now-30*day,3),{plan:'n1'}));
+  const A=app(st);await wait(50);const sel=()=>A.d.querySelector('#plansel');
+  ok(sel()&&!A.d.querySelector('.plans'),'lista rozwijana zamiast przycisków');
+  eq([...sel().options].map(o=>o.value),['tst','n2','n3','n1','start'],'bieżący, nowe, wg ostatniego treningu, startowy na końcu');
+  ok(/nowy/.test(sel().options[1].textContent)&&/ostatnio/.test(sel().options[3].textContent));
+  sel().value='n2';sel().dispatchEvent(new A.w.Event('change',{bubbles:true}));
+  eq([A.S().plan,A.S().week,A.S().day],['n2',1,0],'nowy plan od początku');
+  sel().value='n1';sel().dispatchEvent(new A.w.Event('change',{bubbles:true}));
+  eq([A.S().plan,A.S().week,A.S().day],['n1',4,0],'powrót: za ostatnim treningiem (tydz. 3, B → tydz. 4, A)');
+  sel().value='tst';sel().dispatchEvent(new A.w.Event('change',{bubbles:true}));
+  eq([A.S().plan,A.S().week,A.S().day],['tst',2,0],'bieżący blok: tydz. 1 B → tydz. 2 A');eq(A.errs,[]);
+});
+
 (async()=>{
   const only=process.argv[2];
   for(const [n,f] of tests){if(only&&!n.includes(only))continue;
