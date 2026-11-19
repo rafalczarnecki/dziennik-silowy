@@ -4,7 +4,7 @@ const {JSDOM}=require('jsdom');const fs=require('fs'),path=require('path');
 const HTML=fs.readFileSync(path.join(__dirname,'..','src','dziennik-silowy.html'),'utf8');
 const TAIL='\ninstallAll();\nmigrate();\nrender();\n</script>';
 if(HTML.split(TAIL).length!==2)throw new Error('Nie znaleziono końca skryptu aplikacji');
-const EXPOSE='loadPlan,validatePlan,importAny,importData,ghSync,ghPlans,ghSet,ghCfg,dayEx,volume,suggest,hintFor,lastFor,stallInfo,planEst,planSeq,clashes,targetFor,moveAnim,animKeyOf,G,MX,mdExport,render,save,genPlan,evalPlan,tModel,dayEst,calendar,patOf,musOf,regOf,isFD,macroRows,macroPos';
+const EXPOSE='loadPlan,validatePlan,importAny,importData,ghSync,ghPlans,ghSet,ghCfg,dayEx,volume,suggest,hintFor,lastFor,stallInfo,planEst,planSeq,clashes,targetFor,moveAnim,animKeyOf,G,MX,mdExport,render,save,genPlan,evalPlan,tModel,dayEst,calendar,patOf,musOf,regOf,isFD,macroRows,macroPos,macroCheck,macroGoals';
 const SRC=HTML.replace(TAIL,`\nwindow.__t={${EXPOSE},get S(){return S},set S(v){S=v},PLANS:()=>PLANS};`+TAIL);
 const day=864e5, now=Date.now(), iso=t=>new Date(t).toISOString();
 const PLAN={type:'dziennik-plan',v:1,id:'tst',name:'Plan testowy',sub:'',dayPrefix:'',weeks:4,light:{weeks:[4]},days:[
@@ -336,6 +336,45 @@ test('serie rozgrzewkowe i talerze przy ćwiczeniach ze sztangą',async()=>{
   A.d.querySelector('[data-tab=kopia]').click();A.d.querySelector('#barin').value='15';A.d.querySelector('#platesin').value='20 10 5 2,5 1,25';A.d.querySelector('#barsave').click();
   A.d.querySelector('[data-tab=trening]').click();A.d.querySelector('[data-day="0"]').click();
   ok(/^15 kg × 10/.test(A.card('Przysiad').querySelector('.wrow').textContent),'gryf 15 kg');eq(A.S().plates,'20 10 5 2,5 1,25');eq(A.errs,[]);
+});
+
+test('cel cyklu osiągnięty wcześniej: cel rośnie, nowy cykl bierze tempo z poprzedniego',async()=>{
+  const A=app(gstate());await wait(50);const T=A.T;
+  A.d.querySelector('[data-tab=kopia]').click();A.d.querySelector('[data-gen]').click();A.d.querySelector('[data-genok]').click();
+  const g=T.S.macros[0].goals.Przysiad,g0=g.goal;ok(g0>g.base,'cel na starcie');
+  // jeden trening tuż przy celu: cel bez zmian; drugi na poziomie celu: cel rośnie
+  const w=Math.ceil(g0/(1+8/30)/2.5)*2.5,ses=r=>({date:new Date(Date.now()+r*864e5).toISOString(),plan:'g32',week:1,day:0,label:'A',ex:[{name:'Przysiad',sets:[{w:w-10,r:8},{w:w-5,r:8},{w,r:8}]}]});
+  T.S.sessions.push(ses(0));eq(T.macroCheck(),[],'jeden wynik na poziomie celu to jeszcze nie podniesienie');eq(T.S.macros[0].goals.Przysiad.goal,g0);
+  T.S.sessions.push(ses(1));const msg=T.macroCheck();ok(msg.length===1&&/Przysiad: cel .* osiągnięty .* nowy cel/.test(msg[0]),'komunikat: '+msg);
+  const g1=T.S.macros[0].goals.Przysiad;ok(g1.goal>=g0+2.5,'cel w górę: '+g0+' → '+g1.goal);eq(g1.prev[0].goal,g0,'poprzedni cel zapamiętany');
+  eq(T.macroCheck(),[],'bez ponownego podnoszenia bez nowych wyników');
+  ok(/cel podniesiony z/.test((A.d.querySelector('[data-tab=postepy]').click(),A.d.querySelector('#view').textContent)),'informacja w Analizie');
+  ok(/osiągnięty .* i podniesiony/.test(T.mdExport()),'zmiana celu w eksporcie');
+  // nowy cykl po bloku 3: cel liczony z tempa poprzedniego cyklu
+  T.S.macros[0].plans=['g32','x2','x3'];Object.assign(T.S,{plan:'x3'});const G=T.macroGoals(T.S.userPlans.g32).Przysiad;
+  ok(G.pct>3&&/w cyklu 1 przyrost/.test(G.why),'szybsze tempo w poprzednim cyklu → wyższy cel: +'+G.pct+'%');eq(A.errs,[]);
+});
+
+test('rozgrzewka: pierwsze ćwiczenie dnia i pierwsze złożone na nierozgrzaną partię, bez izolacji',async()=>{
+  const A=app(base());await wait(50);
+  const P={type:'dziennik-plan',v:1,id:'wu',name:'Rozgrzewka test',dayPrefix:'',weeks:4,days:[
+    {name:'A',ex:[['Podciąganie nachwytem',4,8,'',2],['Przysiad',4,8,'rampa',2],['Wyciskanie hantli na skosie dodatnim',3,10,'',2],['Wznosy bokiem',3,12,'',1]]},
+    {name:'B',ex:[['Wyciskanie leżąc wąsko',3,8,'',2],['Ściąganie drążka podchwytem',4,10,'',2],['Wejścia na skrzynię',3,12,'',2],['Wiosłowanie hantlem jednorącz',3,12,'',2],['Uginanie podudzi leżąc',3,12,'',2]]}],
+    extra:{sport:[[],[]],wolverine:[[],[]],sila:[[],[]]}};
+  A.T.loadPlan(JSON.stringify(P),true);
+  const W=n=>{const c=A.card(n),d=c&&c.querySelector('details.warm');return d?{open:d.open,sum:d.querySelector('summary').textContent,rows:[...d.querySelectorAll('.wrow')].map(r=>r.textContent.trim())}:null};
+  let w=W('Podciąganie');ok(w&&w.open&&w.sum==='Rozgrzewka: 2 serie'&&w.rows.every(r=>r==='spokojnie × 3'),'podciąganie jako 1. ćwiczenie dnia: '+JSON.stringify(w));
+  w=W('Przysiad');ok(w&&w.open&&/^20 kg × 10/.test(w.rows[0]),'przysiad: pełna drabinka od gryfu (100 kg ostatnio)');
+  w=W('Wyciskanie hantli');ok(w&&!w.open&&w.sum==='Rozgrzewka: lekko × 8','skos z hantlami: klatka jeszcze nie pracowała → 1 lekka seria: '+JSON.stringify(w));
+  ok(!W('Wznosy'),'izolacja bez rozgrzewki');
+  A.d.querySelector('[data-day="1"]').click();
+  w=W('Wyciskanie leżąc wąsko');ok(w&&w.open&&w.rows[0].startsWith('pusty gryf × 10'),'pierwszy bój bez historii: ogólna drabinka');
+  ok(W('Ściąganie drążka podchwytem').sum==='Rozgrzewka: lekko × 8','plecy jeszcze nie pracowały');
+  ok(W('Wejścia na skrzynię').sum==='Rozgrzewka: bez obciążenia × 8 na nogę','nogi jeszcze nie pracowały');
+  ok(!W('Wiosłowanie hantlem'),'plecy rozgrzane ściąganiem drążka');ok(!W('Uginanie podudzi'),'izolacja');
+  const B=app(base({day:1}));await wait(50);const pb=B.card('Podciąganie').querySelector('details.warm');
+  ok(pb&&pb.querySelector('summary').textContent==='Rozgrzewka: spokojnie × 3','podciąganie po martwym ciągu: martwy nie rozgrzewa najszerszych');
+  eq(A.errs,[]);eq(B.errs,[]);
 });
 
 (async()=>{

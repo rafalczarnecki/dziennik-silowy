@@ -324,7 +324,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-19d';
+const VER='2026-11-19e';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -396,26 +396,49 @@ function suggest(ex,last,light){
     if(ev&&ev[j+off]!=null)return {w:ev[j+off],up:ev[j+off]>p.w,inc:inc0};
     return {w:Math.round((p.w+(up?inc:0))*100)/100,up,inc:inc0}});
 }
-// ---------- serie rozgrzewkowe i talerze (ćwiczenia ze sztangą) ----------
-// Przed pierwszym ćwiczeniem ze sztangą w dniu: pusty gryf ×10, potem ok. 40/60/75/85% ciężaru 1. serii (×5/3/2/1);
-// przed kolejnymi wystarczą 2 serie (50% ×5, 75% ×3). Martwy ciąg od ok. 60 kg (talerze 20 kg dają właściwą wysokość).
+// ---------- serie rozgrzewkowe i talerze ----------
+// Sztanga: pierwszy bój dnia (albo pierwsze ćwiczenie dnia) pełna drabinka: pusty gryf ×10, potem ok. 40/60/75/85% ciężaru 1. serii (×5/3/2/1);
+// bój na partię, która jeszcze nie pracowała: 50/70/85%; bój na rozgrzaną partię: 50% ×5 i 75% ×3. Martwy ciąg od ok. 60 kg.
+// Hantle, wyciągi, maszyny, masa ciała: pierwsze ćwiczenie dnia 2 serie (ok. 40% ×10 i 65% ×5), pierwsze ćwiczenie złożone na nierozgrzaną partię 1 lekka seria (ok. 50% ×8).
+// Izolacja i brzuch bez serii rozgrzewkowych: robisz je po ćwiczeniach złożonych, a pierwsza seria z zapasem sama rozgrzewa.
 const barW=()=>num(S.bar)||20;
 const plateList=()=>{const a=String(S.plates||'25 20 15 10 5 2,5 1,25').split(/[;\s]+/).map(x=>num(x)).filter(x=>x>0).sort((a,b)=>b-a);return a.length?a:[25,20,15,10,5,2.5,1.25]};
 const isBar=n=>patOf(n)&&eqOf(n)==='s'&&!isBW(n)&&!['core','rot','cond','lat','rear','curl','ext','ham','addu'].includes(patOf(n));
 function platesTxt(w){const b=barW();if(!(w>b+1e-9))return Math.abs(w-b)<1e-9?'pusty gryf':'lżej niż gryf';let r=(w-b)/2;const out=[];
   plateList().forEach(p=>{while(r>=p-1e-9){out.push(p);r-=p}});return out.map(fmt).join(' + ')+(r>0.01?` (brakuje ${fmt(Math.round(r*2*100)/100)} kg)`:'')}
-function warmSets(n,w1,first,test){
-  if(!w1||!isBar(n))return [];const b=barW(),dl=patOf(n)==='dead',st=[],L=first?[[.4,5],[.6,3],[.75,2],[.85,1]]:[[.5,5],[.75,3]];if(test)L.push([.92,1]);
-  if(first&&!dl)st.push({w:b,r:10});
-  L.forEach(([p,r])=>{let w=Math.round(w1*p/2.5)*2.5;if(dl)w=Math.max(w,Math.min(60,Math.round(w1*.6/2.5)*2.5));w=Math.max(b,w);
-    if(w<w1-2.4&&(!st.length||w>st[st.length-1].w))st.push({w,r})});
-  return st}
-function warmBox(n,w1,first,test,work){
-  const st=warmSets(n,w1,first,test);if(!st.length)return '';
-  const ws=[...new Set(work.filter(Boolean))];
-  return `<details class="warm"${first?' open':''}><summary>Rozgrzewka i talerze</summary>
-    <p class="meta">Serie rozgrzewkowe przed 1. serią (${fmt(w1)} kg), przerwa ok. 1–2 min. Talerze na jedną stronę gryfu ${fmt(barW())} kg.</p>
-    ${st.map(x=>`<p class="wrow"><b>${fmt(x.w)} kg × ${x.r}</b><span>${esc(platesTxt(x.w))}</span></p>`).join('')}
+// okolice ciała do rozgrzewki: dolne plecy osobno od reszty pleców (martwy ciąg nie rozgrzewa najszerszych)
+const WREG={bp:'b',bb:'b',bt:'b',klatka:'k',triceps:'r',biceps:'r',pion:'p',poziom:'p',prost:'l',czw:'n',dwu:'n',pos:'n',przyw:'n',brzuch:'c',skosne:'c'};
+// rodzaj rozgrzewki dla ćwiczeń dnia: full / medium / short (sztanga), first / light (inne ćwiczenia złożone)
+function warmPlan(DX){const warm=new Set(),out={};let bar=false;
+  DX.forEach((it,k)=>{const n=it.ex[0],role=gRole({n,sch:it.ex[3]}),mus=Object.entries(musOf(n)),regs=[...new Set(mus.filter(([,w])=>w===1).map(([m])=>WREG[m]))],cold=regs.length&&!regs.some(r=>warm.has(r));
+    if(it.ex[2]!=='max'&&!['iso','core','cond'].includes(role)){
+      if(isBar(n)){out[it.key]=!bar||k===0?'full':cold?'medium':'short';bar=true}
+      else if(k===0)out[it.key]='first';else if(cold)out[it.key]='light'}
+    mus.forEach(([m,w])=>{if(w>=.5)warm.add(WREG[m])})});
+  return out}
+function warmSets(n,w1,kind,test){
+  if(!kind)return [];
+  if(isBar(n)){if(!w1)return [{t:'pusty gryf',r:10},{t:'ok. 50% ciężaru 1. serii',r:5},{t:'ok. 75%',r:3}];const b=barW(),dl=patOf(n)==='dead',st=[],L=kind==='full'?[[.4,5],[.6,3],[.75,2],[.85,1]]:kind==='medium'?[[.5,5],[.7,3],[.85,1]]:[[.5,5],[.75,3]];if(test)L.push([.92,1]);
+    if(kind==='full'&&!dl)st.push({w:b,r:10});
+    L.forEach(([p,r])=>{let w=Math.round(w1*p/2.5)*2.5;if(dl)w=Math.max(w,Math.min(60,Math.round(w1*.6/2.5)*2.5));w=Math.max(b,w);
+      if(w<w1-2.4&&(!st.length||w>st[st.length-1].w))st.push({w,r})});
+    return st}
+  const inc=incFor(n),rnd=x=>Math.max(inc,Math.round(x/inc)*inc),first=kind==='first';
+  if(patOf(n)==='uni')return [{t:'bez obciążenia',r:'8 na nogę'},...(first&&w1?[{w:rnd(w1*.5),r:'6 na nogę'}]:[])];
+  if(isBW(n))return first?[{t:'spokojnie',r:3},{t:'spokojnie',r:3}]:[{t:'spokojnie',r:3}];
+  if(!w1)return first?[{t:'lekko',r:10},{t:'średnio',r:5}]:[{t:'lekko',r:8}];
+  return first?[{w:rnd(w1*.4),r:10},{w:rnd(w1*.65),r:5}]:[{w:rnd(w1*.5),r:8}];
+}
+function warmBox(n,w1,kind,test,work){
+  const st=warmSets(n,w1,kind,test);if(!st.length)return '';
+  const bar=isBar(n),lbl=x=>(x.w!=null?fmt(x.w)+' kg':x.t)+' × '+x.r;
+  const sum=bar?'Rozgrzewka i talerze':'Rozgrzewka: '+(st.length===1?lbl(st[0]):pl(st.length,['seria','serie','serii']));
+  const intro=bar?`Serie rozgrzewkowe przed 1. serią${w1?` (${fmt(w1)} kg)`:''}, przerwa ok. 1–2 min. Talerze na jedną stronę gryfu ${fmt(barW())} kg.`
+    :kind==='first'?`Pierwsze ćwiczenie dnia: dojdź do ciężaru spokojnie, bez zmęczenia${isBW(n)?' (możesz z gumą albo zamiast tego ściąganie drążka ok. 50%)':''}.`
+    :'Ta partia jeszcze nie pracowała w tym treningu: jedna lekka seria przed pierwszą serią z planu.';
+  const ws=bar?[...new Set((work||[]).filter(Boolean))]:[];
+  return `<details class="warm"${kind==='full'||kind==='first'?' open':''}><summary>${esc(sum)}</summary><p class="meta">${intro}</p>
+    ${st.map(x=>`<p class="wrow"><b>${esc(lbl(x))}</b>${bar&&x.w!=null?`<span>${esc(platesTxt(x.w))}</span>`:''}</p>`).join('')}
     ${ws.length?`<p class="meta">Serie z planu:</p>`+ws.map(w=>`<p class="wrow"><b>${fmt(w)} kg</b><span>${esc(platesTxt(w))}</span></p>`).join(''):''}</details>`;
 }
 const dkey=()=>S.plan+'-'+S.week+'-'+S.day;
@@ -2469,7 +2492,7 @@ function viewTrening(){
   {const c=dayClashes();if(c.length)h+=`<div class="stall"><p><b>Ten dzień ma dwa ćwiczenia na tę samą partię:</b> ${esc(clashText(c))}.</p><p class="meta">Zasada: najwyżej jedno ćwiczenie bezpośrednie na partię w ciągu dnia. Zamień jedno z nich („Zamień ćwiczenie”) albo usuń dodatek.</p></div>`}
   h+=routineCard('w',S.plan,S.day);
   let kind='m';
-  const DX=dayEx(), firstBar=(DX.find(x=>isBar(x.ex[0])&&x.ex[2]!=='max')||{}).key;
+  const DX=dayEx(), WP=warmPlan(DX);
   DX.forEach(({key,ex,extra,syl,add,ss,partner,orig,since,light,test,idx:pi},idx)=>{
     const sets=setsFor(ex), rir=extra||test?null:rirFor(ex,S.week), last=lastFor(ex[0]), hint=test?testHint(ex):hintFor(ex,last,light), sug=test?testSug(ex):suggest(ex,last,light);
     const rows=dr[key]||[], ei=key;
@@ -2510,7 +2533,7 @@ function viewTrening(){
     h+=stallBox(ex[0],pi,orig,idx);
     if(last) h+=`<p class="last"><span class="meta">Ostatnio ${fdate(last.date)}:</span> ${last.sets.map(fmtSet).join(', ')}</p>`;
     if(!vNew)h+=`<p class="hint${hint.up?' up':''}">${hint.t}</p>`;
-    if(isBar(ex[0])&&ex[2]!=='max'){const s0=sug&&sug.find(x=>x&&x.w),l0=last&&last.sets.find(x=>x.w);h+=warmBox(ex[0],s0?s0.w:l0?l0.w:null,key===firstBar,!!test,(sug||[]).map(x=>x&&x.w))}
+    if(WP[key]){const s0=sug&&sug.find(x=>x&&x.w),l0=last&&last.sets.find(x=>x.w);h+=warmBox(ex[0],s0?s0.w:l0?l0.w:null,WP[key],!!test,(sug||[]).map(x=>x&&x.w))}
     let wi=0;
     sets.forEach((s,si)=>{
       const r=rows[si]||{}, prev=last&&last.sets[si];
@@ -2747,7 +2770,7 @@ function mdExport(){
   Object.entries(S.weak||{}).forEach(([n,w])=>{if(w.pt&&w.pt!=='nie'&&liftOf(n)){const P=liftOf(n).pts[w.pt];cfg.push(`- Zgłoszone słabe ogniwo: ${n}, najtrudniej ${P.l.toLowerCase()} (${P.m})`)}});
   if((S.macros||[]).length){L.push('## Cykle (kilka miesięcy)','Cykl: 3 bloki (akumulacja, siła, szczyt z tygodniem testu). Szacowane 1RM w kg: start, cel, najlepsze w cyklu, test (ciężka trójka).','');
     S.macros.forEach(m=>{L.push(`- Cykl ${m.n} od ${ymd(macroStart(m))}: ${m.plans.map((id,i)=>(PLANS[id]?PLANS[id].name:id)+' '+PHASE[MPH[i]].toLowerCase()).join(' → ')}${macroOf(S.plan)===m?` (teraz blok ${m.plans.indexOf(S.plan)+1}, tydz. ${S.week})`:''}`);
-      macroRows(m).forEach(r=>L.push(`  - ${r.n}: start ${fmt(r.base)}, cel ${fmt(r.goal)}, najlepsze w cyklu ${r.now?fmt(r.now):'–'}, test ${r.test?fmt(r.test):'–'}`));
+      macroRows(m).forEach(r=>{const g=m.goals[r.n];L.push(`  - ${r.n}: start ${fmt(r.base)}, cel ${fmt(r.goal)}, najlepsze w cyklu ${r.now?fmt(r.now):'–'}, test ${r.test?fmt(r.test):'–'}${(g.prev||[]).map(x=>`; cel ${fmt(x.goal)} osiągnięty ${String(x.date).slice(0,10)} (${fmt(x.best)}) i podniesiony`).join('')}`)});
       m.plans.forEach(id=>{const P=S.userPlans&&S.userPlans[id];if(P&&P.gen&&P.gen.prio)L.push(`  - ${P.name}: serie na priorytety ${Object.entries(P.gen.prio).map(([k,v])=>MG[k].toLowerCase()+' '+fmt(v)).join(', ')}`)})});L.push('')}
   L.push('## Ustawienia i zmiany w planie',...cfg,'');
   const names=[...new Set(ses.flatMap(s=>s.ex.map(e=>e.name)))];
@@ -3044,11 +3067,12 @@ $('#view').addEventListener('click',async e=>{
     delete S.drafts[dkey()]; S.starts={}; delete S.notes[dkey()]; noteOpen=null;
     S.post={plan:S.plan,day:S.day,sid:date,start:st||null};
     const prs=findPRs(ex,S.sessions.length-1); if(prs.length)S.sessions[S.sessions.length-1].prs=prs;
+    const goalUp=macroCheck();
     const stalls=ex.map(x=>x.name).filter(n=>stallInfo(n));
     if(S.day<P.days.length-1)S.day++; else {S.day=0; if(S.week<(P.weeks||4))S.week++; else {S.week=1; S.cycles[S.plan]=(S.cycles[S.plan]||1)+1;}}
     stopTimer(); save(); render(); window.scrollTo(0,0); ghMark(1500);
     if(window.__upd)setTimeout(()=>location.reload(),3000);
-    toast((prs.length?'Rekord! '+prs.map(prText).join('; ')+'. ':'')+(stalls.length?'Brak progresu: '+stalls.join(', ')+'. Propozycja pojawi się przy tym ćwiczeniu.':prs.length?'':'Trening zapisany'));
+    toast((goalUp.length?'Cel cyklu: '+goalUp.join('; ')+'. ':'')+(prs.length?'Rekord! '+prs.map(prText).join('; ')+'. ':'')+(stalls.length?'Brak progresu: '+stalls.join(', ')+'. Propozycja pojawi się przy tym ćwiczeniu.':prs.length?'':'Trening zapisany'));
     return;
   }
   if(t.dataset.rt){
@@ -3334,23 +3358,38 @@ const MACRO_N=3, MPH=['acc','int','real'];
 function macroPos(){const ms=S.macros||[];for(let k=ms.length-1;k>=0;k--){const m=ms[k],i=m.plans.indexOf(S.plan);if(i>=0)return i<MACRO_N-1?{m,idx:i+1}:{m:null,idx:0}}return {m:null,idx:0}}
 const macroOf=id=>(S.macros||[]).find(m=>m.plans.includes(id))||null;
 // najlepsze szacowane 1RM z serii do 12 powt. (bez lżejszych tygodni, testu i gorszych dni), w przedziale dat
-function bestE1(name,from=0,to=Infinity){let b=0;S.sessions.forEach(s=>{const t=Date.parse(s.date);if(t<from||t>to)return;const e=s.ex.find(x=>x.name===name);
+function bestE1(name,from=0,to=Infinity,plans){let b=0;S.sessions.forEach(s=>{const t=Date.parse(s.date);if(t<from||t>to||plans&&!plans.includes(s.plan))return;const e=s.ex.find(x=>x.name===name);
   if(!e||badDay(e)||wasLight(s,e))return;e.sets.forEach(x=>{if(x.w&&x.r&&x.r<=12)b=Math.max(b,e1rm(x.w,x.r))})});return b}
 // wynik testu w cyklu: najlepsza seria do 5 powtórzeń z tygodnia testu
 function testE1(m,name){let b=0;S.sessions.forEach(s=>{if(!m.plans.includes(s.plan)||!isTest(s.plan,s.week))return;const e=s.ex.find(x=>x.name===name);
   if(!e||badDay(e))return;e.sets.forEach(x=>{if(x.w&&x.r&&x.r<=5)b=Math.max(b,e1rm(x.w,x.r))})});return b}
 const macroLifts=p=>[...new Set(p.days.flatMap(d=>d.ex.filter(x=>MAIN_N.includes(x[0])).map(x=>x[0])))];
-function macroGoals(p){const o={},from=Date.now()-28*864e5;macroLifts(p).forEach(n=>{const b=bestE1(n,from)||bestE1(n);if(!b)return;
-  const base=Math.round(b*2)/2;o[n]={base,goal:Math.max(Math.ceil(base*1.03/2.5)*2.5,Math.ceil((base+2.5)/2.5)*2.5)}});return o}
+// cel nowego cyklu: ok. +3%, a gdy jest poprzedni cykl, tempo z niego (80% osiągniętego przyrostu, od 2 do 6%)
+function macroGoals(p){const o={},from=Date.now()-28*864e5,prev=(S.macros||[]).filter(m=>m.plans.length).slice(-1)[0];
+  macroLifts(p).forEach(n=>{const b=bestE1(n,from)||bestE1(n);if(!b)return;const base=Math.round(b*2)/2;
+    let pct=.03,why='';const g0=prev&&prev.goals&&prev.goals[n];
+    if(g0&&g0.base){const r=macroRows(prev).find(x=>x.n===n),res=r&&(r.test||r.now);if(res){const gain=(res-g0.base)/g0.base;pct=Math.max(.02,Math.min(.06,gain*.8));why=`w cyklu ${prev.n} przyrost ${fmt(Math.round(gain*1000)/10)}%`}}
+    o[n]={base,goal:Math.max(Math.ceil(base*(1+pct)/2.5)*2.5,Math.ceil((base+2.5)/2.5)*2.5),pct:Math.round(pct*1000)/10,why}});return o}
+// cel osiągnięty przed testem: po 2 treningach z wynikiem na poziomie celu (albo 1 treningu wyraźnie, o 2%, powyżej) cel rośnie.
+// Nowy cel: najlepszy wynik + ok. 3% w proporcji do tygodni, które zostały do końca cyklu (co najmniej +2,5 kg). Ćwiczenia i ciężary na treningu się nie zmieniają.
+function macroCheck(){const m=macroOf(S.plan);if(!m||m.plans.indexOf(S.plan)<0||isTest(S.plan,S.week))return [];const from=macroStart(m),out=[];
+  Object.entries(m.goals||{}).forEach(([n,g])=>{const per=S.sessions.filter(s=>m.plans.includes(s.plan)&&Date.parse(s.date)>=from).map(s=>{const e=s.ex.find(x=>x.name===n);
+      if(!e||badDay(e)||wasLight(s,e))return 0;return Math.max(0,...e.sets.filter(x=>x.w&&x.r&&x.r<=12).map(x=>e1rm(x.w,x.r)))}).filter(Boolean);
+    const best=Math.max(0,...per);if(!(per.filter(v=>v>=g.goal).length>=2||best>=g.goal*1.02))return;
+    const wrem=Math.max(2,MACRO_N*4-Math.floor((Date.now()-from)/(7*864e5))),ng=Math.max(g.goal+2.5,Math.ceil(best*(1+.03*wrem/(MACRO_N*4))/2.5)*2.5);
+    (g.prev=g.prev||[]).push({goal:g.goal,date:new Date().toISOString(),best:Math.round(best*2)/2});
+    out.push(`${n}: cel ${fmt(g.goal)} kg osiągnięty (${fmt(Math.round(best*2)/2)} kg), nowy cel ${fmt(ng)} kg`);g.goal=ng});
+  return out}
 function macroStart(m){const t=S.sessions.filter(s=>m.plans.includes(s.plan)).map(s=>Date.parse(s.date));return t.length?Math.min(...t):Date.parse(m.created)}
 // podsumowanie cyklu: na każdy bój start, teraz (najlepsze w cyklu), cel i test
-function macroRows(m){const from=macroStart(m);return Object.entries(m.goals||{}).map(([n,g])=>({n,base:g.base,goal:g.goal,now:Math.round(bestE1(n,from)*2)/2,test:Math.round(testE1(m,n)*2)/2}))}
+// najlepszy wynik tylko z treningów tego cyklu (bloki cyklu), żeby starsze cykle nie łapały późniejszych wyników
+function macroRows(m){return Object.entries(m.goals||{}).map(([n,g])=>({n,base:g.base,goal:g.goal,prev:g.prev&&g.prev.length?g.prev[0].goal:null,now:Math.round(bestE1(n,0,Infinity,m.plans)*2)/2,test:Math.round(testE1(m,n)*2)/2}))}
 function macroCard(){
   const ms=(S.macros||[]);if(!ms.length)return '';
   const cur=macroOf(S.plan), k=cur?cur.plans.indexOf(S.plan):-1;
   const one=(m,open)=>{const st=macroStart(m),end=st+MACRO_N*28*864e5,rows=macroRows(m),done=m.plans.length===MACRO_N&&rows.some(r=>r.test);
     const head=`<p><b>Cykl ${m.n}</b> <span class="meta">${fdate(st)} – ok. ${fdate(end)}${m===cur?`, blok ${k+1} z ${MACRO_N}: ${esc(PHASE[MPH[k]].toLowerCase())}, tydzień ${S.week}`:done?', zakończony':''}</span></p>`;
-    const lifts=rows.map(r=>`<p class="genv mrow"><span>${esc(r.n)}</span><span class="meta">${fmt(r.base)} → <b>${fmt(r.goal)}</b></span><span>${r.test?`test <b>${fmt(r.test)}</b>${r.test>=r.goal?' ✓':''}`:r.now?`teraz ${fmt(r.now)}`:'–'}</span></p>`).join('');
+    const lifts=rows.map(r=>`<p class="genv mrow"><span>${esc(r.n)}${r.prev?`<br><small class="meta">cel podniesiony z ${fmt(r.prev)}</small>`:''}</span><span class="meta">${fmt(r.base)} → <b>${fmt(r.goal)}</b></span><span>${r.test?`test <b>${fmt(r.test)}</b>${r.test>=r.goal?' ✓':''}`:r.now?`teraz ${fmt(r.now)}`:'–'}</span></p>`).join('');
     const blocks=m.plans.map((id,i)=>{const P=S.userPlans&&S.userPlans[id],gp=P&&P.gen&&P.gen.prio,du=S.sessions.filter(s=>s.plan===id&&s.dur&&!isLight(s.plan,s.week)&&!isTest(s.plan,s.week)).map(s=>s.dur);
       return `<p class="meta">${i+1}. ${esc(P?P.name:id)} ${esc(PHASE[MPH[i]].toLowerCase())}${gp?': '+Object.entries(gp).map(([mm,v])=>`${MG[mm].toLowerCase()} ${fmt(v)}`).join(', '):''}${du.length?`; trening średnio ${fdur(du.reduce((a,b)=>a+b,0)/du.length)}`:''}</p>`}).join('');
     return open?head+lifts+blocks:`<details><summary>${head}</summary>${lifts}${blocks}</details>`};
@@ -3604,7 +3643,7 @@ function viewGen(){
    h+=`<div class="card"><h3>Cykl ${nC}, blok ${M.idx+1} z ${MACRO_N}</h3><p>${MPH.map((ph,i)=>(i===M.idx?'<b>':'')+(i+1)+'. '+PHASE[ph].toLowerCase()+(i===M.idx?'</b>':'')).join(' → ')}.
      ${M.idx===0?' Nowy cykl na ok. 12 tygodni: w kolejnych blokach serie na partie priorytetowe rosną o 1, jeśli zmieszczą się w czasie (wtedy trening do ok. 1 h 55 min), a na koniec jest tydzień testu.':M.idx===MACRO_N-1?' W 4. tygodniu tego bloku test: w bojach jedna ciężka trójka z 1–2 powtórzeniami w zapasie, bez podejścia na maksa.':''}</p>
      ${Object.keys(M.goals).length?`<p class="meta">Cel cyklu: szacowane 1RM w kg${M.idx===0?'. Możesz go zmienić o 2,5 kg.':'.'}</p>`+Object.entries(M.goals).map(([n,gl])=>{const r=rows.find(x=>x.n===n);
-       return `<p class="genv mrow"><span>${esc(n)}</span><span class="meta">${M.idx===0?'teraz '+fmt(gl.base):'start '+fmt(gl.base)+(r&&r.now?', teraz '+fmt(r.now):'')}</span><span>${M.idx===0?`<button class="chip sm" data-goalpm="${esc(n)}|-" aria-label="Cel mniej">−</button> <b>${fmt(gl.goal)}</b> <button class="chip sm" data-goalpm="${esc(n)}|+" aria-label="Cel więcej">+</button>`:`cel <b>${fmt(gl.goal)}</b>`}</span></p>`}).join(''):''}</div>`}
+       return `<p class="genv mrow"><span>${esc(n)}${M.idx===0&&gl.why?`<br><small class="meta">+${fmt(gl.pct)}%: ${esc(gl.why)}</small>`:r&&r.prev?`<br><small class="meta">cel podniesiony z ${fmt(r.prev)}</small>`:''}</span><span class="meta">${M.idx===0?'teraz '+fmt(gl.base):'start '+fmt(gl.base)+(r&&r.now?', teraz '+fmt(r.now):'')}</span><span>${M.idx===0?`<button class="chip sm" data-goalpm="${esc(n)}|-" aria-label="Cel mniej">−</button> <b>${fmt(gl.goal)}</b> <button class="chip sm" data-goalpm="${esc(n)}|+" aria-label="Cel więcej">+</button>`:`cel <b>${fmt(gl.goal)}</b>`}</span></p>`}).join(''):''}</div>`}
   p.days.forEach((d,i)=>{const sup={};[...d.ex.map(x=>[x[0],x[6]]),...(X[i]||[]).map(x=>[x[0],x[4]])].forEach(([n,s])=>{if(s)(sup[s]=sup[s]||[]).push(n)});
     const pair=(n,s)=>s&&sup[s]&&sup[s].length===2?sup[s].find(y=>y!==n):null;
     h+=`<div class="card"><h3>${esc((p.dayPrefix||'')+d.name)} <span class="meta">${cal?WD[cal[i]]+', ':''}ok. ${fdur(Math.round(ev.est[i]/300)*300)}</span></h3><ol class="genl">`+

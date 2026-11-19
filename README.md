@@ -6,7 +6,7 @@ Aplikacja na telefon do prowadzenia treningu siłowego: serie i ciężary, przer
 - Wszystkie dane treningowe zapisują się wyłącznie w pamięci telefonu. Repozytorium zawiera tylko kod.
 - Plany treningowe wczytuje się z plików JSON (Ustawienia → Plany treningowe). W kodzie jest tylko ogólny plan startowy.
 - Następny blok można ułożyć w telefonie (Ustawienia → Następny blok z historii, albo baner w ostatnim tygodniu bloku). Szczegóły niżej.
-- Przy ćwiczeniach ze sztangą: serie rozgrzewkowe (pusty gryf ×10, potem ok. 40/60/75/85% ciężaru 1. serii; martwy ciąg od ok. 60 kg) i talerze na stronę dla rozgrzewki i serii z planu. Gryf i talerze ustawia się w Ustawieniach.
+- Serie rozgrzewkowe: przy pierwszym boju dnia pełna drabinka (pusty gryf ×10, potem ok. 40/60/75/85% ciężaru 1. serii; martwy ciąg od ok. 60 kg), przy boju na partię, która jeszcze nie pracowała 50/70/85%, na rozgrzaną 50% i 75%; do tego talerze na stronę. Hantle, wyciągi, maszyny i masa ciała: pierwsze ćwiczenie dnia 2 serie, pierwsze złożone na nierozgrzaną partię 1 lekka seria. Izolacja i brzuch bez serii rozgrzewkowych. Gryf i talerze ustawia się w Ustawieniach.
 - Po ✓ ostatniej serii ćwiczenia pytanie o zapas (RIR 0, 1, 2, 3+). Zapas o 2 mniejszy niż w planie zatrzymuje dokładanie ciężaru, o 2 większy daje podwójny krok. Zapis w historii i eksporcie.
 - Aplikacja sprawdza nową wersję przy każdym powrocie do niej; w trakcie treningu nowa wersja wczytuje się dopiero po zapisaniu treningu.
 - Blok wybiera się z listy rozwijanej w Treningu: bieżący, nowe, potem wg ostatniego treningu. Nowy blok zaczyna się od tygodnia 1, do robionego wcześniej wracasz za ostatnim zapisanym treningiem.
@@ -46,6 +46,8 @@ Bloki układają się w cykle po 3 (ok. 12 tygodni, tyle co przegląd z Claude):
 
 - Cel cyklu: szacowane 1RM bojów (start z ostatnich 4 tygodni, cel ok. +3%, do zmiany o 2,5 kg w podglądzie pierwszego bloku).
 - Serie na partie priorytetowe rosną o 1 w każdym bloku (11, 12, 13 dla celu sportowego), jeśli zmieszczą się w czasie; w blokach 2–3 dzień może mieć do ok. 1 h 55 min.
+- Cel osiągnięty przed testem (2 treningi na poziomie celu albo 1 wyraźnie, o 2%, powyżej): cel rośnie do najlepszego wyniku + ok. 3% w proporcji do tygodni, które zostały; poprzedni cel zostaje w historii. Ciężary na treningu dalej prowadzą podpowiedzi, niezależnie od celu.
+- Cel nowego cyklu bierze tempo z poprzedniego: 80% osiągniętego przyrostu, od 2 do 6%.
 - Tydzień testu: w bojach jedna ciężka trójka z 1–2 powtórzeniami w zapasie (ciężar z szacowanego 1RM) i 2 serie po 5 ok. 10% lżej, reszta jak w lżejszym tygodniu. Wyniki testu nie zmieniają podpowiedzi ani zastoju; trafiają do podsumowania cyklu.
 - Cykle (`macros` w kopii) widać w Analizie i w eksporcie dla Claude: start, cel, najlepszy wynik w cyklu, test, serie na priorytety i średni czas treningu w każdym bloku.
 
