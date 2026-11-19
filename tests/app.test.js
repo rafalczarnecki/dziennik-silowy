@@ -4,7 +4,7 @@ const {JSDOM}=require('jsdom');const fs=require('fs'),path=require('path');
 const HTML=fs.readFileSync(path.join(__dirname,'..','src','dziennik-silowy.html'),'utf8');
 const TAIL='\ninstallAll();\nmigrate();\nrender();\n</script>';
 if(HTML.split(TAIL).length!==2)throw new Error('Nie znaleziono końca skryptu aplikacji');
-const EXPOSE='loadPlan,validatePlan,importAny,importData,ghSync,ghPlans,ghSet,ghCfg,dayEx,volume,suggest,hintFor,lastFor,stallInfo,planEst,planSeq,clashes,targetFor,moveAnim,animKeyOf,G,MX,mdExport,render,save';
+const EXPOSE='loadPlan,validatePlan,importAny,importData,ghSync,ghPlans,ghSet,ghCfg,dayEx,volume,suggest,hintFor,lastFor,stallInfo,planEst,planSeq,clashes,targetFor,moveAnim,animKeyOf,G,MX,mdExport,render,save,genPlan,evalPlan,tModel,dayEst,calendar,patOf,musOf,regOf,isFD';
 const SRC=HTML.replace(TAIL,`\nwindow.__t={${EXPOSE},get S(){return S},set S(v){S=v},PLANS:()=>PLANS};`+TAIL);
 const day=864e5, now=Date.now(), iso=t=>new Date(t).toISOString();
 const PLAN={type:'dziennik-plan',v:1,id:'tst',name:'Plan testowy',sub:'',dayPrefix:'',weeks:4,light:{weeks:[4]},days:[
@@ -114,6 +114,7 @@ test('zmiana zakresu powtórzeń: ciężar przeliczony',async()=>{
   eq(A.T.suggest(['Przysiad',4,6,'rampa'],L).map(x=>x.w),[85,90,97.5,102.5]);
   ok(/Nowy zakres/.test(A.T.hintFor(['Przysiad',4,6,'rampa'],L).t));
   eq(A.T.suggest(['Przysiad',4,12,''],L).map(x=>x.w),[72.5,77.5,82.5,87.5],'więcej powtórzeń: lżej');
+  eq(A.T.suggest(['Wiosłowanie na wyciągu siedząc',3,12,''],{sets:[{w:32,r:10},{w:39,r:10},{w:45,r:10},{w:52,r:10}],reps:10}).map(x=>x.w),[35,42.5,47.5],'seria mniej: odpowiednikami są najcięższe serie');
 });
 test('lżejszy tydzień: seria mniej, ok. 10% lżej, wynik pominięty w podpowiedziach',async()=>{
   const A=app(base({week:4}));await wait(50);
@@ -186,6 +187,80 @@ test('migracja: pusty start i stary zapis bez nowych pól',async()=>{
   const B=app({sessions:[{date:iso(now-30*day),plan:'start',week:1,day:0,label:'x',ex:[{name:'Przysiad',sets:[{w:60,r:8}]}]}]});await wait(50);
   B.d.querySelectorAll('[data-tab]').forEach(b=>b.click());eq(B.errs,[]);eq(B.S().sessions.length,1);
   const C=app({sessions:'zepsute'});await wait(50);eq(C.errs,[]);
+});
+
+// ---------- generator następnego bloku (dane sztuczne) ----------
+// Plan z błędami z przeglądu: dwa uginania nóg, OHP + skos w jednym dniu, wznosy + face pull w superserii, ćwiczenie bez postępu.
+const GP={type:'dziennik-plan',v:1,id:'blk',name:'Blok 3.1 Siła',sub:'',dayPrefix:'',weeks:4,light:{weeks:[4]},days:[
+  {name:'A',ex:[['Przysiad',4,6,'rampa',[3,2,1,3]],['Wyciskanie touch and go',4,6,'rampa',[3,2,1,3]],['Uginanie podudzi leżąc',4,10,'',[2,2,1,2]],['Powell raises',3,12,'',1],['Ab wheel',3,'max','',1]],warmup:[['krazenia',45]],stretch:[['oddech',60]]},
+  {name:'B',ex:[['Martwy ciąg klasyczny',4,5,'rampa',[3,2,1,3]],['OHP',4,8,'',[2,2,1,2]],['Wyciskanie hantli na skosie dodatnim',3,10,'',[2,2,1,2]],['Wiosłowanie na wyciągu siedząc',4,10,'',[2,2,1,2]],['Hollow body',3,'max','',1]],warmup:[['krazenia',45]],stretch:[['oddech',60]]},
+  {name:'C',ex:[['Wyciskanie leżąc wąsko',3,8,'',[2,2,1,2]],['Ściąganie drążka podchwytem',4,8,'',[2,2,1,2]],['Split squat',3,10,'',[2,2,1,2]],['Wiosłowanie hantlem jednorącz',4,10,'',[2,2,1,2]],['Uginanie podudzi siedząc',3,10,'',[2,2,1,2]],['Wood chopper',3,12,'',1]],warmup:[['krazenia',45]],stretch:[['oddech',60]]}],
+  extra:{sport:[[['Wznosy bokiem',3,12,10]],[['Wznosy bokiem',3,12,10,'A'],['Face pull',3,15,12,'A']],[['Wznosy bokiem',3,12,10],['Lina na rolce',3,'max',null,null,60,'30–40 s']]],wolverine:[[],[],[]],sila:[[],[],[]]}};
+// treningi: A w środy, B w soboty, C w poniedziałki; czasy serii z odstępami, żeby działał model czasu
+const MON=Date.parse('2026-10-05T17:00:00Z');
+function gses(day,t0,week,list){let t=t0+900e3,last=t;const ex=list.map(([name,sets,iv],k)=>{if(k)t+=230e3;const st=sets.map(([w,r],j)=>{if(j)t+=iv*1000;last=t;return {w,r,t}});return {name,sets:st}});
+  return {date:iso(t0),plan:'blk',week,day,label:'x',ex,start:t0,dur:Math.round((last-t0)/1000)+400}}
+function gstate(){const ses=[];
+  for(let w=0;w<3;w++){const m=MON+w*7*day, k=w*2.5, d=ses.length;
+    ses.push(gses(0,m+2*day,w+1,[['Przysiad',[[90+k,6],[95+k,6],[100+k,6],[105+k,6]],270],['Wyciskanie touch and go',[[65+k,6],[67.5+k,6],[70+k,6],[72.5+k,6]],240],['Uginanie podudzi leżąc',[[50,10],[60,10],[70,10],[70+k,10]],160],['Powell raises',[[14,12],[14,12],[14,12]],150],['Ab wheel',[[null,12+w],[null,12],[null,12]],130],['Wznosy bokiem',[[12,12],[12,12],[12,12]],120]]));
+    ses.push(gses(1,m+5*day,w+1,[['Martwy ciąg klasyczny',[[120+k,5],[125+k,5],[130+k,5],[135+k,5]],300],['OHP',[[40+k,8],[40+k,8],[40+k,8],[40+k,8]],220],['Wyciskanie hantli na skosie dodatnim',[[18,10],[20,10],[22,10]],180],['Wiosłowanie na wyciągu siedząc',[[39,10],[45,10],[52,10],[52+k,10]],210],['Hollow body',[[null,40+w],[null,40],[null,35]],130]]));
+    ses.push(gses(2,m+7*day,w+1,[['Wyciskanie leżąc wąsko',[[60+k,8],[62.5+k,8],[65+k,8]],320],['Ściąganie drążka podchwytem',[[66,8],[73,8],[73+k,8],[73+k,8]],230],['Wejścia na skrzynię',[[20+w*2,10],[20+w*2,10],[20+w*2,10]],360],['Wiosłowanie hantlem jednorącz',[[16,10],[18,10],[20,10],[20+w*2,10]],190],['Uginanie podudzi siedząc',[[40,10],[45,10],[50,10]],160],['Wood chopper',[[22.5+w,12],[22.5+w,12],[22.5+w,12]],150]]));
+    ses[d+2].ex[2].from='Split squat';}
+  return {plan:'blk',week:4,day:0,tab:'trening',goal:'sport',migs:['m1026'],userPlans:{blk:GP},sessions:ses,
+    swaps:{'blk-2':{'2':{name:'Wejścia na skrzynię',since:MON}}},profile:'Wzrost 180 cm. Zdrowie: ból kolana przy front squacie.'}}
+test('generator: następny blok bez błędów z przeglądu planów',async()=>{
+  const A=app(gstate());await wait(50);const T=A.T;
+  eq(T.calendar('blk',3),{wd:[2,5,0],known:true},'kalendarz: śr., sob., pon.');
+  const r=T.genPlan();ok(r&&r.plan,'plan ułożony');const p=r.plan,g=p.extra.sport,names=i=>[...p.days[i].ex.map(x=>x[0]),...g[i].map(x=>x[0])],all=[0,1,2].flatMap(names);
+  ok(!T.validatePlan(p).err,'poprawny plik planu');eq(T.validatePlan(p).conf,[],'jedna partia na dzień');
+  eq([p.name,p.sub,p.id,p.gen.phase],['Blok 3.2','Akumulacja, z aplikacji','g32','acc'],'po bloku siłowym akumulacja');
+  eq(p.light,{weeks:[4]});
+  const ex=n=>p.days.flatMap(d=>d.ex).find(x=>x[0]===n);
+  eq([ex('Przysiad').slice(1,4),ex('Wyciskanie touch and go').slice(1,4),ex('Martwy ciąg klasyczny').slice(1,4)],[[4,8,'rampa'],[4,8,'rampa'],[4,6,'rampa']],'boje: 8/8/6 powtórzeń, rampa');
+  ok(!all.includes('Split squat')&&all.includes('Wejścia na skrzynię'),'zamieniony split squat nie wraca, zamiennik zostaje');
+  ok(!all.includes('Front squat'),'ból z profilu');
+  ok(!all.includes('Powell raises'),'ćwiczenie bez postępu zamienione');
+  const hams=all.filter(n=>T.patOf(n)==='ham'),hinge=[0,1,2].filter(i=>names(i).some(n=>T.patOf(n)==='hinge'));
+  eq(hams.length,1,'jedno uginanie nóg');eq(hinge,[0],'skłon w środę, najdalej od martwego ciągu w sobotę');
+  [0,1,2].forEach(i=>ok(names(i).filter(T.isFD).length<=1,'najwyżej jedno ciężkie wyciskanie na przednie barki: '+names(i).join(', ')));
+  [0,1,2].forEach(i=>{const by={};[...p.days[i].ex.map(x=>[x[0],x[6]]),...g[i].map(x=>[x[0],x[4]])].forEach(([n,s])=>{if(s)(by[s]=by[s]||[]).push(n)});
+    Object.values(by).filter(q=>q.length===2).forEach(([a,b])=>ok(!T.regOf(a).some(x=>T.regOf(b).includes(x)),'superseria bez wspólnej okolicy: '+a+' + '+b))});
+  const v=r.ev.vol;['bb','pion','bt'].forEach(m=>ok(v[m]>=8,'priorytet '+m+': '+v[m]));ok(v.dwu>=6,'tył uda: '+v.dwu);
+  r.ev.est.forEach((t,i)=>ok(t<=7200,'dzień '+i+' do 2 h: '+t));
+  eq(r.ev.issues.filter(x=>x.lv==='err'),[],'bez błędów w ocenie');
+  ok(p.gen.why.some(w=>/Face pull/.test(w.t)&&/osobno/.test(w.t)),'powód: wznosy i face pull osobno');
+  eq(A.errs,[]);
+});
+test('ocena planu: wykrywa błędy z przeglądu',async()=>{
+  const A=app(gstate());await wait(50);
+  const bad=JSON.parse(JSON.stringify(GP));bad.id='bad';delete bad.light;
+  bad.days[2].ex.push(['Rumuński martwy ciąg',3,10,'',2]);bad.days[2].ex.push(['Nieznane ćwiczenie',3,10,'',2]);
+  const e=A.T.evalPlan(bad,{cur:'blk'}),txt=e.issues.map(x=>x.lv+' '+x.t).join('\n');
+  [/err .*Split squat: wraca/,/err .*Nieznane ćwiczenie/,/warn B \(sob\.\): dwa ciężkie wyciskania na przednie barki/,/err B \(sob\.\): superseria Wznosy bokiem \+ Face pull/,
+   /warn B \(sob\.\) i C \(pon\.\): .*co 2 dni/,/err C \(pon\.\): dwa ćwiczenia na tył uda/,/warn Brak lżejszego tygodnia/,/Powell raises: bez postępu/].forEach(re=>ok(re.test(txt),'brak: '+re+'\n'+txt));
+  ok(e.score<50,'niska ocena: '+e.score);
+});
+test('czas treningu: model z zapisów, superseria krótsza',async()=>{
+  const A=app(gstate());await wait(50);const m=A.T.tModel();
+  ok(Math.abs(m.iv('Przysiad')-270)<1&&Math.abs(m.iv('Wejścia na skrzynię')-360)<1,'odstęp między seriami z zapisów');
+  ok(m.pre>800&&m.pre<1000&&Math.abs(m.cal)<120,'rozgrzewka i poprawka: '+m.pre+' '+m.cal);
+  const P=JSON.parse(JSON.stringify(GP));P.id='ss';P.days[0].ex[3].push(null,'Z');P.days[0].ex[4].push(null,'Z');A.T.loadPlan(JSON.stringify(P),true);
+  const sep=A.T.dayEst('blk',0);ok(A.T.dayEst('ss',0)<sep,'superseria skraca dzień: '+A.T.dayEst('ss',0)+' < '+sep);
+  const DX=A.T.dayEx('ss',0),pw=DX.find(x=>x.ex[0]==='Powell raises');ok(pw.ss==='Z'&&pw.partner==='Ab wheel'&&pw.first,'superseria w ćwiczeniach planu');
+});
+test('ułożenie bloku w aplikacji: baner, podgląd, zapis, eksport',async()=>{
+  const A=app(gstate());await wait(50);
+  const b=A.d.querySelector('[data-gen]');ok(b&&/Ostatni tydzień bloku/.test(b.closest('.card').textContent),'baner w ostatnim tygodniu');b.click();
+  ok(/Następny blok/.test(A.d.querySelector('#view').textContent)&&A.d.querySelectorAll('.genl').length===3,'podgląd z trzema dniami');
+  ok(/Co się zmienia i dlaczego/.test(A.d.querySelector('#view').textContent),'powody zmian');
+  A.d.querySelector('[data-genok]').click();
+  const s=A.S();eq([s.plan,s.week,s.day],['g32',1,0]);ok(s.userPlans.g32.gen&&s.userPlans.g32.gen.why.length,'plan z powodami w kopii');
+  ok(A.d.querySelectorAll('.ex').length>=6,'trening z nowego planu');
+  ok(/Bloki ułożone w aplikacji[\s\S]*Blok 3\.2 Akumulacja, z aplikacji \(g32\)[\s\S]*Zmiana/.test(A.T.mdExport()),'eksport dla Claude');
+  A.d.querySelector('[data-tab=kopia]').click();ok(/ułożony w aplikacji/.test(A.d.querySelector('#view').textContent));
+  A.d.querySelector('[data-gen]').click();A.d.querySelector('[data-gendrop]').click();ok(!/Następny blok<small/.test(A.d.querySelector('#view').innerHTML));
+  const B=app(null);await wait(50);B.d.querySelector('[data-tab=kopia]').click();B.d.querySelector('[data-gen]').click();ok(/Następny blok/.test(B.d.querySelector('#view').textContent),'bez historii też działa');
+  eq(A.errs,[]);eq(B.errs,[]);
 });
 
 (async()=>{

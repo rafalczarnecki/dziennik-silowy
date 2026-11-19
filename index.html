@@ -56,7 +56,7 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 14px;font:600 17px/1 var(--display);min-width:48px}
 .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .chip small{display:block;font:500 12px/1.2 var(--body);opacity:.85;margin-top:3px}
-.plans .chip{flex:1;text-align:left;padding:10px 12px}
+.plans .chip{flex:1 1 auto;max-width:100%;text-align:left;padding:10px 12px}
 
 .ex{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 12px 10px;margin:12px 0}
 .ex h2{font:700 23px/1.1 var(--display);margin:0 0 4px;display:flex;gap:10px;align-items:baseline}
@@ -103,6 +103,8 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .note-box textarea{min-height:70px;font:400 15px/1.4 var(--body)}
 .tagline{font-size:13px;color:var(--done);font-weight:600}
 .vrow{display:grid;grid-template-columns:1fr 80px 34px 34px;gap:8px;align-items:center;font-size:14px;margin:6px 0}
+.genl{margin:6px 0 2px;padding-left:24px}.genl li{margin:6px 0;line-height:1.35}
+.genv{display:grid;grid-template-columns:1fr 40px 52px;gap:8px;align-items:center;font-size:14px;margin:4px 0}.genv b{text-align:right}.genv .meta{text-align:right}
 .vhead{font-size:12px;color:var(--muted);margin-bottom:0}
 .vbar{position:relative}
 .vbar s{position:absolute;top:0;bottom:0;background:color-mix(in srgb,var(--done) 22%,transparent);border-left:2px solid var(--done);text-decoration:none}
@@ -317,7 +319,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-11d';
+const VER='2026-11-19a';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -364,13 +366,15 @@ function suggest(ex,last,light){
   const ok=!last.bad&&work.length>=ex[1]-1&&work.every(x=>(x.r||0)>=reps&&!(x.parts&&x.parts.length)); // o jedną serię mniej też się liczy: plan mógł dostać dodatkową serię
   const inc=incFor(ex[0]), ramp=ex[3]==='rampa';
   // nowy blok z innym zakresem powtórzeń: ciężar przeliczony z ostatniego treningu (ten sam szacowany 1RM), zaokrąglony w dół
-  if(repShift(ex,last)){const lw=last.sets.filter(x=>!x.top);
-    return sets.map((st,i)=>{if(st.top)return null;const j=i-(sets[0].top?1:0), p=lw[j]||lw[lw.length-1];if(!p||!p.w||!p.r)return null;
+  // mniej serii niż ostatnio: odpowiednikami są ostatnie (najcięższe) serie, a nie pierwsze
+  const off=Math.max(0,work.length-sets.filter(x=>!x.top).length);
+  if(repShift(ex,last)){const lw=work;
+    return sets.map((st,i)=>{if(st.top)return null;const j=i-(sets[0].top?1:0), p=lw[j+off]||lw[lw.length-1];if(!p||!p.w||!p.r)return null;
       const w=p.w*(1+Math.min(p.r,last.reps,12)/30)/(1+Math.min(reps,12)/30);return {w:Math.max(inc,Math.floor(w/inc+1e-6)*inc),up:false,inc,conv:true}})}
-  return sets.map((st,i)=>{const p=last.sets[i]||last.sets[last.sets.length-1];if(!p||!p.w)return null;
+  return sets.map((st,i)=>{const j=i-(sets[0].top?1:0), p=st.top?(last.sets.find(x=>x.top)||last.sets[0]):(work[j+off]||work[work.length-1]||last.sets[last.sets.length-1]);if(!p||!p.w)return null;
     const up=st.top?(!last.bad&&(p.r||0)>=st.t&&!(p.parts&&p.parts.length)):ok; // rampa rośnie w całości: gdyby rosła tylko ostatnia seria, pierwsze stawałyby się rozgrzewką
-    const ev=!st.top&&ok?rampEven(ex,last,inc):null, j=i-(sets[0].top?1:0); // za duże kroki rampy: pola dostają wyrównane ciężary
-    if(ev&&ev[j]!=null)return {w:ev[j],up:ev[j]>p.w,inc};
+    const ev=!st.top&&ok?rampEven(ex,last,inc):null; // za duże kroki rampy: pola dostają wyrównane ciężary
+    if(ev&&ev[j+off]!=null)return {w:ev[j+off],up:ev[j+off]>p.w,inc};
     return {w:Math.round((p.w+(up?inc:0))*100)/100,up,inc}});
 }
 const dkey=()=>S.plan+'-'+S.week+'-'+S.day;
@@ -394,7 +398,7 @@ function hintFor(ex,last,light){
   const reps=ex[2];
   if(light)return {t:reps==='max'||!(last&&last.sets.some(x=>x.w))?'Lżejszy tydzień: o jedną serię mniej. Skończ każdą serię z wyraźnym zapasem, bez bicia wyniku.':'Lżejszy tydzień: o jedną serię mniej i ciężar ok. 10% niższy niż ostatnio (jest już w polach kg). Nie dokładaj. Od następnego tygodnia wracasz do pełnych ciężarów.'};
   if(!last) return {t:reps==='max'?(UNIT[ex[0]]==='s'?'Pierwszy raz: utrzymaj stałe, spokojne tempo przez cały czas serii.':'Pierwszy raz: zrób tyle powtórzeń, ile dasz radę czysto.'):'Pierwszy raz: dobierz ciężar tak, żeby zostały ci 2–3 powtórzenia w zapasie.'};
-  if(reps==='max'){const tot=last.sets.reduce((a,s)=>a+(s.r||0),0);return {t:'Ostatnio łącznie '+tot+(UNIT[ex[0]]==='s'?' s':' powt.')+' Spróbuj pobić ten wynik.'}}
+  if(reps==='max'){const tot=last.sets.reduce((a,s)=>a+(s.r||0),0);return {t:'Ostatnio łącznie '+tot+(UNIT[ex[0]]==='s'?' s.':' powt.')+' Spróbuj pobić ten wynik.'}}
   const work=last.sets.filter(s=>!s.top);
   if(repShift(ex,last)&&work.some(s=>s.w))return {t:`Nowy zakres: ${reps} powtórzeń zamiast ${last.reps}. Ciężary w polach kg są przeliczone z ostatniego treningu. Jeśli zostaje więcej zapasu, niż mówi plan, dołóż ${fmt(incFor(ex[0]))} kg.`};
   const all=work.length>=ex[1]-1&&work.length>0&&work.every(s=>(s.r||0)>=reps);
@@ -462,20 +466,18 @@ function dayEx(plan=S.plan,day=S.day){
   const sw=S.swaps[pk]||{};
   const a=PLANS[plan].days[day].ex.map((ex,i)=>{
     const w0=sw[i], w=w0&&(!w0.once||w0.dk===plan+'-'+S.week+'-'+day)?w0:null, lt=plan===S.plan&&isLight(plan,S.week); const e0=w?[w.name,...ex.slice(1)]:ex, e=lt?lightEx(e0):e0;
-    return {key:String(i)+(w?':'+w.name:''),ex:e,light:lt,orig:w?ex[0]:null,since:w?w.since:null,once:!!(w&&w.once),idx:i,rest:i<3?180:(S.shortRest[pk]?90:120)};
+    return {key:String(i)+(w?':'+w.name:''),ex:e,light:lt,orig:w?ex[0]:null,since:w?w.since:null,once:!!(w&&w.once),idx:i,rest:i<3?180:(S.shortRest[pk]?90:120),g:ex[6]||null};
   });
   (ADD[plan][day]||[]).forEach(x=>a.push({key:'a:'+x[0],ex:[x[0],x[1],x[2]],add:{lo:x[3]},rest:120}));
   let syl=S.syl!==false?(SYL[plan][day]||[]).filter(x=>!off.includes(x[0])):[];
   let replaced=null;
   if(xs.length&&syl.length>1){replaced=syl[syl.length-1][0];syl=syl.slice(0,-1)}
-  const cnt={};syl.forEach(x=>{if(x[4])cnt[x[4]]=(cnt[x[4]]||0)+1});
+  syl.forEach(x=>a.push({key:'s:'+x[0],ex:[x[0],x[1],x[2]],syl:{lo:x[3],lab:x[6]},rest:x[5]||90,g:x[4]||null}));
+  // superserie: dwa ćwiczenia z tą samą literą grupy (w planie 7. pole ćwiczenia, w dodatkach celu 5. pole), także ćwiczenie planu z dodatkiem celu
+  const cnt={};a.forEach(it=>{if(it.g)cnt[it.g]=(cnt[it.g]||0)+1});
   const seen={};
-  syl.forEach(x=>{
-    const g=x[4]&&cnt[x[4]]===2?x[4]:null;
-    const partner=g?syl.find(y=>y[4]===g&&y[0]!==x[0])[0]:null;
-    const first=g?!seen[g]:false; if(g)seen[g]=1;
-    a.push({key:'s:'+x[0],ex:[x[0],x[1],x[2]],syl:{lo:x[3],lab:x[6]},ss:g,partner,first,rest:x[5]||90});
-  });
+  a.forEach(it=>{const g=it.g&&cnt[it.g]===2?it.g:null;delete it.g;
+    it.ss=g;it.partner=g?a.find(y=>y!==it&&(y.g===g||y.ss===g)).ex[0]:null;it.first=g?!seen[g]:false;if(g)seen[g]=1});
   xs.forEach(x=>a.push({key:'x:'+x.name,ex:[x.name,3,10],extra:x,rest:90}));
   a.replaced=replaced;
   return a;
@@ -495,12 +497,12 @@ const MX={
   bench:['Wyciskanie touch and go','Wyciskanie leżąc (WLZ)','Wyciskanie z pauzą 2 s','Larsen press','Spoto press','Wyciskanie hantli','Wyciskanie hantli na skosie dodatnim','Wyciskanie na skosie dodatnim','Pompki z obciążeniem','Wyciskanie hantli chwytem młotkowym','Wyciskanie hantli chwytem neutralnym'],
   close:['Wyciskanie leżąc wąsko','Floor press','JM press','Pompki na poręczach'],
   ohp:['OHP','Wyciskanie hantli nad głowę siedząc','Landmine press'],
-  lat:['Wznosy bokiem'], rear:['Powell raises','Trap Y raise','Face pull','Odwrotne rozpiętki na maszynie'],
+  lat:['Wznosy bokiem'], rear:['Odwrotne rozpiętki na maszynie','Face pull','Powell raises','Trap Y raise'],
   vpull:['Podciąganie nachwytem','Podciąganie podchwytem','Podciąganie chwytem neutralnym','Ściąganie drążka nachwytem','Ściąganie drążka szerokim chwytem','Ściąganie drążka podchwytem','Ściąganie drążka chwytem neutralnym','Hammer na plecy szeroko'],
   hpull:['Pendlay row','Wiosłowanie podchwytem','Wiosłowanie hantlem jednorącz','Wiosłowanie na wyciągu siedząc','Kas row w oparciu o ławkę','Ściąganie drążka poziomo','Wiosłowanie na maszynie','Wiosłowanie sztangą w opadzie'],
   curl:['Biceps z supinacją','Uginanie ramion z hantlami','Uginanie ramion młotkowe','Bayesian curl'],
   ext:['Francuz z przenoszeniem','Prostowanie ramion na wyciągu'],
-  ham:['Nordic curl','Uginanie podudzi','Uginanie podudzi leżąc','Uginanie podudzi siedząc'],
+  ham:['Uginanie podudzi leżąc','Uginanie podudzi siedząc','Uginanie podudzi','Nordic curl'],
   cond:['Lina na rolce'],
   core:['Dead bug (zdechły robak)','Hollow body','Ab wheel','Unoszenie nóg w zwisie'],
   rot:['Brzuszki skośne','Wood chopper','Narciarz']
@@ -520,14 +522,51 @@ function clashesWith(name,plan=S.plan,day=S.day,skip){const others=dayEx(plan,da
 const musOf=n=>{const p=patOf(n);return p?MP[p]:{}};
 function weekItems(plan=S.plan){return PLANS[plan].days.flatMap((_,d)=>dayEx(plan,d))}
 function volume(plan=S.plan){const v={};weekItems(plan).forEach(it=>{const n=setsFor(it.ex).length;Object.entries(musOf(it.ex[0])).forEach(([m,w])=>v[m]=(v[m]||0)+n*w)});return v}
-// szacowany czas dnia: średni czas serii z twojej historii, a dla nowych ćwiczeń typowy czas z przerwą; plus rozgrzewka i rozciąganie
-function dayEst(plan,day){
-  const D=PLANS[plan].days[day]; let t=0;
-  dayEx(plan,day).forEach((it,i)=>{const n=setsFor(it.ex).length, h=S.sessions.flatMap(s=>s.ex.filter(e=>e.name===it.ex[0]&&e.sec&&e.sets.length).map(e=>e.sec/e.sets.length));
-    t+=n*(h.length?h.reduce((a,b)=>a+b,0)/h.length:it.ex[2]==='max'?140:it.ex[3]==='rampa'||i<3&&it.idx!=null?330:it.idx!=null?240:150)});
-  [...(D.warmup||[]),...(D.stretch||[])].forEach(r=>t+=(r[1]||0)*1.25);
-  return Math.round(t/300)*300;
+// ---------- czas treningu: model z twojej historii ----------
+// czas dnia = od startu do 1. serii (rozgrzewka) + w każdej grupie (serie − 1) × odstęp między seriami + przejście do następnej grupy + od ostatniej serii do końca (rozciąganie).
+// Odstępy to mediany z twoich zapisów: ćwiczenie robione osobno, a dla nowych klasa (ciężkie / złożone / izolacja i brzuch).
+// Superseria to jedna grupa: seria wypada co ok. 70–90% odstępu z ćwiczeń robionych osobno (wsp. z twoich zapisów) i odpada jedno przejście.
+// Na koniec poprawka o średnią różnicę między rzeczywistym a szacowanym czasem ostatnich treningów.
+const HEAVYN=['Wyciskanie touch and go','Wyciskanie leżąc (WLZ)','Wyciskanie z pauzą 2 s','Larsen press','Spoto press','Wyciskanie leżąc wąsko','Floor press','OHP','Wyciskanie na skosie dodatnim','Good morning'];
+const ISOP=['lat','rear','curl','ext','ham','addu','core','rot','cond'];
+const tCls=n=>{const p=patOf(n);return p==='squat'||p==='dead'||HEAVYN.includes(n)?'h':!p||ISOP.includes(p)?'i':'c'};
+const T_IV={h:280,c:210,i:170}, T_TR={h:430,c:230,i:190};
+const med=a=>{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2};
+function sesGroups(s){
+  const by={};s.ex.forEach(e=>by[e.name]=e);
+  return (s.order&&s.order.length?s.order:s.ex.map(e=>[e.name])).map(g=>{const mem=g.map(n=>by[n]).filter(e=>e&&e.sets.length);
+    const ts=mem.flatMap(e=>e.sets.map(x=>x.t)).filter(Boolean).sort((a,b)=>a-b);return ts.length?{mem,ts}:null}).filter(Boolean);
 }
+function tGroups(groups,m){
+  let t=m.pre+m.post+(m.cal||0);
+  groups.forEach((g,i)=>{const N=g.reduce((a,x)=>a+x.sets,0);t+=Math.max(0,N-1)*g.reduce((a,x)=>a+m.iv(x.n),0)/g.length*(g.length>1?m.f:1)+(i?m.tr(g[0].n):0)});
+  return t;
+}
+let TM=null;
+function tModel(){
+  const key=S.sessions.length+'|'+(S.sessions.length&&S.sessions[S.sessions.length-1].date);
+  if(TM&&TM.k===key)return TM.m;
+  const solo={},grp={},tr={h:[],c:[],i:[]},cl={h:[],c:[],i:[]},pre=[],post=[];
+  const ses=S.sessions.filter(s=>s.start&&s.dur).slice(-30);
+  ses.forEach(s=>{const G=sesGroups(s);if(!G.length)return;
+    const a=(G[0].ts[0]-s.start)/1000,b=s.dur-(G[G.length-1].ts[G[G.length-1].ts.length-1]-s.start)/1000;
+    if(a>0&&a<3600)pre.push(a);if(b>0&&b<3600)post.push(b);
+    G.forEach((g,i)=>{
+      if(i){const d=(g.ts[0]-G[i-1].ts[G[i-1].ts.length-1])/1000;if(d>0&&d<1800)tr[tCls(g.mem[0].name)].push(d)}
+      g.mem.forEach(e=>{const t=e.sets.map(x=>x.t).filter(Boolean);for(let k=1;k<t.length;k++){const d=(t[k]-t[k-1])/1000;if(d<=20||d>=900)continue;
+        if(g.mem.length===1){(solo[e.name]=solo[e.name]||[]).push(d);cl[tCls(e.name)].push(d)}else(grp[e.name]=grp[e.name]||[]).push(d/g.mem.length)}})})});
+  const rat=Object.keys(grp).filter(n=>grp[n].length>=2&&(solo[n]||[]).length>=2).map(n=>med(grp[n])/med(solo[n]));
+  const f=rat.length>=3?Math.max(.7,Math.min(.9,med(rat))):.75;
+  const ivc={},trc={};['h','c','i'].forEach(k=>{ivc[k]=cl[k].length>=3?med(cl[k]):T_IV[k];trc[k]=tr[k].length>=3?med(tr[k]):T_TR[k]});
+  const m={iv:n=>(solo[n]||[]).length>=2?med(solo[n]):(grp[n]||[]).length>=2?med(grp[n])/f:ivc[tCls(n)],tr:n=>trc[tCls(n)],f,
+    pre:pre.length>=3?med(pre):900,post:post.length>=3?med(post):400,cal:0,n:ses.length};
+  const res=ses.slice(-12).map(s=>{const G=sesGroups(s);return G.length?s.dur-tGroups(G.map(g=>g.mem.map(e=>({n:e.name,sets:e.sets.length}))),m):null}).filter(x=>x!=null);
+  if(res.length>=3)m.cal=Math.max(-600,Math.min(900,res.reduce((a,b)=>a+b,0)/res.length));
+  TM={k:key,m};return m;
+}
+// grupy dnia z listy dayEx: superseria = jedna grupa
+function dayGroups(items){const out=[],seen={};items.forEach(it=>{if(it.ss){if(seen[it.ss])return;seen[it.ss]=1;out.push(items.filter(x=>x.ss===it.ss).map(x=>({n:x.ex[0],sets:setsFor(x.ex).length})))}else out.push([{n:it.ex[0],sets:setsFor(it.ex).length}])});return out}
+function dayEst(plan,day){return Math.round(tGroups(dayGroups(dayEx(plan,day)),tModel())/300)*300}
 const planEst=plan=>PLANS[plan].days.map((d,i)=>({n:(PLANS[plan].dayPrefix||'')+d.name,t:dayEst(plan,i)}));
 const VMAX=20;
 function weekStart(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()}
@@ -554,30 +593,21 @@ function rulesCard(plan=S.plan){
   const bad=rows.filter(r=>r.c.length);
   return `<div class="card"><h3>Jedna partia, jedno ćwiczenie</h3>${bad.length?bad.map(r=>`<p><b>${esc((P.dayPrefix||'')+r.d.name)}:</b> ${esc(clashText(r.c))}</p>`).join('')+'<p class="meta">Te dni mają po dwa ćwiczenia bezpośrednie na tę samą partię.</p>':`<p>${esc(P.name)}: każdy dzień ma najwyżej jedno ćwiczenie bezpośrednie na daną partię.</p>`}<p class="meta">Praca pośrednia (np. triceps przy wyciskaniu) się nie liczy.</p>${planSeq(plan).map(w=>`<p><b>${esc(w.a)} → ${esc(w.b)}:</b> ${esc(w.names.join(' + '))}</p><p class="meta">Dolne plecy pracują ciężko w dwóch treningach z rzędu. Lepiej rozdzielić te ćwiczenia innym dniem.</p>`).join('')}</div>`;
 }
+// dolna granica tygodniowych serii dla partii bez priorytetu (brzuch i skośne pracują też przy innych ćwiczeniach)
+const LOV=m=>['brzuch','skosne'].includes(m)?3:4;
 function volumeCard(plan=S.plan){
   const v=volume(plan), dn=volumeDone(), r2=x=>Math.round((x||0)*2)/2;
   const g=GOAL(), [lo,hi]=g.vol;
   const rows=Object.keys(MG).filter(m=>v[m]||dn[m]).map(m=>{const x=r2(v[m]),y=r2(dn[m]),pr=g.prio.includes(m);
-    const st=x>hi?'dużo':pr&&x<lo?'mało':x<4?'mało':'';
+    const st=x>hi?'dużo':pr&&x<lo?'mało':x<LOV(m)?'mało':'';
     // pasek pełny przy górnej granicy celu; jasne pole = zakres celu dla tej partii
-    const tLo=pr?lo:4, tHi=pr?hi:10, sc=v=>Math.min(100,v/hi*100);
+    const tLo=pr?lo:LOV(m), tHi=pr?hi:10, sc=v=>Math.min(100,v/hi*100);
     return `<div class="vrow"><span>${pr?'★ ':''}${MG[m]}${st?` <em class="${st==='dużo'?'hi':''}">${st}</em>`:''}</span><span class="vbar"><s style="left:${sc(tLo)}%;width:${sc(tHi)-sc(tLo)}%"></s><i style="width:${sc(x)}%" class="${st==='dużo'?'hi':''}"></i><u style="width:${sc(y)}%"></u></span><b>${fmt(x)}</b><b class="dn">${fmt(y)}</b></div>`}).join('');
   return `<div class="card"><h3>Bilans tygodnia: ${PLANS[plan].name}</h3><p class="meta">Liczba serii na partię mięśniową: <b>plan</b> na cały tydzień (z zamiennikami i dodatkami) oraz <b class="dn">zrobione</b> od poniedziałku. Seria pośrednia (np. triceps przy wyciskaniu) liczy się jako pół. Cel: <b>${g.name}</b>. Partie priorytetowe (★) celują w ${lo}–${hi} serii tygodniowo, pozostałym wystarcza ok. 4–10. Bilans liczy serie, a nie ciężar. Jasne pole na pasku to zakres celu dla danej partii.</p>
     <div class="vrow vhead"><span></span><span></span><b>plan</b><b class="dn">zrob.</b></div>${rows}</div>`;
 }
 function sylAll(){return (SYL[S.plan][S.day]||[]).filter(x=>!(S.sylOff[pkey()]||[]).includes(x[0]))}
-function estimate(){
-  const items=dayEx(), R=ROUT[S.plan][S.day];
-  let t=600+R.w.reduce((a,x)=>a+x[1],0)+R.s.reduce((a,x)=>a+x[1],0);
-  const done={};
-  items.forEach(it=>{
-    if(it.ss){ if(done[it.ss])return; done[it.ss]=1;
-      const p=items.filter(x=>x.ss===it.ss), rounds=Math.max(...p.map(x=>setsFor(x.ex).length));
-      t+=rounds*(45*p.length+it.rest);
-    } else t+=setsFor(it.ex).length*(45+it.rest);
-  });
-  return t;
-}
+function estimate(){return dayEst(S.plan,S.day)}
 const fdur=sec=>{const m=Math.round(sec/60),h=Math.floor(m/60);return h?h+' h '+(m%60)+' min':m+' min'};
 // jeden aktywny trening: zmiana dnia w trakcie przenosi czas startu, a nie tworzy drugiego zegara
 function markStart(){const k=dkey();if(S.starts[k])return;
@@ -2377,6 +2407,7 @@ function viewTrening(){
   h+=`<div class="pick"><p class="lbl">Tydzień, cykl ${S.cycles[S.plan]||1} (po ${P.weeks||4}. tygodniu plan zaczyna się od nowa)</p><div class="row">`+Array.from({length:P.weeks||4},(_,i)=>i+1).map(w=>`<button class="chip" data-week="${w}" aria-pressed="${w===S.week}">${w}${(P.light||[]).includes(w)?" lżejszy":""}</button>`).join('')+'</div></div>';
   h+='<div class="pick"><p class="lbl">Trening</p><div class="row">'+P.days.map((d,i)=>`<button class="chip" data-day="${i}" aria-pressed="${i===S.day}">${P.dayPrefix||''}${d.name}</button>`).join('')+'</div></div>';
 
+  h+=genBanner();
   if(S.post&&!S.post.running&&Date.now()-Date.parse(S.post.sid||0)>3*3600e3){S.post=null;save()}
   h=(S.post?routineCard('s',S.post.plan,S.post.day,true):'')+h;
   const st=S.starts[dkey()];
@@ -2389,7 +2420,7 @@ function viewTrening(){
   DX.forEach(({key,ex,extra,syl,add,ss,partner,orig,since,light,idx:pi},idx)=>{
     const sets=setsFor(ex), rir=extra?null:rirFor(ex,S.week), last=lastFor(ex[0]), hint=hintFor(ex,last,light), sug=suggest(ex,last,light);
     const rows=dr[key]||[], ei=key;
-    const tgt=add?`<b>${ex[1]}×${add.lo}–${ex[2]}</b>, przerwa 2 min, ostatnie powtórzenie czyste`:extra?`<b>3×8–10</b>, na słabość w: ${esc(extra.for)}`:syl?`<b>${ex[1]}×${ex[2]==='max'?(syl.lab||'max'):syl.lo+'–'+ex[2]}</b>${ex[2]==='max'?', spokojne tempo, przerwa 60 s':', RIR 1–2'}${ss?`, superseria z: ${esc(partner)}`:''}`:[ex[5]?`top set <b>1×${ex[5]}</b>, potem`:'', `<b>${ex[1]}×${ex[2]}</b>`, ex[3]?ex[3]:'', rir!=null?`RIR ${fmt(rir)}`:''].filter(Boolean).join(', ');
+    const tgt=add?`<b>${ex[1]}×${add.lo}–${ex[2]}</b>, przerwa 2 min, ostatnie powtórzenie czyste`:extra?`<b>3×8–10</b>, na słabość w: ${esc(extra.for)}`:syl?`<b>${ex[1]}×${ex[2]==='max'?(syl.lab||'max'):syl.lo+'–'+ex[2]}</b>${ex[2]==='max'?', spokojne tempo, przerwa 60 s':', RIR 1–2'}${ss?`, superseria z: ${esc(partner)}`:''}`:[ex[5]?`top set <b>1×${ex[5]}</b>, potem`:'', `<b>${ex[1]}×${ex[2]}</b>`, ex[3]?ex[3]:'', rir!=null?`RIR ${fmt(rir)}`:'', ss?`superseria z: ${esc(partner)}`:''].filter(Boolean).join(', ');
     const k=extra?'x':syl?'s':add?'a':'m'; let vNew=false;
     if(k!==kind){kind=k;
       if(k==='a')h+='<h2 class="sec">Uzupełnienie planu<small>Tył uda, pośladki i prostowniki grzbietu, których w tym bloku brakuje. Możesz je zrobić zaraz po przysiadzie bułgarskim.</small></h2>';
@@ -2642,7 +2673,15 @@ function mdExport(){
   if((S.cardio||[]).length){L.push('## Kardio');
     const ws=weekStart();[0,1,2,3].forEach(i=>{const f=ws-i*7*864e5,c=cardioIn(f,f+7*864e5);L.push(`- Tydzień od ${ymd(f)}: ${c.min} min, ${pl(c.n,['sesja','sesje','sesji'])}`)});
     S.cardio.forEach(c=>L.push(`- ${d10(c.d)}: ${c.type}, ${c.min} min${c.feel?', '+feelName(c.feel).toLowerCase():''}${c.nose?', oddech nosem':', oddech ustami'}${c.note?' | '+c.note:''}`));L.push('')}
-  L.push('## Plany w aplikacji',...Object.entries(PLANS).map(([id,P])=>`- ${P.name} (${id}, ${S.userPlans&&S.userPlans[id]?'wczytany':'wbudowany'}): ${P.days.length} dni, ${P.weeks||4} tyg.`),'');
+  L.push('## Plany w aplikacji',...Object.entries(PLANS).map(([id,P])=>`- ${P.name} (${id}, ${S.userPlans&&S.userPlans[id]?(S.userPlans[id].gen?'ułożony w aplikacji':'wczytany'):'wbudowany'}): ${P.days.length} dni, ${P.weeks||4} tyg.`),'');
+  {const gp=Object.values(S.userPlans||{}).filter(p=>p.gen);
+   if(gp.length){L.push('## Bloki ułożone w aplikacji','Plan, powody zmian i wynik kontroli z chwili ułożenia (do przeglądu).','');
+     gp.forEach(p=>{const gx=(p.extra||{})[S.goal]||(p.extra||{}).sport||[], P0=PLANS[p.gen.from];
+       L.push(`### ${p.name} ${p.sub||''} (${p.id})`,`Ułożony ${String(p.gen.at).slice(0,10)} z: ${P0?P0.name:p.gen.from}. Faza: ${PHASE[p.gen.phase]||p.gen.phase}. Ocena: ${p.gen.score}/100.${S.plan===p.id?' Bieżący plan.':''}`);
+       p.days.forEach((d,i)=>L.push(`- ${(p.dayPrefix||'')+d.name}${p.gen.est?` (ok. ${fdur(p.gen.est[i])})`:''}: `+[...d.ex.map(x=>`${x[0]} ${x[1]}×${x[2]}${x[3]?' '+x[3]:''}${rirTxt(x[4])?' '+rirTxt(x[4]):''}${x[6]?' [superseria '+x[6]+']':''}`),...(gx[i]||[]).map(x=>`${x[0]} ${x[1]}×${x[3]!=null?x[3]+'–':''}${x[2]} (dodatek celu${x[4]?', superseria '+x[4]:''})`)].join('; ')));
+       (p.gen.why||[]).forEach(w=>L.push(`- Zmiana (${(p.dayPrefix||'')+((p.days[w.d]||{}).name||'')}): ${w.t}`));
+       (p.gen.issues||[]).forEach(x=>L.push(`- Kontrola (${x.lv}): ${x.t}`));
+       L.push('')})}}
   const cfg=[];
   cfg.push(`- Ćwiczenia dodatkowe celu (${g.sec}): ${S.syl!==false?'włączone':'wyłączone'}`);
   Object.entries(S.swaps||{}).forEach(([k,m])=>Object.entries(m).forEach(([i,w])=>cfg.push(`- Zamiennik (${dayLabel(k)}): ${((PLANS[k.split('-')[0]]||{days:[]}).days[+k.split('-')[1]]||{ex:[]}).ex[+i]?.[0]||'?'} → ${w.name} od ${d10(new Date(w.since).toISOString())}`)));
@@ -2707,9 +2746,12 @@ function goalCard(){
 }
 function plansCard(){
   const cur=PLANS[S.plan];
-  return `<div class="card"><h3>Plany treningowe</h3>
+  return `<div class="card"><h3>Następny blok z historii</h3>
+    <p class="note">Aplikacja układa kolejny 4-tygodniowy blok z bieżącego planu i twoich wyników: zmienia ćwiczenia bez postępu, pilnuje jednej partii dziennie, odpoczynku dolnych pleców, bilansu serii celu i czasu do ok. 1 h 50 min. Najlepiej po ostatnim treningu bloku. Przed zapisaniem zobaczysz plan i powody zmian.</p>
+    <button class="ghost" data-gen="1">Ułóż następny blok</button></div>
+    <div class="card"><h3>Plany treningowe</h3>
     <p class="note">Nowy plan dostaniesz ode mnie jako plik .json. Wczytaj go tutaj: aplikacja i historia zostają bez zmian.</p>
-    ${Object.entries(PLANS).map(([id,P])=>`<p><b>${esc(P.name)}</b> ${esc(P.sub)} <span class="meta">(${S.userPlans&&S.userPlans[id]?(BUILTIN_IDS.includes(id)?'wczytany, zastępuje wbudowany':'wczytany'):'wbudowany'})</span>${S.userPlans&&S.userPlans[id]?` <button class="link" data-plandel="${esc(id)}">Usuń</button>`:''}</p>`).join('')}
+    ${Object.entries(PLANS).map(([id,P])=>`<p><b>${esc(P.name)}</b> ${esc(P.sub)} <span class="meta">(${S.userPlans&&S.userPlans[id]?(BUILTIN_IDS.includes(id)?'wczytany, zastępuje wbudowany':S.userPlans[id].gen?'ułożony w aplikacji':'wczytany'):'wbudowany'})</span>${S.userPlans&&S.userPlans[id]?` <button class="link" data-plandel="${esc(id)}">Usuń</button>`:''}</p>`).join('')}
     <label class="ghost filepick">Wczytaj plan z pliku<input type="file" id="planfile" hidden></label>
     <textarea id="planimp" placeholder='Albo wklej tekst planu: {"type":"dziennik-plan", ...}'></textarea>
     <p><button class="ghost" id="planbtn">Wczytaj plan z tekstu</button> <button class="ghost" id="planexp">Pobierz plan ${esc(cur.name)} (.json)</button></p></div>`;
@@ -2833,7 +2875,7 @@ function render(){
   document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===S.tab));
   $('#count').textContent=S.sessions.length?pl(S.sessions.length,TR):'';
   const v={trening:viewTrening,historia:viewHistoria,postepy:viewPostepy,kopia:viewKopia}[S.tab]||viewTrening;
-  $('#view').innerHTML=v();
+  $('#view').innerHTML=GENV?viewGen():v();
   clockTick();
 }
 
@@ -2858,7 +2900,7 @@ $('#tstop').onclick=stopTimer;
 let armed=null;
 function twoTap(id,btn,label){ if(armed===id)return true; armed=id; const old=btn.textContent; btn.textContent=label; btn.classList.add('warn'); setTimeout(()=>{if(armed===id){armed=null;btn.textContent=old;btn.classList.remove('warn')}},3000); return false }
 
-document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.tab=b.dataset.tab;save();render();window.scrollTo(0,0)});
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;GENV=null;S.tab=b.dataset.tab;save();render();window.scrollTo(0,0)});
 
 $('#view').addEventListener('input',e=>{
   if(e.target.id==='profile'){S.profile=e.target.value;save();ghMark(20000);return}
@@ -2879,6 +2921,13 @@ $('#view').addEventListener('change',e=>{if(e.target.id==='prog'){S.prog=e.targe
 $('#view').addEventListener('click',async e=>{
   const t=e.target.closest('button'); if(!t)return;
   if(t.dataset.plan){S.plan=t.dataset.plan;S.day=0;save();return render()}
+  if(t.dataset.gen){return genOpen()}
+  if(t.dataset.gendrop){GENV=null;render();return toast('Plan odrzucony')}
+  if((t.dataset.genok||t.dataset.gensave)&&GENV){const p=GENV.plan,go=!!t.dataset.genok;S.userPlans=S.userPlans||{};S.userPlans[p.id]=p;
+    if(go&&S.plan!==p.id&&!BUILTIN_IDS.includes(S.plan))S.prevPlan=S.plan;
+    installAll();if(go)Object.assign(S,{plan:p.id,week:1,day:0,tab:'trening'});GENV=null;save();render();window.scrollTo(0,0);ghMark();
+    return toast(go?'Zaczynasz: '+p.name:'Zapisano: '+p.name+'. Wybierzesz go w Treningu.')}
+  if(t.dataset.genstart&&PLANS[t.dataset.genstart]){if(!BUILTIN_IDS.includes(S.plan))S.prevPlan=S.plan;Object.assign(S,{plan:t.dataset.genstart,week:1,day:0});save();render();window.scrollTo(0,0);return toast('Zaczynasz: '+PLANS[S.plan].name)}
   if(t.dataset.week){S.week=+t.dataset.week;save();return render()}
   if(t.dataset.day){S.day=+t.dataset.day;save();return render()}
   if(t.hasAttribute('data-ok')){
@@ -3127,6 +3176,321 @@ function migrate(){
   S.migs.push('m1026'); save();
 }
 function reloadState(){S=load();installAll();render()}
+
+// ---------- generator następnego bloku ----------
+// Układa kolejny blok z bieżącego planu i historii treningów (wszystko w telefonie, bez internetu). Zasady:
+// • fazy na zmianę: po bloku siłowym (boje po 5–6 powt.) akumulacja (8–15 powt.), po akumulacji blok siłowy; 4. tydzień lżejszy;
+// • boje główne zostają; ćwiczenie pomocnicze bez postępu w 3 treningach (albo trzeci blok z rzędu bez postępu) zmienia się na inne z tego wzorca;
+// • nie wraca nic, co zamieniłeś na stałe albo oznaczyłeś bólem; twoje zamienniki zostają;
+// • jedna partia na dzień; tył uda: jeden skłon i jedno uginanie w tygodniu, skłon w dniu najdalej od martwego ciągu wg twojego kalendarza;
+// • najwyżej jedno ciężkie wyciskanie na przednie barki dziennie; superserie tylko z izolacji i brzucha, bez wspólnej okolicy;
+// • partie priorytetowe celu ok. 11+ serii tygodniowo, pozostałe najwyżej ok. 10; czas dnia z twojej historii do ok. 1 h 50 min.
+const MAIN_N=['Przysiad','Martwy ciąg klasyczny','Wyciskanie touch and go','Wyciskanie leżąc (WLZ)','Martwy ciąg sumo','Martwy ciąg z trap bar'];
+const FDH=['Wyciskanie hantli na skosie dodatnim','Wyciskanie na skosie dodatnim','Pompki na poręczach','Wyciskanie hantli chwytem młotkowym'];
+const isFD=n=>patOf(n)==='ohp'||FDH.includes(n);
+const isBW=n=>BWX.includes(n)||/^(Podciąganie|Pompki na poręczach|Nordic)/.test(n);
+// sprzęt: hantle / wyciąg i maszyny / masa ciała / sztanga; zamiennik najlepiej z tym samym sprzętem
+const eqOf=n=>/hantl|Powell|Trap Y|Wznosy|goblet|Wejścia|bułgarski|Wykroki|Kas row/i.test(n)?'d':/wyciąg|Face pull|Ściąganie|Wood chopper|Prostowanie ramion|maszyn|suwnicy|Hack|Uginanie podudzi|Przywodzenie|Hammer/i.test(n)?'m':isBW(n)||/Hollow|Brzuszki/.test(n)?'b':'s';
+const REG={bp:'b',bb:'b',bt:'b',klatka:'k',triceps:'r',biceps:'r',pion:'p',poziom:'p',prost:'p',czw:'n',dwu:'n',pos:'n',przyw:'n',brzuch:'c',skosne:'c'};
+const regOf=n=>[...new Set(Object.entries(musOf(n)).filter(([,w])=>w===1).map(([m])=>REG[m]))];
+// powtórzenia: [akumulacja, siła]
+const REPT={squat:[8,6],dead:[6,5],bench:[8,6],close:[10,8],ohp:[10,8],squatM:[12,10],uni:[12,10],hinge:[10,8],glute:[12,10],addu:[15,12],vpull:[10,8],hpull:[12,10],lat:[15,12],rear:[15,12],curl:[12,10],ext:[12,10],ham:[12,10],rot:[15,12]};
+const loOf=r=>r>=9?r-3:Math.max(1,r-2);
+const RANK={main:0,comp:1,iso:2,core:3,cond:4}, ISO_ROT=['lat','rear','curl','ext','ham','addu','core','rot'];
+const WD=['pon.','wt.','śr.','czw.','pt.','sob.','niedz.'];
+const TCAP=6600;
+function gRole(it){const p=patOf(it.n);if(it.sch==='rampa'||MAIN_N.includes(it.n))return 'main';if(p==='cond')return 'cond';if(p==='core'||p==='rot')return 'core';if(!p||['lat','rear','curl','ext','ham','addu'].includes(p))return 'iso';return 'comp'}
+// dni tygodnia treningów planu (0 = poniedziałek) z ostatnich zapisów; bez danych dni rozłożone równo
+function calendar(plan,n){
+  const pick=f=>Array.from({length:n},(_,i)=>{const c={};S.sessions.filter(s=>f(s)&&s.day===i).slice(-6).forEach(s=>{const d=(new Date(s.date).getDay()+6)%7;c[d]=(c[d]||0)+1});
+    const b=Object.entries(c).sort((a,b)=>b[1]-a[1])[0];return b?+b[0]:null});
+  const ok=w=>!w.some(x=>x==null)&&new Set(w).size===n;
+  let wd=pick(s=>s.plan===plan);
+  if(!ok(wd))wd=pick(s=>PLANS[s.plan]&&PLANS[s.plan].days.length===n);
+  return ok(wd)?{wd,known:true}:{wd:Array.from({length:n},(_,i)=>Math.round(i*7/n)),known:false};
+}
+// odstęp w dniach między dwoma dniami planu w tygodniowym cyklu (krótszy z dwóch kierunków)
+const calGap=(wd,i,j)=>{const f=((wd[j]-wd[i])%7+7)%7;return f===0?7:Math.min(f,7-f)};
+// czego nie proponować: ćwiczenia zamienione na stałe, z bólem, z bólem w profilu
+function genPrefs(){
+  const out={},liked={};
+  Object.entries(S.swaps||{}).forEach(([k,m])=>{const [p,d]=k.split('-'),D=PLANS[p]&&PLANS[p].days[+d];
+    Object.entries(m||{}).forEach(([i,w])=>{if(!w||w.once)return;const o=D&&D.ex[+i];liked[w.name]=Math.max(liked[w.name]||0,w.since||1);
+      if(o&&o[0]!==w.name&&(!out[o[0]]||out[o[0]].t<(w.since||1)))out[o[0]]={t:w.since||1,why:`zamieniłeś je na ${w.name}`}})});
+  Object.keys(out).forEach(n=>{if(liked[n]>out[n].t)delete out[n]});
+  S.sessions.forEach(s=>s.ex.forEach(e=>{if(e.note&&(e.note.tags||[]).includes('bol'))out[e.name]={t:Date.parse(s.date),why:'oznaczyłeś przy nim ból'}}));
+  String(S.profile||'').toLowerCase().split(/[.;\n]/).filter(x=>/b[óo]l|kontuzj|uraz/.test(x)).forEach(x=>Object.keys(G).forEach(n=>{
+    const st=n.toLowerCase().slice(0,Math.max(6,n.length-2));if(x.includes(st)&&!out[n])out[n]={t:0,why:'w profilu jest przy nim ból'}}));
+  const r={};Object.entries(out).forEach(([n,o])=>r[n]=o.why);
+  return {out:r,liked};
+}
+// historia ćwiczenia: najlepsza seria (szac. 1RM) albo średnio powtórzeń/sekund na serię; bez lżejszych tygodni i gorszych dni
+function exHist(n,cur){
+  const pts=[];
+  S.sessions.forEach(s=>{const e=s.ex.find(x=>x.name===n);if(!e||!e.sets.length||badDay(e)||wasLight(s,e))return;
+    const ws=e.sets.filter(x=>!x.top&&x.r);if(!ws.length)return;const kg=ws.some(x=>x.w);
+    const v=kg?Math.max(...ws.filter(x=>x.w).map(x=>e1rm(x.w,Math.min(x.r,15)))):ws.reduce((a,x)=>a+x.r,0)/ws.length;
+    pts.push({t:Date.parse(s.date),v,kg,plan:s.plan,reps:repsThen(s,e)||Math.min(...ws.map(x=>x.r)),minR:Math.min(...ws.map(x=>x.r)),
+      steps:kg?ws.slice(1).map((x,i)=>x.w&&ws[i].w?Math.round((x.w-ws[i].w)*100)/100:0):[]})});
+  const last=pts[pts.length-1]||null, same=last?pts.filter(p=>p.reps===last.reps):[];
+  const l3=same.slice(-3), stalled=l3.length===3&&Math.max(l3[1].v,l3[2].v)<=l3[0].v*1.01;
+  const sc=same.filter(p=>p.plan===(last&&last.plan)), prog=sc.length>=2?(sc[sc.length-1].v-sc[0].v)/sc[0].v:null;
+  return {n:pts.length,inCur:pts.filter(p=>p.plan===cur).length,blocks:new Set(pts.map(p=>p.plan)).size,last,stalled,prog,lastT:last?last.t:0};
+}
+function genPhase(P){
+  const m=P.days.flatMap(d=>d.ex).filter(x=>(x[3]==='rampa'||MAIN_N.includes(x[0]))&&patOf(x[0])!=='dead'&&Number.isInteger(x[2])).map(x=>x[2]);
+  return (m.length?m.reduce((a,b)=>a+b,0)/m.length:8)<=6.5?'acc':'int';
+}
+const PHASE={acc:'Akumulacja',int:'Siła'};
+function genName(P,phase){
+  const m=/Blok\s+(\d+)\.(\d+)/.exec(P.name||''), a=m?+m[1]:1, b=m?+m[2]+1:1;
+  let id='g'+a+b, k=0;
+  const busy=x=>S.userPlans&&S.userPlans[x]&&(!S.userPlans[x].gen||S.sessions.some(s=>s.plan===x));
+  while(busy(id+(k?String.fromCharCode(97+k):'')))k++;
+  return {name:`Blok ${a}.${b}`,sub:`${PHASE[phase]}, z aplikacji`,id:id+(k?String.fromCharCode(97+k):'')};
+}
+// grupy dnia (superseria = jedna grupa) dla modelu czasu
+function genGroups(items){const out=[],seen={};items.forEach(it=>{if(it.ss){if(seen[it.ss])return;seen[it.ss]=1;out.push(items.filter(x=>x.ss===it.ss).map(x=>({n:x.n,sets:x.sets})))}else out.push([{n:it.n,sets:it.sets}])});return out}
+
+function genPlan(opt={}){
+  const cur=opt.from||S.plan, P=PLANS[cur], src=PLANSRC[cur]; if(!P||!src)return null;
+  const goal=GOALS[S.goal]?S.goal:'sport', g=GOALS[goal], prio=g.prio, n=P.days.length, pk=i=>cur+'-'+i;
+  const cal=calendar(cur,n), pref=genPrefs(), H={}, hist=x=>H[x]||(H[x]=exHist(x,cur)), tm=tModel();
+  let cap=TCAP;
+  const phase=genPhase(P), PI=phase==='acc'?0:1, why=[], say=(d,t)=>why.push({d,t}), ramps=P.days.some(d=>d.ex.some(x=>x[3]==='rampa'));
+  const sayS=(d,it,t)=>{it.sw={d,t}};
+  const dn=i=>(P.dayPrefix||'')+P.days[i].name;
+  // 1. tydzień z bieżącego planu: ćwiczenia (z twoimi stałymi zamiennikami) i dodatki celu
+  const W=P.days.map((d,i)=>{const D=src.days[i]||{},sw=S.swaps[pk(i)]||{},off=S.sylOff[pk(i)]||[],ex=((src.extra||{})[goal]||[])[i]||[];
+    const items=d.ex.map((x,j)=>{const w=sw[j],nm=w&&!w.once?w.name:x[0];if(nm!==x[0])say(i,`${nm}: zostaje twój zamiennik (zamiast: ${x[0]}).`);
+      return {n:nm,sets:x[1],s0:x[1],reps:x[2],sch:x[3]||'',rir:x[4]??null,ss:x[6]||null,x:false}});
+    (D.add||[]).forEach(x=>items.push({n:x[0],sets:x[1],s0:x[1],reps:x[2],sch:'',rir:null,x:false}));
+    if(S.syl!==false)ex.filter(x=>!off.includes(x[0])).forEach(x=>items.push({n:x[0],sets:x[1],s0:x[1],reps:x[2],lo:x[3]??null,ss:x[4]||null,rest:x[5]||null,lab:x[6]||null,x:true}));
+    return {items,warmup:(D.warmup||DEF_ROUT.w).map(r=>r.slice()),stretch:(D.stretch||DEF_ROUT.s).map(r=>r.slice())}});
+  const srcPat=W.map(d=>new Set(d.items.map(it=>patOf(it.n))));
+  const dayOfIt=it=>W.findIndex(d=>d.items.includes(it));
+  const all=()=>W.flatMap((d,i)=>d.items.map(it=>({it,i})));
+  const has=x=>all().some(o=>o.it.n===x);
+  const clashOn=(x,i,skip)=>{const m=primOf(x);return W[i].items.some(o=>o!==skip&&o.n!==x&&primOf(o.n).some(y=>m.includes(y)))};
+  const dayT=i=>tGroups(genGroups(W[i].items),tm);
+  const place=(it,i)=>{const d=W[i].items,r=RANK[gRole(it)];let k=d.length;
+    if(!it.x){k=d.findIndex(o=>o.x||RANK[gRole(o)]>r);if(k<0)k=d.length}d.splice(k,0,it)};
+  const move=(it,i,j)=>{W[i].items.splice(W[i].items.indexOf(it),1);if(it.ss)W[i].items.forEach(o=>{if(o.ss===it.ss)o.ss=null});it.ss=null;place(it,j)};
+  const drop=(it,i)=>{W[i].items.splice(W[i].items.indexOf(it),1);if(it.ss)W[i].items.forEach(o=>{if(o.ss===it.ss)o.ss=null})};
+  // kandydaci na zamianę: ten sam wzorzec, nie w tym tygodniu, bez zastoju, bez konfliktu partii w tym dniu; najpierw twoje zamienniki, potem najdawniej robione
+  const cands=(it,i,pat)=>{const p=pat||patOf(it.n),bw=x=>isBW(x)&&!(hist(x).last&&hist(x).last.minR>=8)?1:0;return [...new Set([...(pat?[]:ALT[it.n]||[]),...(MX[p]||[])])]
+    .filter(c=>c!==it.n&&G[c]&&!MAIN_N.includes(c)&&!pref.out[c]&&!has(c)&&!clashOn(c,i,it)&&!hist(c).stalled)
+    .sort((a,b)=>(pref.liked[b]?1:0)-(pref.liked[a]?1:0)||(ISO_ROT.includes(p)?(MX[p]||[]).indexOf(a)-(MX[p]||[]).indexOf(b):(it.n?(eqOf(a)!==eqOf(it.n))-(eqOf(b)!==eqOf(it.n)):bw(a)-bw(b))||hist(a).lastT-hist(b).lastT))};
+  // 2. wykluczone i bez postępu
+  all().forEach(({it,i})=>{const r=gRole(it);
+    if(pref.out[it.n]){const c=cands(it,i)[0];if(c){say(i,`${it.n} → ${c}: ${pref.out[it.n]}.`);it.n=c}else{drop(it,i);say(i,`${it.n}: usunięte, bo ${pref.out[it.n]}.`)}return}
+    if(r==='main'||r==='cond')return;
+    const h=hist(it.n);
+    if(h.stalled||h.blocks>=3&&h.inCur>=3&&!(h.prog>0.02)){const c=cands(it,i)[0];if(c){say(i,`${it.n} → ${c}: ${h.stalled?'bez postępu w 3 ostatnich treningach':'trzeci blok z rzędu bez postępu'}.`);it.n=c;it.fresh=1}}});
+  // 3. tył uda: jedno uginanie i jeden skłon; skłon w dniu najdalej od martwego ciągu
+  const isH=it=>patOf(it.n)==='hinge', isC=it=>patOf(it.n)==='ham';
+  const dl=W.findIndex(d=>d.items.some(it=>patOf(it.n)==='dead'&&gRole(it)==='main'));
+  const far=dl<0?null:W.map((_,i)=>i).filter(i=>i!==dl).sort((a,b)=>calGap(cal.wd,b,dl)-calGap(cal.wd,a,dl)||a-b)[0];
+  {const cs=all().filter(o=>isC(o.it)),hs=all().filter(o=>isH(o.it));
+   if(cs.length>=2&&!hs.length){const o=cs.find(o=>o.i===far)||cs[cs.length-1],c=cands(o.it,o.i,'hinge')[0];
+     if(c){say(o.i,`${o.it.n} → ${c}: dwa uginania nóg w tygodniu to ten sam ruch; skłon pracuje na tył uda w rozciągnięciu.`);Object.assign(o.it,{n:c,fresh:1})}}
+   if(hs.length>=2){const o=hs.sort((a,b)=>(dl<0?0:calGap(cal.wd,a.i,dl)-calGap(cal.wd,b.i,dl)))[0],c=cands(o.it,o.i,'ham')[0];
+     if(c){say(o.i,`${o.it.n} → ${c}: dwa skłony obok martwego ciągu to za dużo pracy dolnych pleców.`);Object.assign(o.it,{n:c,fresh:1})}}}
+  if(far!=null)all().filter(o=>isH(o.it)&&o.i!==far).forEach(o=>{const c=W[far].items.find(isC);
+    move(o.it,o.i,far);if(c)move(c,far,o.i);
+    say(far,`${o.it.n} z dnia ${dn(o.i)} na ${dn(far)}: ${cal.known?`trenujesz ${WD[cal.wd[far]]}, najdalej od martwego ciągu (${WD[cal.wd[dl]]})`:'najdalej od martwego ciągu'}${c?`; ${c.n} na ${dn(o.i)}`:''}.`)});
+  // 4. najwyżej jedno ciężkie wyciskanie na przednie barki dziennie
+  W.forEach((d,i)=>{const f=d.items.filter(it=>isFD(it.n)).sort((a,b)=>(patOf(b.n)==='ohp')-(patOf(a.n)==='ohp'));
+    f.slice(1).forEach(it=>{const to=W.map((_,j)=>j).filter(j=>j!==i&&!W[j].items.some(x=>isFD(x.n))&&!clashOn(it.n,j,it)).sort((a,b)=>dayT(a)-dayT(b))[0];
+      if(to!=null&&dayT(to)+it.sets*tm.iv(it.n)+tm.tr(it.n)<=cap){move(it,i,to);say(to,`${it.n} z dnia ${dn(i)} na ${dn(to)}: ${dn(i)} ma już ${f[0].n}, dwa ciężkie wyciskania męczą przednie barki.`)}
+      else{drop(it,i);say(i,`${it.n}: usunięte. Razem z ${f[0].n} za mocno męczy przednie barki, a w innych dniach nie mieści się w czasie albo dubluje partię.`)}})});
+  // 5. zakresy powtórzeń, serie i RIR wg fazy
+  all().forEach(({it})=>{const r=gRole(it),p=patOf(it.n);
+    if(r==='cond'||it.reps==='max'){if(!it.x)it.rir=it.rir??1;return}
+    let reps=(REPT[p]||[12,10])[PI];
+    if(r!=='main'&&(p==='bench'||p==='squat'))reps=(p==='bench'?[12,10]:[10,8])[PI];
+    const h=hist(it.n);if(h.last&&!h.last.kg)reps=Math.max(3,Math.min(12,h.last.minR+(PI?0:2)));  // masa ciała: od tego, co robisz teraz
+    if(it.x){it.reps=reps;it.lo=loOf(reps);return}
+    it.reps=reps;it.sch=r==='main'&&ramps?'rampa':'';it.rir=r==='main'?[3,2,1,3]:r==='comp'||p==='ham'?[2,2,1,3]:[1,1,1,3];
+    const s0=it.sets;it.sets=Math.max(3,Math.min(4,it.sets));if(it.sets!==s0)sayS(0,it,`w tej fazie ${r==='main'?'boje mają po 4 serie':'ćwiczenia pomocnicze mają 3–4 serie'}`)});
+  // 6. superserie: tylko izolacja i brzuch, bez wspólnej okolicy
+  W.forEach((d,i)=>{const gs={};d.items.forEach(it=>{if(it.ss)(gs[it.ss]=gs[it.ss]||[]).push(it)});
+    Object.values(gs).forEach(q=>{if(q.length!==2){q.forEach(x=>x.ss=null);return}const [a,b]=q;
+      const same=regOf(a.n).some(r=>regOf(b.n).includes(r)), heavy=q.some(x=>!['iso','core','cond'].includes(gRole(x)));
+      if(same||heavy){a.ss=b.ss=null;say(i,`${a.n} i ${b.n} osobno, nie w superserii: ${same?'pracują na tę samą okolicę, druga seria byłaby robiona na zmęczonych mięśniach':'ćwiczenie złożone potrzebuje pełnej przerwy'}.`)}})});
+  // 7. bilans serii i czas dnia. Partie priorytetowe celu do ok. 11 serii, pozostałe najwyżej 10; dzień do ok. 1 h 50 min.
+  // Najpierw robimy miejsce (superseria z izolacji i brzucha, seria mniej tam, gdzie partia ma zapas), dopiero potem coś usuwamy,
+  // i nigdy nie schodzimy poniżej minimum partii (np. tył uda 6 serii, brzuch 6).
+  const vol=()=>{const v={};all().forEach(({it})=>Object.entries(musOf(it.n)).forEach(([m,w])=>v[m]=(v[m]||0)+it.sets*w));return v};
+  const aim=Math.min(g.vol[1],g.vol[0]+3), PAT={bb:'lat',bt:'rear',pion:'vpull',biceps:'curl',triceps:'ext',poziom:'hpull'};
+  const MINV={czw:6,dwu:6,pos:4,klatka:5,poziom:6,pion:6,triceps:4,bp:3,prost:3,brzuch:6,skosne:3};
+  const floor=m=>prio.includes(m)?aim:(MINV[m]||0), floorT=m=>prio.includes(m)?g.vol[0]+2:(MINV[m]||0);
+  // jedyne ćwiczenie danego wzorca w tygodniu (np. jedyny skłon, jedno uginanie nóg, jedno ćwiczenie jednonóż) zostaje
+  const ESS=['squat','squatM','uni','dead','hinge','ham','bench','close','ohp','vpull','hpull','core','rot'];
+  const only=it=>ESS.includes(patOf(it.n))&&all().filter(o=>patOf(o.it.n)===patOf(it.n)).length<2;
+  const direct=it=>Object.entries(musOf(it.n)).filter(([,w])=>w===1).map(([m])=>m);
+  const used=i=>new Set([...W[i].items.map(it=>it.ss),...Object.values(src.extra||{}).flatMap(e=>(e[i]||[]).map(x=>x[4]))].filter(Boolean));
+  const newSS=i=>['Z','Y','X','W','V'].find(L=>!used(i).has(L));
+  const pairOnce=i=>{const d=W[i].items,free=d.filter(it=>!it.ss&&['iso','core','cond'].includes(gRole(it)));let best=null;
+    for(let a=0;a<free.length;a++)for(let b=a+1;b<free.length;b++){const A=free[a],B=free[b];if(regOf(A.n).some(r=>regOf(B.n).includes(r)))continue;
+      const sc=gRole(A)===gRole(B)?1:0;if(!best||sc<best.sc)best={sc,p:[A,B]}}
+    const L=best&&newSS(i);if(!L)return false;
+    best.p.forEach(x=>{x.ss=L;d.splice(d.indexOf(x),1)});const k=d.findIndex(o=>o.x);d.splice(k<0?d.length:k,0,...best.p.slice().sort((x,y)=>x.x-y.x));
+    say(i,`${best.p[0].n} + ${best.p[1].n} w superserii (różne partie), żeby trening zmieścił się w ok. 1 h 50 min.`);return true};
+  // seria mniej: najpierw partie bez priorytetu i ćwiczenia lżejsze; przy dokładaniu serii na priorytet nie zdejmujemy serii z innego priorytetu
+  const isP=it=>direct(it).some(m=>prio.includes(m));
+  const trimOnce=(i,fin)=>{const v=vol(),slack=it=>Math.min(99,...direct(it).map(m=>(v[m]||0)-1-floorT(m)));
+    const c=W[i].items.filter(it=>gRole(it)!=='main'&&it.sets>3&&slack(it)>=0&&(fin||!isP(it))).sort((a,b)=>isP(a)-isP(b)||(tCls(a.n)==='h')-(tCls(b.n)==='h')||slack(b)-slack(a))[0];
+    if(!c)return false;c.sets--;sayS(i,c,'żeby trening zmieścił się w czasie');return true};
+  const snap=i=>({items:W[i].items.slice(),st:W[i].items.map(it=>({it,sets:it.sets,ss:it.ss,sw:it.sw})),w:why.length});
+  const restore=(i,s)=>{W[i].items=s.items;s.st.forEach(o=>{o.it.sets=o.sets;o.it.ss=o.ss;o.it.sw=o.sw});why.length=s.w};
+  // usunięcie najmniej ważnego ćwiczenia: izolacja, potem brzuch, potem złożone; partie zostają powyżej minimum, jedyny wzorzec tygodnia zostaje.
+  // keepP: nie ruszaj ćwiczeń na priorytet (gdy robimy miejsce dla innego priorytetu); hard: dzień ponad 2 h, wtedy też jedyny wzorzec i kondycja
+  const dropOnce=(i,keepP,hard)=>{const v=vol(),val={cond:0,iso:1,core:2,comp:3};
+    const r=W[i].items.filter(it=>val[gRole(it)]!=null&&(hard||gRole(it)!=='cond')&&!(keepP&&isP(it))&&(hard||!only(it))&&direct(it).every(m=>(v[m]||0)-it.sets>=(hard&&!prio.includes(m)?Math.min(3,floorT(m)):floorT(m))))
+      .sort((a,b)=>val[gRole(a)]-val[gRole(b)])[0];
+    if(r)drop(r,i);return r||null};
+  const tighten=(i,need,fin)=>{let guard=20;while(dayT(i)+need>cap&&guard--){if(pairOnce(i)||trimOnce(i,fin))continue;break}return dayT(i)+need<=cap};
+  const makeRoom=(i,need,canDrop)=>{const s=snap(i);let guard=4;
+    while(!tighten(i,need)){if(!canDrop||!guard--)break;const r=dropOnce(i,true);if(!r)break;say(i,`${r.n}: usunięte, żeby zrobić miejsce na partię priorytetową celu (${direct(r).map(m=>MG[m].toLowerCase()).join(', ')||'ta partia'} mają dość pracy w innych ćwiczeniach).`)}
+    if(dayT(i)+need<=cap)return true;restore(i,s);return false};
+  // dwa przejścia: najpierw do ok. 1 h 50 min; jeśli partia priorytetowa jest nadal poniżej celu, drugie do ok. 1 h 55 min
+  for(const pass of [0,1]){let guard=30;if(pass){const v=vol();if(!prio.some(x=>(v[x]||0)<g.vol[0]))break;cap=TCAP+300}
+   while(guard--){const v=vol(),m=prio.filter(x=>(v[x]||0)<(pass?g.vol[0]:aim)).sort((a,b)=>(v[a]||0)-(v[b]||0))[0];if(!m)break;let ok=false;
+     // a) seria więcej w ćwiczeniu na tę partię (najwyżej 4)
+     for(const o of all().filter(({it})=>musOf(it.n)[m]===1&&gRole(it)!=='main'&&it.sets<4).sort((a,b)=>dayT(a.i)-dayT(b.i))){
+       if(makeRoom(o.i,tm.iv(o.it.n))){o.it.sets++;sayS(o.i,o.it,`żeby ${MG[m].toLowerCase()} (priorytet celu) miały ok. ${aim} serii w tygodniu`);ok=true;break}}
+     // b) nowe ćwiczenie na tę partię w dniu, w którym jej nie ma
+     if(!ok&&PAT[m])for(const i of W.map((_,i)=>i).filter(i=>!W[i].items.some(it=>musOf(it.n)[m]===1)).sort((a,b)=>dayT(a)-dayT(b))){
+       const c=cands({n:''},i,PAT[m])[0];if(!c||!makeRoom(i,2*tm.iv(c)+tm.tr(c),true))continue;
+       const r=(REPT[PAT[m]]||[12,10])[PI], it0={n:c,sets:3,fresh:1,ss:null};
+       if(['lat','rear','curl','ext'].includes(PAT[m])&&S.syl!==false)Object.assign(it0,{x:true,reps:r,lo:loOf(r)});
+       else Object.assign(it0,{x:false,reps:r,sch:'',rir:gRole(it0)==='comp'?[2,2,1,3]:[1,1,1,3]});
+       place(it0,i);say(i,`${c}: nowe ćwiczenie, 3 serie, żeby ${MG[m].toLowerCase()} (priorytet celu) miały ok. ${aim} serii w tygodniu.`);ok=true;break}
+     if(!ok)break}}
+  cap=TCAP;
+  Object.keys(MG).filter(m=>!prio.includes(m)).forEach(m=>{let v=vol(),guard=8;
+    while((v[m]||0)>10&&guard--){const c=all().filter(({it})=>musOf(it.n)[m]===1&&gRole(it)!=='main'&&it.sets>3).sort((a,b)=>b.it.sets-a.it.sets)[0];if(!c)break;
+      c.it.sets--;sayS(c.i,c.it,`${MG[m].toLowerCase()} mają dużo pracy z innych ćwiczeń`);v=vol()}});
+  // 8. czas: jeśli dzień nadal jest za długi, usuń najmniej ważne ćwiczenie, ale tylko gdy jego partie zostają powyżej minimum
+  W.forEach((d,i)=>{tighten(i,0,true);let guard=10;
+    while(dayT(i)>cap&&guard--){const r=dropOnce(i,false,false);if(!r)break;
+      say(i,`${r.n}: usunięte, żeby trening zmieścił się w ok. 1 h 50 min (${direct(r).map(m=>MG[m].toLowerCase()).join(', ')||'ta partia'} mają dość pracy w innych ćwiczeniach).`);tighten(i,0,true)}
+    // twardy limit 2 h: wtedy schodzi też jedyne ćwiczenie danego wzorca, ale nie boje i nie partie priorytetowe poniżej celu
+    guard=6;while(dayT(i)>7200&&guard--){const r=dropOnce(i,true,true);if(!r)break;say(i,`${r.n}: usunięte, bo bez tego trening przekraczał 2 h.`);tighten(i,0,true)}});
+  all().forEach(({it,i})=>{if(it.sw&&it.s0!=null&&it.sets!==it.s0)say(i,`${it.n}: ${pl(it.sets,['seria','serie','serii'])} (było ${it.s0}), ${it.sw.t}.`)});
+  // kolejność dodatków celu: partner superserii z ćwiczeniem planu na początku, potem złożone, izolacja, brzuch; pary obok siebie
+  W.forEach(d=>{const mx=d.items.filter(it=>!it.x),xs=d.items.filter(it=>it.x),mainSS=new Set(mx.map(it=>it.ss).filter(Boolean));
+    const key=it=>mainSS.has(it.ss)?-1:RANK[gRole(it)];const srt=xs.map((it,k)=>({it,k})).sort((a,b)=>key(a.it)-key(b.it)||a.k-b.k).map(o=>o.it),out=[];
+    srt.forEach(it=>{if(out.includes(it))return;out.push(it);const q=it.ss&&!mainSS.has(it.ss)?srt.find(o=>o!==it&&o.ss===it.ss):null;if(q&&!out.includes(q))out.push(q)});
+    d.items=[...mx,...out]});
+  // 9. rozgrzewka i rozciąganie: ruchy dla wzorców, które doszły do dnia
+  const WU={hinge:'hinge',dead:'hinge',squat:'goblet',uni:'wykrok',vpull:'zwis'}, ST={hinge:'dwuglowe',ham:'dwuglowe',squat:'czworoglowe',uni:'czworoglowe',squatM:'czworoglowe',bench:'klatka',vpull:'najszerszy',hpull:'najszerszy'};
+  W.forEach((d,i)=>{const ps=[...new Set(d.items.map(it=>patOf(it.n)))].filter(x=>!srcPat[i].has(x));
+    ps.forEach(p=>{if(WU[p]&&!d.warmup.some(r=>r[0]===WU[p]))d.warmup.push([WU[p],60]);if(ST[p]&&!d.stretch.some(r=>r[0]===ST[p]))d.stretch.splice(Math.max(0,d.stretch.length-1),0,[ST[p],60])})});
+  // 10. plan w formacie aplikacji
+  const nm=genName(P,phase);
+  const days=W.map((d,i)=>({name:P.days[i].name,ex:d.items.filter(it=>!it.x).map(it=>{const a=[it.n,it.sets,it.reps,it.sch||'',it.rir??''];if(it.ss)a.push(null,it.ss);return a}),warmup:d.warmup,stretch:d.stretch}));
+  const mainN=new Set(days.flatMap(d=>d.ex.map(x=>x[0])));
+  const extra={};Object.keys(GOALS).forEach(k=>{
+    if(k===goal&&S.syl!==false){extra[k]=W.map(d=>d.items.filter(it=>it.x).map(it=>[it.n,it.sets,it.reps,it.lo??null,it.ss||null,it.rest||null,it.lab||null]));return}
+    // inne cele: dodatki z bieżącego planu bez dubli i konfliktów z nowym dniem; superserie bez wspólnej okolicy
+    extra[k]=days.map((d,i)=>{const e=(((src.extra||{})[k]||[])[i]||[]).filter(x=>!mainN.has(x[0])&&!clashes([...d.ex.map(y=>y[0]),x[0]]).length).map(x=>x.slice());
+      const gs={};e.forEach(x=>{if(x[4])(gs[x[4]]=gs[x[4]]||[]).push(x)});Object.values(gs).forEach(q=>{if(q.length!==2||regOf(q[0][0]).some(r=>regOf(q[1][0]).includes(r)))q.forEach(x=>x[4]=null)});return e})});
+  const plan={type:'dziennik-plan',v:1,id:nm.id,name:nm.name,sub:nm.sub,dayPrefix:P.dayPrefix||'',weeks:4,light:{weeks:[4]},days,extra};
+  ['alt','guide','moves','cues','patterns'].forEach(k=>{if(src[k])plan[k]=JSON.parse(JSON.stringify(src[k]))});
+  // rampa: kroki 2,5–5 kg (wskazówka przy ćwiczeniu, jeśli nie masz własnej)
+  days.forEach(d=>d.ex.forEach(x=>{if(x[3]==='rampa'&&!cueOf(x[0])&&!(plan.cues||{})[x[0]])(plan.cues=plan.cues||{})[x[0]]='Rampa: każda seria trochę cięższa, kroki 2,5–5 kg. Najciężej w ostatniej serii.'}));
+  plan.gen={at:new Date().toISOString(),from:cur,phase,cal:cal.known?cal.wd:null,why};
+  const ev=evalPlan(plan,{cur,cal,pref,hist});
+  plan.gen.score=ev.score;plan.gen.issues=ev.issues.map(x=>({lv:x.lv,t:x.t}));plan.gen.est=ev.est.map(t=>Math.round(t));
+  return {plan,ev};
+}
+
+// ocena planu: 100 punktów minus błędy (15), ostrzeżenia (5) i uwagi (1)
+function evalPlan(p,c={}){
+  const goal=GOALS[S.goal]?S.goal:'sport', g=GOALS[goal], prio=g.prio, cur=c.cur||S.plan, ex=(p.extra||{})[goal]||[];
+  const D=p.days.map((d,i)=>[...d.ex.map(x=>({n:x[0],sets:x[1],reps:x[2],sch:x[3]||'',ss:x[6]||null,x:false})),...(d.add||[]).map(x=>({n:x[0],sets:x[1],reps:x[2],x:false})),
+    ...(S.syl!==false?(ex[i]||[]):[]).map(x=>({n:x[0],sets:x[1],reps:x[2],ss:x[4]||null,x:true}))]);
+  const all=D.flat(), I=[], add=(lv,t)=>I.push({lv,t});
+  const cal=c.cal||calendar(cur,p.days.length), pref=c.pref||genPrefs(), hist=c.hist||(n=>exHist(n,cur));
+  const dn=i=>(p.dayPrefix||'')+p.days[i].name+(cal.known?` (${WD[cal.wd[i]]})`:'');
+  const guide=Object.assign({},G,p.guide||{});
+  all.forEach(it=>{if(!guide[it.n])add('err',`${it.n}: ćwiczenie spoza bazy aplikacji (brak opisu i partii).`)});
+  D.forEach((d,i)=>clashes(d.map(it=>it.n)).forEach(x=>add('err',`${dn(i)}: dwa ćwiczenia na ${MG[x.m].toLowerCase()} (${x.names.join(' + ')}).`)));
+  D.forEach((d,i)=>{const gs={};d.forEach(it=>{if(it.ss)(gs[it.ss]=gs[it.ss]||[]).push(it)});
+    Object.values(gs).forEach(q=>{if(q.length!==2)return;const [a,b]=q;
+      if(regOf(a.n).some(r=>regOf(b.n).includes(r)))add('err',`${dn(i)}: superseria ${a.n} + ${b.n} męczy tę samą okolicę.`);
+      else if(q.some(x=>!['iso','core','cond'].includes(gRole(x))))add('warn',`${dn(i)}: ćwiczenie złożone w superserii (${a.n} + ${b.n}).`)})});
+  all.forEach(it=>{if(pref.out[it.n])add('err',`${it.n}: wraca, choć ${pref.out[it.n]}.`)});
+  const back=D.map(d=>d.filter(it=>['dead','hinge'].includes(patOf(it.n))));
+  for(let i=0;i<D.length;i++)for(let j=i+1;j<D.length;j++){if(!back[i].length||!back[j].length)continue;const gp=calGap(cal.wd,i,j),L=[...back[i],...back[j]].map(x=>x.n).join(' + ');
+    if(gp<2)add('err',`${dn(i)} i ${dn(j)}: ${L} dzień po dniu, dolne plecy bez odpoczynku.`);
+    else if(gp===2&&[...back[i],...back[j]].some(it=>patOf(it.n)==='dead'))add('warn',`${dn(i)} i ${dn(j)}: ${L} co 2 dni, za mało odpoczynku dla dolnych pleców.`)}
+  const hs=all.filter(it=>patOf(it.n)==='hinge').length, cs=all.filter(it=>patOf(it.n)==='ham').length;
+  if(cs>=2&&!hs)add('warn',`Tył uda: ${cs} uginania nóg i żadnego skłonu: ten sam ruch dwa razy.`);
+  if(hs>=2)add('warn','Tył uda: dwa skłony w tygodniu obok martwego ciągu, za dużo pracy dolnych pleców.');
+  D.forEach((d,i)=>{const f=d.filter(it=>isFD(it.n));if(f.length>1)add('warn',`${dn(i)}: dwa ciężkie wyciskania na przednie barki (${f.map(x=>x.n).join(' + ')}).`)});
+  const m=tModel(), est=D.map(d=>tGroups(genGroups(d),m));
+  est.forEach((t,i)=>{if(t>7200)add('err',`${dn(i)}: szacunkowo ${fdur(t)}, ponad 2 h.`);else if(t>TCAP)add('warn',`${dn(i)}: szacunkowo ${fdur(t)}, blisko 2 h.`)});
+  const v={};all.forEach(it=>Object.entries(musOf(it.n)).forEach(([mm,w])=>v[mm]=(v[mm]||0)+it.sets*w));
+  prio.forEach(mm=>{const x=v[mm]||0;if(x<g.vol[0])add('err',`${MG[mm]}: ${fmt(x)} serii w tygodniu, poniżej celu ${g.vol[0]}–${g.vol[1]}.`);else if(x<g.vol[0]+2)add('warn',`${MG[mm]}: ${fmt(x)} serii, dolna granica celu.`);else if(x>g.vol[1])add('warn',`${MG[mm]}: ${fmt(x)} serii, ponad cel ${g.vol[1]}.`)});
+  Object.keys(MG).filter(mm=>!prio.includes(mm)).forEach(mm=>{const x=v[mm]||0;if(x>12)add('warn',`${MG[mm]}: ${fmt(x)} serii, dużo jak na partię bez priorytetu.`);else if(x>10)add('info',`${MG[mm]}: ${fmt(x)} serii, głównie praca pośrednia z innych ćwiczeń.`)});
+  ['czw','dwu','klatka','poziom','pion'].forEach(mm=>{if(!prio.includes(mm)&&(v[mm]||0)<4)add('warn',`${MG[mm]}: tylko ${fmt(v[mm]||0)} serii w tygodniu.`)});
+  prio.forEach(mm=>{const k=D.filter(d=>d.some(it=>musOf(it.n)[mm]===1)).length;if(k<2)add('warn',`${MG[mm]} (priorytet): tylko ${k} dzień w tygodniu.`)});
+  const sum=ps=>all.filter(it=>ps.includes(patOf(it.n))).reduce((a,it)=>a+it.sets,0), push=sum(['bench','close','ohp']), pull=sum(['vpull','hpull']);
+  if(goal!=='sila'&&pull<push)add('warn',`Ciągnięcie ${pull} serii, wyciskanie ${push}: dla sylwetki ciągnięcia powinno być co najmniej tyle samo.`);
+  if(!(p.light&&(p.light.weeks||[]).length))add('warn','Brak lżejszego tygodnia.');
+  D.forEach((d,i)=>{const r=d.filter(it=>!it.x);r.forEach((it,k)=>{if(gRole(it)==='main'&&r.slice(0,k).some(o=>RANK[gRole(o)]>=2))add('warn',`${dn(i)}: ${it.n} po izolacji albo brzuchu, a bój powinien być na początku.`)})});
+  all.forEach(it=>{if(gRole(it)==='cond')return;const h=hist(it.n);if(h.stalled&&h.last&&it.reps===h.last.reps)add('warn',`${it.n}: bez postępu w 3 ostatnich treningach, a zakres powtórzeń zostaje ten sam.`)});
+  all.forEach(it=>{const h=hist(it.n);if(Number.isInteger(it.reps)&&h.last&&!h.last.kg&&it.reps>h.last.minR+3)add('warn',`${it.n}: plan ${it.reps} powtórzeń, ostatnio ${h.last.minR} w serii.`)});
+  if(goal==='sport'){const a=all.filter(it=>['curl','ext'].includes(patOf(it.n))).reduce((s,it)=>s+it.sets,0);if(a>6)add('info',`Izolacja ramion ${a} serii: cel sylwetki sportowej zakłada mniej.`)}
+  all.forEach(it=>{if(it.sch!=='rampa')return;const h=hist(it.n),st=(h.last&&h.last.steps)||[];if(st.some(s=>s>5))add('info',`${it.n}: ostatnio kroki rampy do ${fmt(Math.max(...st))} kg; aplikacja podpowie kroki 2,5–5 kg.`)});
+  if(PLANS[cur]&&cur!==p.id){const prevX=PLANS[cur].days.flatMap((_,i)=>dayEx(cur,i).map(x=>x.ex)),prev=new Set(prevX.map(x=>x[0])),now=new Set(all.map(it=>it.n)),k=[...now].filter(x=>prev.has(x)).length/Math.max(1,now.size);
+    const repsNew=all.some(it=>MAIN_N.includes(it.n)&&prevX.some(x=>x[0]===it.n&&x[2]!==it.reps));
+    if(k<0.4)add('info',`Zostaje ${Math.round(k*100)}% ćwiczeń z poprzedniego bloku: trudniej porównać wyniki.`);else if(k>0.9&&!repsNew)add('info',`${Math.round(k*100)}% ćwiczeń i zakresy bojów bez zmian: mało nowego bodźca.`)}
+  const score=Math.max(0,100-I.reduce((a,x)=>a+(x.lv==='err'?15:x.lv==='warn'?5:1),0));
+  return {score,issues:I,vol:v,est};
+}
+
+// ---------- podgląd ułożonego bloku ----------
+let GENV=null;
+function genOpen(){try{GENV=genPlan()}catch(e){GENV=null;console.error(e)}if(!GENV)return toast('Nie udało się ułożyć planu z tego bloku');render();window.scrollTo(0,0)}
+const rirTxt=r=>Array.isArray(r)?'RIR '+r.map(fmt).join('/'):r!=null&&r!==''?'RIR '+fmt(r):'';
+const genNext=()=>Object.values(S.userPlans||{}).find(p=>p.gen&&p.gen.from===S.plan&&PLANS[p.id]&&p.id!==S.plan);
+// koniec bloku: ostatni tydzień albo właśnie zakończony ostatni trening (aplikacja przeszła już na tydzień 1 kolejnego cyklu)
+function blockEnd(){const P=PLANS[S.plan],W=P.weeks||4,last=[...S.sessions].reverse().find(s=>s.plan===S.plan);
+  if(S.week>=W)return 'last';return S.week===1&&S.day===0&&last&&last.week>=W&&last.day===P.days.length-1?'done':''}
+function genBanner(){
+  const be=blockEnd();if(!be)return '';
+  const nx=genNext();
+  if(nx)return `<div class="card"><p><b>Następny blok jest gotowy:</b> ${esc(nx.name)}.</p><button class="ghost" data-genstart="${esc(nx.id)}">Zacznij ${esc(nx.name)} od tygodnia 1</button></div>`;
+  return `<div class="card"><p><b>${be==='done'?'Blok zakończony.':'Ostatni tydzień bloku.'}</b> ${be==='done'?'Ułóż':'Po ostatnim treningu ułóż'} następny blok z historii: aplikacja dobierze ćwiczenia, serie i powtórzenia do twoich wyników, celu i czasu treningu.${be==='done'?' Możesz też powtórzyć ten sam blok: wtedy po prostu trenuj dalej.':''}</p><button class="ghost" data-gen="1">Ułóż następny blok</button></div>`;
+}
+function viewGen(){
+  const {plan:p,ev}=GENV, g=GOAL(), goal=GOALS[S.goal]?S.goal:'sport', X=(p.extra||{})[goal]||[], cal=p.gen.cal, P0=PLANS[p.gen.from];
+  const ph=p.gen.phase==='acc'?'<b>Akumulacja:</b> więcej powtórzeń (przysiad i wyciskanie po 8, martwy ciąg po 6, ćwiczenia pomocnicze 10–15) i umiarkowane ciężary.':'<b>Siła:</b> mniej powtórzeń (przysiad i wyciskanie po 6, martwy ciąg po 5, ćwiczenia pomocnicze 8–12) i większe ciężary.';
+  let h=`<h2 class="sec">Następny blok<small>Ułożony z historii treningów. Nic się nie zmieni, dopóki go nie zapiszesz.</small></h2>
+    <div class="card"><h3>${esc(p.name)} ${esc(PHASE[p.gen.phase]||'')}</h3><p>${ph} Czwarty tydzień lżejszy: seria mniej i ok. 10% lżej. Ciężary w polach kg przeliczą się same z ostatnich wyników. RIR (powtórzenia w zapasie) podany dla tygodni 1–4, np. 3/2/1/3.</p>
+    <p class="meta">Na podstawie: ${esc(P0?P0.name:p.gen.from)}, ${pl(S.sessions.length,TR)} w historii. Ocena planu: <b>${ev.score}/100</b>.</p></div>`;
+  p.days.forEach((d,i)=>{const sup={};[...d.ex.map(x=>[x[0],x[6]]),...(X[i]||[]).map(x=>[x[0],x[4]])].forEach(([n,s])=>{if(s)(sup[s]=sup[s]||[]).push(n)});
+    const pair=(n,s)=>s&&sup[s]&&sup[s].length===2?sup[s].find(y=>y!==n):null;
+    h+=`<div class="card"><h3>${esc((p.dayPrefix||'')+d.name)} <span class="meta">${cal?WD[cal[i]]+', ':''}ok. ${fdur(Math.round(ev.est[i]/300)*300)}</span></h3><ol class="genl">`+
+      d.ex.map(x=>{const q=pair(x[0],x[6]);return `<li><b>${esc(x[0])}</b> ${x[1]}×${x[2]}${[x[3],rirTxt(x[4])].filter(Boolean).map(v=>', '+v).join('')}${q?`<br><span class="tagline">superseria z: ${esc(q)}</span>`:''}</li>`}).join('')+
+      (X[i]||[]).map(x=>{const q=pair(x[0],x[4]);return `<li><b>${esc(x[0])}</b> ${x[1]}×${x[2]==='max'?esc(x[6]||'max'):(x[3]!=null?x[3]+'–':'')+x[2]} <span class="meta">${esc(g.sec.toLowerCase())}</span>${q?`<br><span class="tagline">superseria z: ${esc(q)}</span>`:''}</li>`}).join('')+'</ol></div>'});
+  const why=p.gen.why||[];
+  if(why.length)h+=`<div class="card"><h3>Co się zmienia i dlaczego</h3>${why.map(w=>`<p><b>${esc((p.dayPrefix||'')+p.days[w.d].name)}:</b> ${esc(w.t)}</p>`).join('')}</div>`;
+  const [lo,hi]=g.vol, rows=Object.keys(MG).filter(m=>ev.vol[m]).map(m=>{const x=Math.round(ev.vol[m]*2)/2,pr=g.prio.includes(m),st=x>hi?'dużo':pr&&x<lo?'mało':x<LOV(m)?'mało':'';
+    return `<p class="genv"><span>${pr?'★ ':''}${MG[m]}${st?` <em class="hi">${st}</em>`:''}</span><b>${fmt(x)}</b><span class="meta">${pr?lo+'–'+hi:LOV(m)+'–10'}</span></p>`}).join('');
+  h+=`<div class="card"><h3>Bilans tygodnia</h3><p class="meta">Serie na partię w tygodniu (pośrednie liczone jako pół) i zakres celu ${esc(g.name)}. ★ = priorytet celu.</p>${rows}</div>`;
+  const LV={err:'Błąd',warn:'Uwaga',info:'Informacja'};
+  h+=`<div class="card"><h3>Kontrola planu</h3>${ev.issues.length?ev.issues.map(x=>`<p><b>${LV[x.lv]}:</b> ${esc(x.t)}</p>`).join(''):'<p>Bez uwag: jedna partia na dzień, martwy ciąg i skłony z odpoczynkiem, superserie bez wspólnej partii, bilans serii w celu, czas do ok. 1 h 50 min.</p>'}
+    <p class="meta">Czas liczony z twoich zapisów (przerwy, przejścia, rozgrzewka i rozciąganie), z poprawką o różnicę z ostatnich treningów.</p></div>`;
+  h+=`<button class="primary" data-genok="1">Zapisz i zacznij od tygodnia 1</button>
+    <p class="row" style="margin-top:10px"><button class="ghost" data-gensave="1">Zapisz na później</button><button class="ghost" data-gendrop="1">Odrzuć</button></p>
+    <p class="meta">Zapisany plan trafia do kopii zapasowej i do eksportu dla Claude razem z powodami zmian, więc przy przeglądzie co 2–3 miesiące widać, co i dlaczego ułożyła aplikacja.</p>`;
+  return h;
+}
 
 // wczytanie z linku: #pakiet=… (dane w części po #, nie trafiają na serwer)
 function hashImport(){
