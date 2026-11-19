@@ -366,12 +366,17 @@ test('rozgrzewka: pierwsze ćwiczenie dnia i pierwsze złożone na nierozgrzaną
   let w=W('Podciąganie');ok(w&&w.open&&w.sum==='Rozgrzewka: 2 serie'&&w.rows.every(r=>r==='spokojnie × 3'),'podciąganie jako 1. ćwiczenie dnia: '+JSON.stringify(w));
   w=W('Przysiad');ok(w&&w.open&&/^20 kg × 10/.test(w.rows[0]),'przysiad: pełna drabinka od gryfu (100 kg ostatnio)');
   w=W('Wyciskanie hantli');ok(w&&!w.open&&w.sum==='Rozgrzewka: lekko × 8','skos z hantlami: klatka jeszcze nie pracowała → 1 lekka seria: '+JSON.stringify(w));
-  ok(!W('Wznosy'),'izolacja bez rozgrzewki');
+  ok(!W('Wznosy'),'izolacja bez serii rozgrzewkowych');
+  const txt=n=>(A.card(n).querySelector('.warmok')||{}).textContent||'';
+  eq(txt('Wznosy'),'Ćwiczenie nie wymaga rozgrzewki, partia gotowa do ćwiczeń (rozgrzana przy: Wyciskanie hantli na skosie dodatnim).','barki rozgrzane wyciskaniem');
   A.d.querySelector('[data-day="1"]').click();
   w=W('Wyciskanie leżąc wąsko');ok(w&&w.open&&w.rows[0].startsWith('pusty gryf × 10'),'pierwszy bój bez historii: ogólna drabinka');
   ok(W('Ściąganie drążka podchwytem').sum==='Rozgrzewka: lekko × 8','plecy jeszcze nie pracowały');
   ok(W('Wejścia na skrzynię').sum==='Rozgrzewka: bez obciążenia × 8 na nogę','nogi jeszcze nie pracowały');
   ok(!W('Wiosłowanie hantlem'),'plecy rozgrzane ściąganiem drążka');ok(!W('Uginanie podudzi'),'izolacja');
+  ok(/partia gotowa do ćwiczeń \(rozgrzana przy: Ściąganie drążka podchwytem\)/.test(txt('Wiosłowanie hantlem')),'wiosłowanie: informacja o rozgrzanej partii');
+  ok(/partia gotowa do ćwiczeń \(rozgrzana przy: Wejścia na skrzynię\)/.test(txt('Uginanie podudzi')),'uginanie: nogi rozgrzane skrzynią');
+  ok(!txt('Wejścia na skrzynię')&&!txt('Ściąganie drążka podchwytem'),'ćwiczenia z serią rozgrzewkową bez tej informacji');
   const B=app(base({day:1}));await wait(50);const pb=B.card('Podciąganie').querySelector('details.warm');
   ok(pb&&pb.querySelector('summary').textContent==='Rozgrzewka: spokojnie × 3','podciąganie po martwym ciągu: martwy nie rozgrzewa najszerszych');
   eq(A.errs,[]);eq(B.errs,[]);

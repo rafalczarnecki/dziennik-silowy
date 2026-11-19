@@ -102,7 +102,7 @@ h1{font:700 30px/1 var(--display);margin:0;letter-spacing:.2px}
 .note-box textarea{min-height:70px;font:400 15px/1.4 var(--body)}
 .tagline{font-size:13px;color:var(--done);font-weight:600}
 .vrow{display:grid;grid-template-columns:1fr 80px 34px 34px;gap:8px;align-items:center;font-size:14px;margin:6px 0}
-.warm{margin:6px 0 8px;font-size:14px}.warm summary{font-weight:600;color:var(--done);padding:4px 0}.warm p{margin:3px 0}
+.warm{margin:6px 0 8px;font-size:14px}.warmok{font-size:14px;color:var(--muted);margin:6px 0 8px}.warm summary{font-weight:600;color:var(--done);padding:4px 0}.warm p{margin:3px 0}
 .wrow{display:flex;justify-content:space-between;gap:10px}.wrow span{color:var(--muted);text-align:right}
 .rirq{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 0 2px;font-size:14px;color:var(--muted)}.rirq[hidden]{display:none}.rirq span{flex-basis:100%}
 .genl{margin:6px 0 2px;padding-left:24px}.genl li{margin:6px 0;line-height:1.35}
@@ -324,7 +324,7 @@ const ALT={
   'Nordic curl':['Uginanie podudzi leżąc','Rumuński martwy ciąg']
 };
 
-const VER='2026-11-19e';
+const VER='2026-11-19f';
 const KEY='dziennik-silowy-v1';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -408,13 +408,15 @@ function platesTxt(w){const b=barW();if(!(w>b+1e-9))return Math.abs(w-b)<1e-9?'p
   plateList().forEach(p=>{while(r>=p-1e-9){out.push(p);r-=p}});return out.map(fmt).join(' + ')+(r>0.01?` (brakuje ${fmt(Math.round(r*2*100)/100)} kg)`:'')}
 // okolice ciała do rozgrzewki: dolne plecy osobno od reszty pleców (martwy ciąg nie rozgrzewa najszerszych)
 const WREG={bp:'b',bb:'b',bt:'b',klatka:'k',triceps:'r',biceps:'r',pion:'p',poziom:'p',prost:'l',czw:'n',dwu:'n',pos:'n',przyw:'n',brzuch:'c',skosne:'c'};
-// rodzaj rozgrzewki dla ćwiczeń dnia: full / medium / short (sztanga), first / light (inne ćwiczenia złożone)
-function warmPlan(DX){const warm=new Set(),out={};let bar=false;
-  DX.forEach((it,k)=>{const n=it.ex[0],role=gRole({n,sch:it.ex[3]}),mus=Object.entries(musOf(n)),regs=[...new Set(mus.filter(([,w])=>w===1).map(([m])=>WREG[m]))],cold=regs.length&&!regs.some(r=>warm.has(r));
-    if(it.ex[2]!=='max'&&!['iso','core','cond'].includes(role)){
-      if(isBar(n)){out[it.key]=!bar||k===0?'full':cold?'medium':'short';bar=true}
-      else if(k===0)out[it.key]='first';else if(cold)out[it.key]='light'}
-    mus.forEach(([m,w])=>{if(w>=.5)warm.add(WREG[m])})});
+// rodzaj rozgrzewki dla ćwiczeń dnia: full / medium / short (sztanga), first / light (inne ćwiczenia złożone),
+// ready (partia rozgrzana wcześniejszym ćwiczeniem; by = to ćwiczenie), easy (izolacja lub brzuch na partię, która jeszcze nie pracowała)
+function warmPlan(DX){const warm={},out={};let bar=false;
+  DX.forEach((it,k)=>{const n=it.ex[0],role=gRole({n,sch:it.ex[3]}),mus=Object.entries(musOf(n)),regs=[...new Set(mus.filter(([,w])=>w===1).map(([m])=>WREG[m]))],hot=regs.find(r=>warm[r]);
+    if(it.ex[2]!=='max'&&!['iso','core','cond'].includes(role)&&(isBar(n)||k===0||!hot)){
+      if(isBar(n)){out[it.key]={k:!bar||k===0?'full':hot?'short':'medium'};bar=true}
+      else out[it.key]={k:k===0?'first':'light'}}
+    else out[it.key]=hot?{k:'ready',by:warm[hot]}:{k:'easy'};
+    mus.forEach(([m,w])=>{if(w>=.5&&!warm[WREG[m]])warm[WREG[m]]=n})});
   return out}
 function warmSets(n,w1,kind,test){
   if(!kind)return [];
@@ -2533,7 +2535,10 @@ function viewTrening(){
     h+=stallBox(ex[0],pi,orig,idx);
     if(last) h+=`<p class="last"><span class="meta">Ostatnio ${fdate(last.date)}:</span> ${last.sets.map(fmtSet).join(', ')}</p>`;
     if(!vNew)h+=`<p class="hint${hint.up?' up':''}">${hint.t}</p>`;
-    if(WP[key]){const s0=sug&&sug.find(x=>x&&x.w),l0=last&&last.sets.find(x=>x.w);h+=warmBox(ex[0],s0?s0.w:l0?l0.w:null,WP[key],!!test,(sug||[]).map(x=>x&&x.w))}
+    {const wp=WP[key]||{};
+     if(wp.k==='ready')h+=`<p class="warmok">Ćwiczenie nie wymaga rozgrzewki, partia gotowa do ćwiczeń (rozgrzana przy: ${esc(wp.by)}).</p>`;
+     else if(wp.k==='easy')h+=`<p class="warmok">Ćwiczenie nie wymaga osobnej rozgrzewki: pierwszą serię zacznij spokojniej.</p>`;
+     else if(wp.k){const s0=sug&&sug.find(x=>x&&x.w),l0=last&&last.sets.find(x=>x.w);h+=warmBox(ex[0],s0?s0.w:l0?l0.w:null,wp.k,!!test,(sug||[]).map(x=>x&&x.w))}}
     let wi=0;
     sets.forEach((s,si)=>{
       const r=rows[si]||{}, prev=last&&last.sets[si];
